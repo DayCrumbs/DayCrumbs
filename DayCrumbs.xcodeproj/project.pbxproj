@@ -10,9 +10,23 @@
 		F0FFEB7F2FFFA7BA00500BC0 /* DayCrumbs.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DayCrumbs.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		F09C228F3000F2EA006D1C04 /* Exceptions for "DayCrumbs" folder in "DayCrumbs" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Data/Repositories/Temp.swift,
+				Data/SwiftData/Temp.swift,
+			);
+			target = F0FFEB7E2FFFA7BA00500BC0 /* DayCrumbs */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		F0FFEB812FFFA7BA00500BC0 /* DayCrumbs */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				F09C228F3000F2EA006D1C04 /* Exceptions for "DayCrumbs" folder in "DayCrumbs" target */,
+			);
 			path = DayCrumbs;
 			sourceTree = "<group>";
 		};
