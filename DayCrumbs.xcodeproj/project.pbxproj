@@ -14,8 +14,36 @@
 		F09C228F3000F2EA006D1C04 /* Exceptions for "DayCrumbs" folder in "DayCrumbs" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Data/DummyData/Temp.swift,
 				Data/Repositories/Temp.swift,
 				Data/SwiftData/Temp.swift,
+				Features/Dashboard/ViewModels/Temp.swift,
+				Features/Dashboard/Views/Temp.swift,
+				Features/LocalModelPickers/Temp.swift,
+				Features/StorySection/ViewModels/Temp.swift,
+				Features/StorySection/Views/Temp.swift,
+				Models/Enums/Temp.swift,
+				Models/LocalModel/Temp.swift,
+				Models/Recommendations/Temp.swift,
+				Services/Analytics/Temp.swift,
+				Services/Audio/Temp.swift,
+				Services/LocalLLM/Catalog/Temp.swift,
+				Services/LocalLLM/Download/Temp.swift,
+				Services/LocalLLM/Parsing/Temp.swift,
+				Services/LocalLLM/Prompting/Temp.swift,
+				Services/LocalLLM/Recommendations/Temp.swift,
+				Services/LocalLLM/Runtime/Temp.swift,
+				Services/LocalLLM/Storage/Temp.swift,
+				Services/LocalLLM/Vendor/Frameworks/Temp.swift,
+				Services/LocalLLM/Vendor/Swift/Temp.swift,
+				Services/Media/Temp.swift,
+				Services/Speech/Temp.swift,
+				Services/StoryFlow/Temp.swift,
+				Shared/Components/Temp.swift,
+				Shared/Extensions/Temp.swift,
+				Shared/Theme/Temp.swift,
+				Shared/Utilities/Temp.swift,
+				Tests/Temp.swift,
 			);
 			target = F0FFEB7E2FFFA7BA00500BC0 /* DayCrumbs */;
 		};
@@ -265,6 +293,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TLC6Y5XJMM;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -296,6 +325,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TLC6Y5XJMM;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
