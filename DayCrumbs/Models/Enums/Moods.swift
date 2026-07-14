@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum Moods {
+enum Moods: String, CaseIterable {
     case angry
     case disgust
     case fear
