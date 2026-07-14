@@ -2,21 +2,14 @@ import SwiftUI
 
 struct ChildProfileSetupView: View {
     @Environment(\.dismiss) private var dismiss
-    
-    @State private var childName: String = ""
-    @State private var childAge: String = ""
-    @State private var selectedGender: Gender? = nil
-    
-    enum Gender {
-        case boy, girl
-    }
+    @State private var viewModel = ChildProfileSetupViewModel()
     
     let bgColour = Color("PutihDayCrumbs")
     let btnColour = Color("KuningDayCrumbs")
     let txtColour = Color("CoklatDayCrumbs")
     let cardColour = Color("KuningDayCrumbs")
     let primaryBtnColour = Color("PutihDayCrumbs")
-
+    
     
     var body: some View {
         ZStack {
@@ -51,7 +44,7 @@ struct ChildProfileSetupView: View {
                     .scaledToFit()
                     .frame(maxHeight: 500)
                 
-            
+                
                 
                 // --- KANAN: FORM ---
                 VStack(alignment: .leading, spacing: 24) {
@@ -70,7 +63,7 @@ struct ChildProfileSetupView: View {
                                 .foregroundColor(txtColour)
                                 .frame(width: 80, alignment: .leading)
                             
-                            TextField("Placeholder", text: $childName)
+                            TextField("Placeholder", text: $viewModel.childName)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
                                 .background(Color.white.opacity(0.3))
@@ -85,7 +78,7 @@ struct ChildProfileSetupView: View {
                                 .foregroundColor(txtColour)
                                 .frame(width: 80, alignment: .leading)
                             
-                            TextField("Placeholder", text: $childAge)
+                            TextField("Placeholder", text: $viewModel.childAge)
                                 .keyboardType(.numberPad)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
@@ -98,19 +91,19 @@ struct ChildProfileSetupView: View {
                         HStack {
                             Text("Gender")
                                 .font(.system(.title3, design: .rounded))
-                                .foregroundColor(txtColour)
+                                .foregroundColor(Color("TextOnboarding"))
                                 .frame(width: 80, alignment: .leading)
                             
                             HStack(spacing: 16) {
-                                genderButton(title: "Boy", type: .boy)
-                                genderButton(title: "Girl", type: .girl)
+                                ForEach(ChildGender.allCases, id: \.self) { gender in
+                                    genderButton(for: gender)
+                                }
                             }
                         }
                         
                         // Baris 4: Save Button
                         Button(action: {
-                            print("Save ditekan: \(childName), \(childAge), Gender: \(String(describing: selectedGender))")
-                            // TODO: Panggil fungsi ViewModel/Database di sini nantinya
+                            viewModel.saveProfile()
                         }) {
                             Text("Save Profile")
                                 .font(.system(.title3, design: .rounded).weight(.bold))
@@ -137,13 +130,13 @@ struct ChildProfileSetupView: View {
     
     // MARK: - Komponen Bantuan
     @ViewBuilder
-    private func genderButton(title: String, type: Gender) -> some View {
-        let isSelected = selectedGender == type
+    private func genderButton(for gender: ChildGender) -> some View {
+        let isSelected = viewModel.selectedGender == gender
         
         Button(action: {
-            selectedGender = type
+            viewModel.selectedGender = gender
         }) {
-            Text(title)
+            Text(gender.rawValue.capitalized)
                 .font(.system(.body, design: .rounded))
                 .foregroundColor(txtColour)
                 .frame(maxWidth: .infinity)
