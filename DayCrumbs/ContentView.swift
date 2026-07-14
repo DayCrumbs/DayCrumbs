@@ -12,7 +12,7 @@ struct ContentView: View {
         TabView {
             Tab("Story", systemImage: "book.pages") {
                 NavigationStack {
-                    StoryView()
+                    OnboardingView()
                 }
             }
 
