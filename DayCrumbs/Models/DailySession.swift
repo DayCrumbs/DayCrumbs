@@ -20,6 +20,8 @@ final class DailySession {
 
     private var activityRawValues: [String] = []
     private var placeRawValues: [String] = []
+    private var sessionRawValues: [String] = []
+    private var moodRawValues: [String] = []
 
     @Relationship(deleteRule: .cascade, inverse: \CustomPlace.dailySession)
     var customPlaces: [CustomPlace] = []
@@ -35,6 +37,16 @@ final class DailySession {
     var places: [Place.BuiltInPlace] {
         get { placeRawValues.compactMap(Place.BuiltInPlace.init(rawValue:)) }
         set { placeRawValues = newValue.map(\.rawValue) }
+    }
+
+    var sessions: [Sessions] {
+        get { sessionRawValues.compactMap(Sessions.init(rawValue:)) }
+        set { sessionRawValues = newValue.map(\.rawValue) }
+    }
+
+    var moods: [Moods] {
+        get { moodRawValues.compactMap(Moods.init(rawValue:)) }
+        set { moodRawValues = newValue.map(\.rawValue) }
     }
 
     var isCompleted: Bool {

@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum Sessions {
+enum Sessions: String, CaseIterable {
     case morning
     case afternoon
     case evening
