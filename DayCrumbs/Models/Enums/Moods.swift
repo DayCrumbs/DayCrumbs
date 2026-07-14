@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum Mood {
+enum Moods {
     case angry
     case disgust
     case fear
