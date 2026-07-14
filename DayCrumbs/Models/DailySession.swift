@@ -15,38 +15,11 @@ final class DailySession {
     @Relationship(deleteRule: .cascade, inverse: \EndOfDayReflection.dailySession)
     var endOfDayReflection: EndOfDayReflection?
 
-    @Relationship(deleteRule: .cascade, inverse: \AfterActivityNotes.dailySession)
-    var afterActivityNotes: [AfterActivityNotes] = []
+    @Relationship(deleteRule: .cascade, inverse: \StoryEntry.dailySession)
+    var entries: [StoryEntry] = []
 
-    private var activityRawValues: [String] = []
-    private var placeRawValues: [String] = []
-    private var sessionRawValues: [String] = []
-    private var moodRawValues: [String] = []
-
-    @Relationship(deleteRule: .cascade, inverse: \CustomPlace.dailySession)
-    var customPlaces: [CustomPlace] = []
-
-    @Relationship(deleteRule: .cascade, inverse: \CustomActivity.dailySession)
-    var customActivities: [CustomActivity] = []
-
-    var activities: [Activity.BuiltInActivity] {
-        get { activityRawValues.compactMap(Activity.BuiltInActivity.init(rawValue:)) }
-        set { activityRawValues = newValue.map(\.rawValue) }
-    }
-
-    var places: [Place.BuiltInPlace] {
-        get { placeRawValues.compactMap(Place.BuiltInPlace.init(rawValue:)) }
-        set { placeRawValues = newValue.map(\.rawValue) }
-    }
-
-    var sessions: [Sessions] {
-        get { sessionRawValues.compactMap(Sessions.init(rawValue:)) }
-        set { sessionRawValues = newValue.map(\.rawValue) }
-    }
-
-    var moods: [Moods] {
-        get { moodRawValues.compactMap(Moods.init(rawValue:)) }
-        set { moodRawValues = newValue.map(\.rawValue) }
+    var chronologicalEntries: [StoryEntry] {
+        entries.sorted { $0.recordedAt < $1.recordedAt }
     }
 
     var isCompleted: Bool {

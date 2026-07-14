@@ -14,17 +14,17 @@ final class CustomActivity {
     var imageData: Data?
 
     var recordedAt: Date
-    var dailySession: DailySession?
+    var storyEntry: StoryEntry?
 
     init(
         name: String,
         imageData: Data? = nil,
         recordedAt: Date = .now,
-        dailySession: DailySession? = nil
+        storyEntry: StoryEntry? = nil
     ) {
         self.name = name
         self.imageData = imageData
         self.recordedAt = recordedAt
-        self.dailySession = dailySession
+        self.storyEntry = storyEntry
     }
 }
