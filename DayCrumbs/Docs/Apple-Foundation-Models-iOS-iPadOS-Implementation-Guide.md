@@ -73,7 +73,14 @@ Foundation Models dapat diintegrasikan setelah UI dan dummy data tersedia; UI fi
 
 Checklist:
 
-- Gunakan `[StoryEvent]` sebagai input generation.
+- Gunakan `[StoryEntry]` sebagai input generation.
+- Gunakan vocabulary domain project saat ini sebagai source of truth:
+  - session: `morning`, `afternoon`, `evening`, `night`
+  - mood: `angry`, `disgust`, `fear`, `happy`, `sad`, `surprise`
+  - built-in activity: `play`, `sleep`, `study`, `eat`, `getReady`, `wakeUp`
+  - built-in place: `house`, `outdoor`, `school`, `publicPlace`
+  - child gender: `boy`, `girl`
+- Gunakan `CustomActivity` dan `CustomPlace` untuk nilai custom; jangan menambahkan enum case baru hanya untuk menyesuaikan contoh lama.
 - Pertahankan scope yang sudah ada: semua data, mingguan, atau tanggal tertentu.
 - Biarkan `DashboardView` memilih event sebelum memanggil runtime.
 - Jangan memasukkan SwiftUI view state atau rendered text ke prompt.
@@ -294,4 +301,3 @@ Fallback ke Gemma diputuskan sebelum generation dimulai. Error refusal/guardrail
 - [ ] XCTest shared prompt/parser/output-safety lulus.
 - [ ] Availability dan generation diuji pada physical iPhone serta iPad yang eligible.
 - [ ] Gemma hanya muncul sebagai fallback ketika Apple unavailable.
-
