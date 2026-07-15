@@ -3,7 +3,7 @@ import SwiftUI
 struct ChildProfileSetupView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ChildProfileSetupViewModel()
-        
+    
     
     var body: some View {
         ZStack {
@@ -12,16 +12,8 @@ struct ChildProfileSetupView: View {
             
             VStack {
                 HStack {
-                    Button(action: {
+                    CircularBackButton() {
                         dismiss()
-                    }) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(AppColour.btnKuning)
-                            .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                     }
                     Spacer()
                 }
