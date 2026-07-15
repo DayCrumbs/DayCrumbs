@@ -12,12 +12,13 @@ import Foundation
 class ChildProfileSetupViewModel {
     // MARK: - Properties
     var childName: String = ""
-    var childAge: String = ""
-    var selectedGender: ChildGender? = nil    
+    var childAge: Int = 0
+    var selectedGender: ChildGender? = nil // Menggunakan enum baru
+    
     // MARK: - Computed Properties
     var isFormValid: Bool {
         !childName.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !childAge.trimmingCharacters(in: .whitespaces).isEmpty &&
+        childAge > 0 &&
         selectedGender != nil
     }
     
