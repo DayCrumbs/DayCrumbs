@@ -1,9 +1,16 @@
+//
+//  ChildProfileSetupView.swift
+//  DayCrumbs
+//
+//  Created by Ibnu Taufick Ahraza on 7/14/26.
+//
+
 import SwiftUI
 
 struct ChildProfileSetupView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ChildProfileSetupViewModel()
-    
+    @State private var navigateToSession: Bool = false
     
     var body: some View {
         ZStack {
@@ -90,6 +97,11 @@ struct ChildProfileSetupView: View {
                         // Baris 4: Save Button
                         Button(action: {
                             viewModel.saveProfile()
+                            
+                            if viewModel.isFormValid {
+                                navigateToSession = true
+                            }
+                            
                         }) {
                             Text("Save Profile")
                                 .font(.system(.title3, design: .rounded).weight(.bold))
@@ -112,6 +124,9 @@ struct ChildProfileSetupView: View {
             .padding(.horizontal, 40)
         }
         .navigationBarBackButtonHidden(true)
+        .navigationDestination(isPresented: $navigateToSession) {
+            SessionOptionView()
+        }
     }
     
     // MARK: - Komponen Bantuan

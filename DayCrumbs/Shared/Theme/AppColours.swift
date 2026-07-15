@@ -15,5 +15,9 @@ struct AppColour {
     static let chevKuning = Color("KuningDayCrumbs")
     static let txtCoklat = Color("CoklatDayCrumbs")
     static let cardKuning = Color("KuningDayCrumbs")
+    static let bgMorning = Color("PlaceholderPagi")
+    static let bgAfternoon = Color("PlaceholderSiang")
+    static let bgEvening = Color("PlaceholderSore")
+    static let bgNight = Color("PlaceholderMalam")
     
 }
