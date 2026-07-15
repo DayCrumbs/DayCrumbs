@@ -7,12 +7,17 @@
 
 import Testing
 
+@testable import DayCrumbs
+
+@Suite("DayCrumbs model smoke tests")
 struct DayCrumbsTests {
+    @Test("A new daily session starts incomplete")
+    func newDailySessionStartsIncomplete() {
+        let session = DailySession()
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
-        // Swift Testing Documentation
-        // https://developer.apple.com/documentation/testing
+        #expect(session.endedAt == nil)
+        #expect(session.entries.isEmpty)
+        #expect(session.endOfDayReflection == nil)
+        #expect(!session.isCompleted)
     }
-
 }
