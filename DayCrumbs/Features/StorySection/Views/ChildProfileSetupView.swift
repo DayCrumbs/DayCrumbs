@@ -64,7 +64,7 @@ struct ChildProfileSetupView: View {
                                 .foregroundColor(AppColour.txtCoklat)
                                 .frame(width: 80, alignment: .leading)
                             
-                            TextField("Placeholder", text: $viewModel.childAge)
+                            TextField("Placeholder", value: $viewModel.childAge, format: .number)
                                 .keyboardType(.numberPad)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
