@@ -9,7 +9,7 @@ import Testing
 struct SwiftDataPersistenceTests {
     @Test("A complete daily story survives an in-memory SwiftData round trip")
     func dailyStoryRoundTrip() throws {
-        let container = try makeContainer()
+        let container = try DayCrumbsModelContainer.makeInMemoryContainer()
         let context = container.mainContext
         let profile = ChildProfile(name: "Mika", age: 4, gender: .girl)
         let session = DailySession(
@@ -51,21 +51,6 @@ struct SwiftDataPersistenceTests {
         #expect(
             fetchedSession.endOfDayReflection?.transcribedText
                 == "Outdoor play was the happiest part of the day."
-        )
-    }
-
-    private func makeContainer() throws -> ModelContainer {
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-
-        return try ModelContainer(
-            for: ChildProfile.self,
-            DailySession.self,
-            StoryEntry.self,
-            AfterActivityNotes.self,
-            EndOfDayReflection.self,
-            CustomActivity.self,
-            CustomPlace.self,
-            configurations: configuration
         )
     }
 }
