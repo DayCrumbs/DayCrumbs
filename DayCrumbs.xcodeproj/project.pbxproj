@@ -27,7 +27,6 @@
 			membershipExceptions = (
 				Data/DummyData/Temp.swift,
 				Data/Repositories/Temp.swift,
-				Data/SwiftData/Temp.swift,
 				Features/Dashboard/ViewModels/Temp.swift,
 				Features/Dashboard/Views/Temp.swift,
 				Features/LocalModelPickers/Temp.swift,
@@ -54,7 +53,6 @@
 				Shared/Extensions/Temp.swift,
 				Shared/Theme/Temp.swift,
 				Shared/Utilities/Temp.swift,
-				Tests/Temp.swift,
 			);
 			target = F0FFEB7E2FFFA7BA00500BC0 /* DayCrumbs */;
 		};
