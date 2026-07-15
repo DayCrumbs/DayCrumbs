@@ -33,8 +33,6 @@
 				Features/StorySection/ViewModels/Temp.swift,
 				Features/StorySection/Views/Temp.swift,
 				Models/Enums/Temp.swift,
-				Models/LocalModel/Temp.swift,
-				Models/Recommendations/Temp.swift,
 				Services/Analytics/Temp.swift,
 				Services/Audio/Temp.swift,
 				Services/LocalLLM/Catalog/Temp.swift,
