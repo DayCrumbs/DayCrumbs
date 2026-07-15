@@ -3,17 +3,11 @@ import SwiftUI
 struct ChildProfileSetupView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ChildProfileSetupViewModel()
-    
-    let bgColour = Color("PutihDayCrumbs")
-    let btnColour = Color("KuningDayCrumbs")
-    let txtColour = Color("CoklatDayCrumbs")
-    let cardColour = Color("KuningDayCrumbs")
-    let primaryBtnColour = Color("PutihDayCrumbs")
-    
+        
     
     var body: some View {
         ZStack {
-            bgColour
+            AppColour.bgPutih
                 .ignoresSafeArea()
             
             VStack {
@@ -25,7 +19,7 @@ struct ChildProfileSetupView: View {
                             .font(.system(size: 20, weight: .bold))
                             .foregroundColor(.white)
                             .frame(width: 44, height: 44)
-                            .background(btnColour)
+                            .background(AppColour.btnKuning)
                             .clipShape(Circle())
                             .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                     }
@@ -51,7 +45,7 @@ struct ChildProfileSetupView: View {
                     
                     Text("Set Up Your Child's Profile")
                         .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                        .foregroundColor(txtColour)
+                        .foregroundColor(AppColour.txtCoklat)
                     
                     // Card Form
                     VStack(spacing: 24) {
@@ -60,7 +54,7 @@ struct ChildProfileSetupView: View {
                         HStack {
                             Text("Name")
                                 .font(.system(.title3, design: .rounded))
-                                .foregroundColor(txtColour)
+                                .foregroundColor(AppColour.txtCoklat)
                                 .frame(width: 80, alignment: .leading)
                             
                             TextField("Placeholder", text: $viewModel.childName)
@@ -68,14 +62,14 @@ struct ChildProfileSetupView: View {
                                 .padding(.vertical, 12)
                                 .background(Color.white.opacity(0.3))
                                 .cornerRadius(16)
-                                .foregroundColor(txtColour)
+                                .foregroundColor(AppColour.txtCoklat)
                         }
                         
                         // Baris 2: Age
                         HStack {
                             Text("Age")
                                 .font(.system(.title3, design: .rounded))
-                                .foregroundColor(txtColour)
+                                .foregroundColor(AppColour.txtCoklat)
                                 .frame(width: 80, alignment: .leading)
                             
                             TextField("Placeholder", text: $viewModel.childAge)
@@ -84,14 +78,14 @@ struct ChildProfileSetupView: View {
                                 .padding(.vertical, 12)
                                 .background(Color.white.opacity(0.3))
                                 .cornerRadius(16)
-                                .foregroundColor(txtColour)
+                                .foregroundColor(AppColour.txtCoklat)
                         }
                         
                         // Baris 3: Gender
                         HStack {
                             Text("Gender")
                                 .font(.system(.title3, design: .rounded))
-                                .foregroundColor(Color("TextOnboarding"))
+                                .foregroundColor(AppColour.txtCoklat)
                                 .frame(width: 80, alignment: .leading)
                             
                             HStack(spacing: 16) {
@@ -107,17 +101,17 @@ struct ChildProfileSetupView: View {
                         }) {
                             Text("Save Profile")
                                 .font(.system(.title3, design: .rounded).weight(.bold))
-                                .foregroundColor(txtColour)
+                                .foregroundColor(AppColour.txtCoklat)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
-                                .background(primaryBtnColour)
+                                .background(AppColour.btnPutih)
                                 .clipShape(Capsule())
                         }
                         .padding(.top, 8)
                         
                     }
                     .padding(32)
-                    .background(cardColour)
+                    .background(AppColour.cardKuning)
                     .cornerRadius(24)
                     
                 }
@@ -138,7 +132,7 @@ struct ChildProfileSetupView: View {
         }) {
             Text(gender.rawValue.capitalized)
                 .font(.system(.body, design: .rounded))
-                .foregroundColor(txtColour)
+                .foregroundColor(AppColour.txtCoklat)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .background(isSelected ? Color.white.opacity(0.6) : Color.clear)
