@@ -13,8 +13,7 @@ class ChildProfileSetupViewModel {
     // MARK: - Properties
     var childName: String = ""
     var childAge: String = ""
-    var selectedGender: ChildGender? = nil // Menggunakan enum baru
-    
+    var selectedGender: ChildGender? = nil    
     // MARK: - Computed Properties
     var isFormValid: Bool {
         !childName.trimmingCharacters(in: .whitespaces).isEmpty &&

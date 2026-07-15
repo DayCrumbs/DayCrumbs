@@ -16,7 +16,7 @@ struct CircularBackButton: View {
     var style: ButtonStyle = .yellowBtn
     var action: () -> Void
     
-    // 3. Computed property untuk warna background
+    // 3. Computed property untuk warna button
     private var btnColour: Color {
         switch style {
         case .yellowBtn:
