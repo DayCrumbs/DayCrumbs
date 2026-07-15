@@ -23,11 +23,26 @@ Core assumption:
 - The main analytics signal comes from structured data:
   - child profile
   - date
-  - scene/session
+  - session
   - place
   - activity
   - mood
   - End of day reflection
+
+## Current Domain Vocabulary
+
+Use the existing project models and enum cases as the source of truth. Do not rename them or introduce replacement vocabulary unless the user explicitly requests a domain change.
+
+- Analytics event entity: `StoryEntry`
+- Session (`Sessions`): `morning`, `afternoon`, `evening`, `night`
+- Mood (`Moods`): `angry`, `disgust`, `fear`, `happy`, `sad`, `surprise`
+- Built-in activity (`Activity.BuiltInActivity`): `play`, `sleep`, `study`, `eat`, `getReady`, `wakeUp`
+- Custom activity marker (`Activity.CustomActivity`): `customActivity`
+- Built-in place (`Place.BuiltInPlace`): `house`, `outdoor`, `school`, `publicPlace`
+- Custom place marker (`Place.CustomPlace`): `customPlace`
+- Child gender (`ChildGender`): `boy`, `girl`
+
+Prompts, dummy data, analytics grouping, tests, and UI labels must derive from or map explicitly to this vocabulary. Do not add cases such as `tired`, `excited`, `calm`, `confused`, `scared`, `breakfast`, `screenTime`, `park`, or `car` merely to satisfy an older example or guide.
 
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 
@@ -130,9 +145,9 @@ Build exactly three main tabs:
 1. Story
    - Purpose: Guide the parent through daily storytelling and structured activity logging.
    - If no child profile exists, the first step must be creating a child profile with name, age, and gender.
-   - After profile setup, the parent chooses scene, location, activity, mood, and optional after-activity notes.
-   - The parent can add another activity in the same scene or move to another scene.
-   - When moving on from the nighttime scene, end-of-day reflection is required.
+   - After profile setup, the parent chooses session, place, activity, mood, and optional after-activity notes.
+   - The parent can add another activity in the same session or move to another session.
+   - When moving on from the night session, end-of-day reflection is required.
    - This tab can also include a data explorer/history view, but guided storytelling is the primary flow.
 
 2. Dashboard
@@ -352,7 +367,7 @@ Required output schema:
   "observedPatterns": [
     {
       "title": "Short evidence label, not a recommendation.",
-      "evidence": "Concrete observation tied to count, scene, place, mood, time, activity, reason, or note.",
+      "evidence": "Concrete observation tied to count, session, place, mood, time, activity, reason, or note.",
       "linkedTrigger": "Optional title from commonTriggers.",
       "contextTags": ["Optional short tags from rows"]
     }
@@ -408,7 +423,7 @@ Recommendations are not diagnosis, therapy, or medical advice.
 Use SwiftData for:
 
 - ChildProfile
-- StoryEvent
+- StoryEntry
 - AnalyticsInsight if persisted
 - LocalModelInstallation metadata
 
@@ -426,10 +441,11 @@ Minimum dummy data (if needed):
 
 - At least 7 days.
 - Each day should include 5-10 events.
-- Each day should include morning, afternoon, evening, and night events.
-- Include places: home, school, park/playground, car, restaurant/other.
-- Include activities: breakfast, learning, playing, resting, outdoor play, screen time, bedtime, family time.
-- Include moods: happy, sad, angry, tired, excited, scared, confused, calm.
+- Each day should include `morning`, `afternoon`, `evening`, and `night` sessions.
+- Include built-in places: `house`, `outdoor`, `school`, and `publicPlace`.
+- Include built-in activities: `play`, `sleep`, `study`, `eat`, `getReady`, and `wakeUp`.
+- Include moods: `angry`, `disgust`, `fear`, `happy`, `sad`, and `surprise`.
+- Custom activity and place examples may be included through the existing `CustomActivity` and `CustomPlace` models.
 - Parent notes should mostly be nil or empty.
 
 ## Analytics Rules
@@ -443,32 +459,23 @@ Rule-based analytics must remain available as a deterministic fallback for chart
 Analytics to implement (not concrete can and will be changed):
 
 - Mood distribution.
-- Mood by scene.
+- Mood by session.
 - Mood by place.
 - Mood by activity.
 - Weekly mood trend.
 - Repeated negative mood moments.
-- Common trigger candidates based on repeated scene/place/activity + mood patterns.
+- Common trigger candidates based on repeated session/place/activity + mood patterns.
 - Observed patterns with concrete evidence.
 - Parent recommendations selected from curated catalog.
 
-Mood scoring (not concrete can and will be changed):
-
-- happy: 4
-- excited: 4
-- calm: 3
-- confused: 2
-- tired: 2
-- sad: 1
-- scared: 1
-- angry: 1
+Mood scoring is not final. If implemented, it must cover only the current `Moods` cases (`angry`, `disgust`, `fear`, `happy`, `sad`, and `surprise`) unless the user explicitly approves a domain vocabulary change. Define and test the score mapping as a separate analytics policy rather than adding enum cases to fit a previous scoring example.
 
 Do not present mood score as a clinical metric. Use it only internally for trend charts.
 
 Good insight wording:
 
 ```text
-Leo often seems tired during evening activities, especially after outdoor play. This may suggest that late-day transitions need a gentler routine.
+Leo was often angry during the evening session when the activity was play and the place was outdoor. This may suggest that late-day transitions are worth observing more closely.
 ```
 
 Bad insight wording:

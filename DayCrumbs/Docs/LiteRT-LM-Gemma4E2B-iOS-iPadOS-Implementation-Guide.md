@@ -70,11 +70,18 @@ PrototypeC3A02Tests/LocalLLMModelTests.swift
 
 ## 4. Fase 0 — Siapkan UI dan Dummy Data
 
-Fase model tidak bergantung pada UI final. Jika dashboard dan dummy data sudah ada, pertahankan keduanya dan gunakan `StoryEvent` sebagai input.
+Fase model tidak bergantung pada UI final. Jika dashboard dan dummy data sudah ada, pertahankan keduanya dan gunakan `StoryEntry` sebagai input.
 
 Checklist:
 
-- Pastikan generation menerima `[StoryEvent]`, bukan data yang sudah dirender menjadi view.
+- Pastikan generation menerima `[StoryEntry]`, bukan data yang sudah dirender menjadi view.
+- Gunakan vocabulary domain project saat ini sebagai source of truth:
+  - session: `morning`, `afternoon`, `evening`, `night`
+  - mood: `angry`, `disgust`, `fear`, `happy`, `sad`, `surprise`
+  - built-in activity: `play`, `sleep`, `study`, `eat`, `getReady`, `wakeUp`
+  - built-in place: `house`, `outdoor`, `school`, `publicPlace`
+  - child gender: `boy`, `girl`
+- Gunakan `CustomActivity` dan `CustomPlace` untuk nilai custom; jangan menambahkan enum case baru hanya untuk menyesuaikan contoh lama.
 - Pertahankan scope yang sudah ada di `DashboardView`: semua data, mingguan, atau tanggal tertentu.
 - Gunakan data hasil scope sebagai argument `events`.
 - Jangan mengubah dummy data hanya untuk memenuhi output model.
