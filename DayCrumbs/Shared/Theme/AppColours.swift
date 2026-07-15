@@ -11,6 +11,8 @@ struct AppColour {
     static let bgPutih = Color("PutihDayCrumbs")
     static let btnKuning = Color("KuningDayCrumbs")
     static let btnPutih = Color("PutihDayCrumbs")
+    static let chevPutih = Color("PutihDayCrumbs")
+    static let chevKuning = Color("KuningDayCrumbs")
     static let txtCoklat = Color("CoklatDayCrumbs")
     static let cardKuning = Color("KuningDayCrumbs")
     
