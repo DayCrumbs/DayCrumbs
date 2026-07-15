@@ -157,6 +157,27 @@ struct AnalyticsContextBuilderTests {
         #expect(context.events.map(\.afterActivityNote) == ["Typed note", "Spoken note"])
     }
 
+    @Test("Whitespace-only notes are treated as absent")
+    func whitespaceOnlyNoteIsAbsent() throws {
+        let profile = ChildProfile(name: "Ari", age: 3, gender: .boy)
+        let session = makeSession(profile: profile, startedAt: .distantPast)
+        let entry = StoryEntry(
+            session: .morning,
+            mood: .happy,
+            afterActivityNotes: AfterActivityNotes(
+                text: " \n ",
+                transcribedText: " \t "
+            ),
+            recordedAt: .now,
+            dailySession: session
+        )
+
+        let context = try AnalyticsContextBuilder().build(from: [entry])
+
+        #expect(context.events.first?.afterActivityNote == nil)
+        #expect(context.text.contains("afterActivityNote: absent"))
+    }
+
     @Test("Missing reflections do not prevent context construction")
     func missingReflection() throws {
         let profile = ChildProfile(name: "Ari", age: 3, gender: .boy)
@@ -169,35 +190,46 @@ struct AnalyticsContextBuilderTests {
         #expect(context.text.contains("END_OF_DAY_REFLECTIONS: 0"))
     }
 
-    @Test("Selected-session reflections prefer text and appear only once")
+    @Test("Each selected session contributes its reflection only once")
     func reflectionPrecedenceDeduplicationAndScope() throws {
         let profile = ChildProfile(name: "Ari", age: 3, gender: .boy)
-        let selectedSession = makeSession(
+        let firstSelectedSession = makeSession(
             profile: profile,
             startedAt: Date(timeIntervalSince1970: 1),
             reflectionText: " Typed   reflection ",
             reflectionTranscript: "Ignored transcript"
         )
-        _ = makeSession(
+        let secondSelectedSession = makeSession(
             profile: profile,
             startedAt: Date(timeIntervalSince1970: 2),
+            reflectionText: "Second selected reflection"
+        )
+        _ = makeSession(
+            profile: profile,
+            startedAt: Date(timeIntervalSince1970: 3),
             reflectionText: "Unrelated reflection"
         )
         let entries = [
             makeEntry(
-                in: selectedSession,
+                in: firstSelectedSession,
                 recordedAt: Date(timeIntervalSince1970: 10)
             ),
             makeEntry(
-                in: selectedSession,
+                in: firstSelectedSession,
                 recordedAt: Date(timeIntervalSince1970: 20)
+            ),
+            makeEntry(
+                in: secondSelectedSession,
+                recordedAt: Date(timeIntervalSince1970: 30)
             ),
         ]
 
         let context = try AnalyticsContextBuilder().build(from: entries)
 
-        #expect(context.reflections.count == 1)
-        #expect(context.reflections.first?.content == "Typed reflection")
+        #expect(context.reflections.count == 2)
+        #expect(context.reflections.map(\.content) == [
+            "Typed reflection", "Second selected reflection",
+        ])
         #expect(!context.text.contains("Unrelated reflection"))
     }
 
@@ -215,6 +247,23 @@ struct AnalyticsContextBuilderTests {
         let context = try AnalyticsContextBuilder().build(from: [entry])
 
         #expect(context.reflections.first?.content == "Spoken reflection")
+    }
+
+    @Test("Whitespace-only reflections are treated as missing")
+    func whitespaceOnlyReflectionIsMissing() throws {
+        let profile = ChildProfile(name: "Ari", age: 3, gender: .boy)
+        let session = makeSession(
+            profile: profile,
+            startedAt: .distantPast,
+            reflectionText: " \n ",
+            reflectionTranscript: " \t "
+        )
+        let entry = makeEntry(in: session, recordedAt: .now)
+
+        let context = try AnalyticsContextBuilder().build(from: [entry])
+
+        #expect(context.reflections.isEmpty)
+        #expect(context.text.contains("END_OF_DAY_REFLECTIONS: 0"))
     }
 
     @Test("Parent text is normalized and truncated by shared configuration")

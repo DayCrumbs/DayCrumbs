@@ -169,7 +169,10 @@ struct AnalyticsContextBuilder {
             guard let dailySession = entry.dailySession else {
                 continue
             }
-            guard !selectedSessions.contains(where: { $0 === dailySession }) else {
+            let sessionIdentifier = dailySession.persistentModelID
+            guard !selectedSessions.contains(where: {
+                $0.persistentModelID == sessionIdentifier
+            }) else {
                 continue
             }
             selectedSessions.append(dailySession)
