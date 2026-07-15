@@ -10,14 +10,10 @@ import SwiftUI
 struct OnboardingView: View {
     
     @State private var navigateToProfile: Bool = false
-    
-    let bgColour = Color("PutihDayCrumbs")
-    let btnColour = Color("KuningDayCrumbs")
-    let txtColour = Color("CoklatDayCrumbs")
-    
+        
     var body: some View {
         ZStack {
-            bgColour
+            AppColour.bgPutih
                 .ignoresSafeArea()
             
             VStack {
@@ -46,11 +42,11 @@ struct OnboardingView: View {
                 }) {
                     Text("Start The Story")
                         .font(.system(.title2, design: .rounded).weight(.bold))
-                        .foregroundColor(txtColour)
+                        .foregroundColor(AppColour.txtCoklat)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 20)
                 }
-                .background(btnColour)
+                .background(AppColour.btnKuning)
                 .clipShape(Capsule())
                 .frame(maxWidth: 500)
                 .padding(.top, 80)
