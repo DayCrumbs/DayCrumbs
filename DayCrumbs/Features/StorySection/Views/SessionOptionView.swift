@@ -27,7 +27,8 @@ struct SessionOptionView: View {
             
             // 2. Tombol Back di Kiri Atas
             VStack {
-                HStack {                    CircularBackButton(style: .whiteBtn) {
+                HStack {
+                    CircularBackButton(style: .whiteBtn) {
                     dismiss()
                 }
                     Spacer()
