@@ -34,23 +34,39 @@ struct DashboardView: View {
                 .font(.system(.title3, design: .rounded))
                 .foregroundColor(AppColour.txtCoklat)
                 
-                // 2. Segmented Picker
-                Picker("Time Range", selection: $viewModel.selectedTimeRange) {
+                // 2. Custom Segmented Picker
+                HStack(spacing: 0) {
                     ForEach(TimeRange.allCases, id: \.self) { range in
-                        Text(range.rawValue).tag(range)
+                        Text(range.rawValue)
+                            .font(.system(.subheadline, design: .rounded).bold())
+                            .foregroundColor(viewModel.selectedTimeRange == range ? AppColour.txtCoklat : AppColour.txtCoklat.opacity(0.5))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(
+                                Capsule()
+                                    .fill(viewModel.selectedTimeRange == range ? AppColour.btnKuning : Color.clear)
+                            )
+                        // Animasi perpindahan tab
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    viewModel.selectedTimeRange = range
+                                }
+                            }
                     }
                 }
-                .pickerStyle(.segmented)
+                // Background luar picker (bisa disesuaikan warnanya)
+                .background(Capsule().fill(AppColour.btnKuning.opacity(0.2)))
                 .padding(.vertical, 8)
                 
                 // 3. Line Chart
-                Chart(viewModel.chartData) { dataPoint in
+                Chart(viewModel.currentChartData) { dataPoint in
                     LineMark(
                         x: .value("Time", dataPoint.timeLabel),
                         y: .value("Mood", dataPoint.moodScore)
                     )
                     .symbol(Circle())
                     .foregroundStyle(AppColour.txtCoklat)
+                    .interpolationMethod(.monotone)
                 }
                 .chartYAxis {
                     AxisMarks(position: .leading, values: [1, 2, 3, 4, 5, 6]) { value in
@@ -65,6 +81,7 @@ struct DashboardView: View {
                     }
                 }
                 .frame(height: 220)
+                .padding(.bottom, 24)
                 
                 // 4. Common Triggers
                 VStack(alignment: .leading, spacing: 12) {
@@ -74,12 +91,17 @@ struct DashboardView: View {
                     
                     HStack(spacing: 12) {
                         ForEach(viewModel.commonTriggers, id: \.self) { trigger in
-                            Text(trigger)
-                                .font(.system(.subheadline, design: .rounded))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Capsule().stroke(AppColour.btnKuning, lineWidth: 1.5))
-                                .foregroundColor(AppColour.txtCoklat)
+                            Button(action: {
+                                // Memicu pemanggilan data LLM
+                                viewModel.fetchTriggerDetail(for: trigger)
+                            }) {
+                                Text(trigger)
+                                    .font(.system(.subheadline, design: .rounded))
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(Capsule().stroke(AppColour.btnKuning, lineWidth: 1.5))
+                                    .foregroundColor(AppColour.txtCoklat)
+                            }
                         }
                     }
                 }
@@ -113,6 +135,28 @@ struct DashboardView: View {
         .navigationBarBackButtonHidden(true)
         .navigationDestination(isPresented: $navigateToSession) {
             SessionOptionView()
+        }
+        .overlay {
+            // Jika ada data detail trigger, munculkan alert
+            if let detail = viewModel.selectedTriggerDetail {
+                ZStack {
+                    // Latar belakang hitam transparan untuk menggelapkan layar
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            // Menutup alert jika area luar diklik
+                            viewModel.dismissTriggerAlert()
+                        }
+                    
+                    // Memanggil komponen alert yang kita buat di Langkah 2
+                    TriggerAlertView(detail: detail) {
+                        viewModel.dismissTriggerAlert()
+                    }
+                }
+                // Animasi halus saat muncul/hilang
+                .transition(.opacity)
+                .animation(.easeInOut, value: viewModel.selectedTriggerDetail)
+            }
         }
     }
     
