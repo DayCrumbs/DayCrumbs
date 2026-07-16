@@ -44,6 +44,46 @@ Use the existing project models and enum cases as the source of truth. Do not re
 
 Prompts, dummy data, analytics grouping, tests, and UI labels must derive from or map explicitly to this vocabulary. Do not add cases such as `tired`, `excited`, `calm`, `confused`, `scared`, `breakfast`, `screenTime`, `park`, or `car` merely to satisfy an older example or guide.
 
+## Child Profile Rules
+
+DayCrumbs supports exactly one `ChildProfile`.
+
+- Do not add multiple-profile support, an active-child selector, or a profile picker.
+- If no profile exists, show the child-profile setup flow.
+- Creating a profile is allowed only when no profile exists.
+- Subsequent profile changes must update the existing profile instead of inserting another one.
+- Repositories and seeders must preserve the single-profile invariant.
+- All `DailySession` and `StoryEntry` data belongs to that one profile.
+- If persistence contains more than one profile, treat it as a data-integrity error. Do not silently select the first profile or merge children’s data.
+- Tests and dummy data must use exactly one profile.
+
+## Dashboard Data Scope
+
+The Dashboard uses exactly these time ranges:
+
+- `Day`
+- `Week`
+- `Month`
+
+Do not restore or introduce the older `All data`, `Weekly`, or `Specific date` scope contract.
+
+- These ranges are based on the current date. The production Dashboard has no date picker or user-selected anchor date.
+- `Day` selects entries from the start of today through, but not including, the start of tomorrow.
+- `Week` is a rolling 7-day range: the start of 6 calendar days before today through, but not including, the start of tomorrow.
+- `Month` is a rolling 30-day range: the start of 29 calendar days before today through, but not including, the start of tomorrow.
+- Use the user's current calendar and timezone consistently when calculating boundaries.
+- Use half-open date ranges (`start <= recordedAt < nextStart`) to avoid boundary duplication.
+- Do not use calendar-week or calendar-month boundaries; the Dashboard must not reset to a partial range every Monday or on the first day of a month.
+- Recalculate the active range when the app becomes active or the calendar day changes.
+- Moving out of the active range must never delete stored entries. The repository only filters which entries are currently shown or sent for generation.
+- A rolling range can contain fewer than 7 or 30 days when the parent has not recorded data every day. Show gaps or an incomplete-data state; never fabricate missing entries.
+- Any nonempty range is valid for analytics. For `Day`, one `StoryEntry` containing one activity in one session is sufficient to run deterministic analytics and generate an insight.
+- Do not require completion of all four sessions (`morning`, `afternoon`, `evening`, and `night`) before analysis. Four-session coverage is a logging and seed-data goal, not an analytics gate.
+- When data is sparse, describe only the supplied observation, avoid claiming a repeated pattern or trend, and clearly indicate that the insight is based on limited data.
+- Return selected `StoryEntry` values in chronological order.
+- The same selected entries must drive deterministic Dashboard analytics and LLM context generation.
+- If the selected range contains no entries, stop before prompt construction or model availability checks and expose an empty state.
+
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 
 Use language such as:
@@ -232,7 +272,7 @@ Generate Insight tapped
 -> Otherwise check validated Gemma-4-E2B-it installation
 -> If Gemma is missing, show DownloadModelRequiredAlert and stop
 -> If Gemma is installed, select LiteRT-LM internally
--> Select data scope: all, weekly, or date
+-> Select Dashboard time range: Day, Week, or Month
 -> Build analytics prompt
 -> Generate a typed Apple insight or LiteRT compact JSON insight
 -> Normalize output to AnalyticsInsight; parse/repair is LiteRT-only
@@ -440,6 +480,9 @@ Rules:
 Minimum dummy data (if needed):
 
 - At least 7 days.
+- Build seed timestamps relative to an injected reference date, with the newest seeded day equal to that reference day. Development may pass the current day; tests must pass a fixed date.
+- Do not hard-code the seed to a named Monday-through-Sunday week because it will fall out of the rolling Dashboard ranges as time advances.
+- Seed only once. Do not silently move or recreate stored seed entries on every launch; use the explicit development reset/reseed action when fresh relative dates are needed.
 - Each day should include 5-10 events.
 - Each day should include `morning`, `afternoon`, `evening`, and `night` sessions.
 - Include built-in places: `house`, `outdoor`, `school`, and `publicPlace`.
