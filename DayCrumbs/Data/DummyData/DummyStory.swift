@@ -459,3 +459,88 @@ enum DummyStory {
         )
     ]
 }
+
+//struct DummyStoryDebug {
+//
+//    /// Fungsi utama untuk menjalankan semua skenario pengujian debug di konsol.
+//    static func runAllTests() {
+//        print("====================================")
+//        print("🔍 MEMULAI DEBUG DUMMY STORY TEST")
+//        print("====================================\n")
+//
+//        let child = DummyProfile.maya
+//
+//        // Menjalankan skenario pengujian satu per satu
+//        testWeek1(for: child)
+//        testWeek4(for: child)
+//        testSingleDay(for: child)
+//        testFullMonth(for: child)
+//
+//        print("====================================")
+//        print("✅ SEMUA DEBUG TEST SELESAI TANPA ERROR")
+//        print("====================================")
+//    }
+//
+//    // MARK: - 1. Ambil data dari day 1 - 7 (Week Pertama)
+//    private static func testWeek1(for child: ChildProfile) {
+//        print("--- 📂 TEST 1: Ambil Data Day 1 - 7 (Week Pertama) ---")
+//        let sessions = DummyStory.generateSessions(for: child, startDay: 1, endDay: 7)
+//
+//        print("Jumlah hari diperoleh: \(sessions.count) (Target: 7)")
+//        if let first = sessions.first, let last = sessions.last {
+//            print("📅 Hari Pertama (Day 1): \(formattedDate(first.startedAt))")
+//            print("📅 Hari Terakhir (Day 7): \(formattedDate(last.startedAt))")
+//            print("📝 Refleksi Terakhir (Day 7): \"\(last.endOfDayReflection?.text ?? "")\"")
+//        }
+//        print("----------------------------------------------------\n")
+//    }
+//
+//    // MARK: - 2. Ambil data dari day 21 - 28 (Week Keempat)
+//    private static func testWeek4(for child: ChildProfile) {
+//        print("--- 📂 TEST 2: Ambil Data Day 21 - 28 (Week Keempat) ---")
+//        let sessions = DummyStory.generateSessions(for: child, startDay: 21, endDay: 28)
+//
+//        print("Jumlah hari diperoleh: \(sessions.count) (Target: 8)")
+//        if let first = sessions.first, let last = sessions.last {
+//            print("📅 Hari Pertama (Day 21): \(formattedDate(first.startedAt))")
+//            print("📅 Hari Terakhir (Day 28): \(formattedDate(last.startedAt))")
+//            print("📝 Refleksi Terakhir (Day 28): \"\(last.endOfDayReflection?.text ?? "")\"")
+//        }
+//        print("----------------------------------------------------\n")
+//    }
+//
+//    // MARK: - 3. Ambil data dari day 5 - 5 (Tepat 1 Hari)
+//    private static func testSingleDay(for child: ChildProfile) {
+//        print("--- 📂 TEST 3: Ambil Data Day 5 - 5 (Tepat 1 Hari) ---")
+//        let sessions = DummyStory.generateSessions(for: child, startDay: 5, endDay: 5)
+//
+//        print("Jumlah hari diperoleh: \(sessions.count) (Target: 1)")
+//        if let singleDay = sessions.first {
+//            print("📅 Tanggal Sesi (Day 5): \(formattedDate(singleDay.startedAt))")
+//            print("📝 Refleksi Hari Ini: \"\(singleDay.endOfDayReflection?.text ?? "")\"")
+//        }
+//        print("----------------------------------------------------\n")
+//    }
+//
+//    // MARK: - 4. Ambil data full dari day 1 - 30 (Full 1 Bulan)
+//    private static func testFullMonth(for child: ChildProfile) {
+//        print("--- 📂 TEST 4: Ambil Data Day 1 - 30 (Full 1 Bulan) ---")
+//        let sessions = DummyStory.generateSessions(for: child, startDay: 1, endDay: 30)
+//
+//        print("Jumlah hari diperoleh: \(sessions.count) (Target: 30)")
+//        if let first = sessions.first, let last = sessions.last {
+//            print("📅 Hari Pertama (Day 1): \(formattedDate(first.startedAt))")
+//            print("📅 Hari Terakhir (Day 30): \(formattedDate(last.startedAt))")
+//            print("📝 Refleksi Hari Terakhir (Day 30): \"\(last.endOfDayReflection?.text ?? "")\"")
+//        }
+//        print("----------------------------------------------------\n")
+//    }
+//
+//    // MARK: - Helper Formatting Tanggal
+//    private static func formattedDate(_ date: Date) -> String {
+//        let formatter = DateFormatter()
+//        formatter.dateFormat = "EEEE, dd MMMM yyyy"
+//        formatter.locale = Locale(identifier: "id_ID")
+//        return formatter.string(from: date)
+//    }
+//}
