@@ -6,3 +6,11 @@
 //
 
 import Foundation
+
+enum DummyProfile {
+    static let maya = ChildProfile(
+        name: "Maya",
+        age: 3,
+        gender: .girl
+    )
+}
