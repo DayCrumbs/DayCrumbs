@@ -13,7 +13,7 @@ class ChildProfileSetupViewModel {
     // MARK: - Properties
     var childName: String = ""
     var childAge: Int = 0
-    var selectedGender: ChildGender? = nil // Menggunakan enum baru
+    var selectedGender: ChildGender? = nil
     
     // MARK: - Computed Properties
     var isFormValid: Bool {
