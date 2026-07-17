@@ -13,7 +13,8 @@ class ChildProfileSetupViewModel {
     // MARK: - Properties
     var childName: String = ""
     var childAge: Int = 0
-    var selectedGender: ChildGender? = nil
+    var selectedGender: ChildGender? = .boy
+    var errorMessage: String? = nil
     
     // MARK: - Computed Properties
     var isFormValid: Bool {
@@ -22,13 +23,23 @@ class ChildProfileSetupViewModel {
         selectedGender != nil
     }
     
-    // MARK: - Actions
-    func saveProfile() {
-        guard isFormValid else { return }
+    @MainActor
+    func saveProfile(using repository: ChildProfileRepository) {
+        guard isFormValid, let gender = selectedGender else { return }
         
-        print("Data Siap Disimpan!")
-        print("Nama: \(childName)")
-        print("Umur: \(childAge)")
-        print("Gender: \(selectedGender?.rawValue.capitalized ?? "Belum diisi")")
+        let newProfile = ChildProfile(
+            name: childName,
+            age: childAge,
+            gender: gender
+        )
+        
+        do {
+            try repository.saveProfile(newProfile)
+            self.errorMessage = nil
+            print("Profil \(childName) berhasil disimpan!")
+        } catch {
+            self.errorMessage = "Gagal menyimpan profil: \(error.localizedDescription)"
+            print("Error: \(error)")
+        }
     }
 }
