@@ -3,6 +3,7 @@ import Charts
 
 struct DashboardView: View {
     @State private var viewModel = DashboardViewModel()
+    @State private var translationTaskHost = AppleTranslationTaskHost()
     @State private var navigateToSession: Bool = false
     
     var body: some View {
@@ -132,6 +133,11 @@ struct DashboardView: View {
             .frame(maxWidth: .infinity)
         }
         .background(AppColour.bgPutih)
+        // Keep TranslationSession anchored to the stable Dashboard root.
+        .appleTranslationTaskHost(translationTaskHost)
+        .onDisappear {
+            translationTaskHost.cancelPendingBatch()
+        }
         .navigationBarBackButtonHidden(true)
         .navigationDestination(isPresented: $navigateToSession) {
             SessionOptionView()

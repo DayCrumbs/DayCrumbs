@@ -281,4 +281,6 @@ private final class NativeTranslationSessionFake: NativeTranslationSession {
         receivedRequests = requests
         return responses
     }
+
+    func cancel() {}
 }
