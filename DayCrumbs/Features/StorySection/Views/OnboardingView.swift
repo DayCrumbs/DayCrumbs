@@ -10,6 +10,8 @@ import SwiftUI
 struct OnboardingView: View {
     
     @State private var navigateToProfile: Bool = false
+    @State private var navigateToDashboard: Bool = false
+    @State private var navigateToModel: Bool = false
         
     var body: some View {
         ZStack {
@@ -50,9 +52,47 @@ struct OnboardingView: View {
                 .clipShape(Capsule())
                 .frame(maxWidth: 500)
                 .padding(.top, 80)
-                .padding(.bottom, 150)
+                .padding(.bottom, 20)
                 
+                Button(action: {
+                    navigateToModel = true
+                    print("Tombol Start ditekan") //buat ngecek
+                }) {
+                    Text("Models")
+                        .font(.system(.title2, design: .rounded).weight(.bold))
+                        .foregroundColor(AppColour.txtCoklat)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                }
+                .background(AppColour.btnKuning)
+                .clipShape(Capsule())
+                .frame(maxWidth: 500)
+                .padding(.bottom, 20)
+                
+                Button(action: {
+                    navigateToDashboard = true
+                    print("Tombol Start ditekan") //buat ngecek
+                }) {
+                    Text("Dashboard")
+                        .font(.system(.title2, design: .rounded).weight(.bold))
+                        .foregroundColor(AppColour.txtCoklat)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                }
+                .background(AppColour.btnKuning)
+                .clipShape(Capsule())
+                .frame(maxWidth: 500)
+                
+                Spacer()
             }
+        }
+        
+        .navigationDestination(isPresented: $navigateToModel) {
+            ModelsView()
+        }
+        
+        .navigationDestination(isPresented: $navigateToDashboard) {
+            DashboardView()
         }
         .navigationDestination(isPresented: $navigateToProfile) {
             ChildProfileSetupView()
