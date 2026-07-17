@@ -186,7 +186,7 @@ nonisolated struct AnalyticsInsightTranslationMapper: Sendable {
 }
 
 private extension AnalyticsInsightTranslationMapper {
-    enum FieldID {
+    nonisolated enum FieldID {
         static let summary = "analytics.summary"
         static let parentReflectionPrompt = "analytics.parentReflectionPrompt"
         static let ethicalNote = "analytics.ethicalNote"

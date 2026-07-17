@@ -16,9 +16,15 @@ struct SelectionSlider<T: Hashable>: View {
                 .foregroundColor(AppColour.txtCoklat)
 
             GeometryReader { proxy in
-                let horizontalPadding = proxy.size.width * 0.05
-                let cardSpacing = proxy.size.width * 0.045
-                let cardWidth = (proxy.size.width - (horizontalPadding * 2) - (cardSpacing * 3)) / 4
+                // Navigation transitions can briefly propose invalid or zero geometry.
+                // Clamp it before deriving dimensions passed to CoreGraphics.
+                let availableWidth = finitePositive(proxy.size.width)
+                let horizontalPadding = availableWidth * 0.05
+                let cardSpacing = availableWidth * 0.045
+                let cardWidth = max(
+                    1,
+                    (availableWidth - (horizontalPadding * 2) - (cardSpacing * 3)) / 4
+                )
                 let cardHeight = cardWidth * 0.52
 
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -56,7 +62,10 @@ struct SelectionSlider<T: Hashable>: View {
         .padding(.bottom, 18)
         .frame(maxWidth: .infinity)
         .background(
-            CustomRoundedCorner(radius: 26, corners: [.topLeft, .topRight])
+            UnevenRoundedRectangle(
+                topLeadingRadius: 26,
+                topTrailingRadius: 26
+            )
                 .fill(AppColour.bgPutih)
                 .ignoresSafeArea(edges: .bottom)
         )
@@ -108,18 +117,11 @@ struct SelectionSlider<T: Hashable>: View {
         )
         return spacedString.capitalized
     }
-}
 
-struct CustomRoundedCorner: Shape {
-    var radius: CGFloat
-    var corners: UIRectCorner
-
-    func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: corners,
-            cornerRadii: CGSize(width: radius, height: radius)
-        )
-        return Path(path.cgPath)
+    private func finitePositive(_ value: CGFloat) -> CGFloat {
+        guard value.isFinite, value > 0 else {
+            return 1
+        }
+        return value
     }
 }

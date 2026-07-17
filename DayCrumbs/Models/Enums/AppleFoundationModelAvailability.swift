@@ -5,7 +5,7 @@
 
 import Foundation
 
-enum AppleFoundationModelAvailability: Equatable, Sendable {
+nonisolated enum AppleFoundationModelAvailability: Equatable, Sendable {
     case available
     case deviceNotEligible
     case appleIntelligenceNotEnabled
@@ -13,7 +13,7 @@ enum AppleFoundationModelAvailability: Equatable, Sendable {
     case unsupportedOS
     case unavailable
 
-    var isAvailable: Bool {
+    nonisolated var isAvailable: Bool {
         self == .available
     }
 }

@@ -22,7 +22,7 @@ nonisolated struct AnalyticsInsight: Equatable, Sendable {
 }
 
 extension AnalyticsInsight {
-    enum ValidationError: Error, Equatable, Sendable {
+    nonisolated enum ValidationError: Error, Equatable, Sendable {
         case emptySummary
         case emptyTriggerTitle
         case emptyTriggerExplanation
@@ -33,7 +33,7 @@ extension AnalyticsInsight {
     }
 
     /// Normalizes model-authored whitespace and rejects incomplete typed output.
-    init(
+    nonisolated init(
         validatingSummary summary: String,
         commonTriggers: [CommonTrigger],
         observedPatterns: [ObservedPattern],
@@ -103,7 +103,7 @@ extension AnalyticsInsight {
         )
     }
 
-    private static func normalized(_ text: String) -> String {
+    nonisolated private static func normalized(_ text: String) -> String {
         text
             .split(whereSeparator: { $0.isWhitespace })
             .joined(separator: " ")

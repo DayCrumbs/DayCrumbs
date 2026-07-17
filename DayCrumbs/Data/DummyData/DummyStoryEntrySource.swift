@@ -3,18 +3,22 @@ import Foundation
 /// Supplies the rolling 30-day fixture while persistence wiring is pending.
 @MainActor
 final class DummyStoryEntrySource: StoryEntrySource {
-    private let referenceDate: Date
+    private let fixedReferenceDate: Date?
     private let calendar: Calendar
 
     init(
-        referenceDate: Date = .now,
+        referenceDate: Date? = nil,
         calendar: Calendar = .current
     ) {
-        self.referenceDate = referenceDate
+        fixedReferenceDate = referenceDate
         self.calendar = calendar
     }
 
     func fetchEntries() async throws -> [StoryEntry] {
+        // Production resolves today per fetch so a next-day refresh receives
+        // fresh rolling fixture boundaries. Tests can still inject a fixed date.
+        let referenceDate = fixedReferenceDate ?? .now
+
         // One profile owns every generated session and entry, matching the
         // production single-child invariant.
         let childProfile = ChildProfile(name: "Maya", age: 3, gender: .girl)

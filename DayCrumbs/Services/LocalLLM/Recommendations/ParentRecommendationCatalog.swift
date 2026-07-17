@@ -146,7 +146,7 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
 }
 
 private extension ParentRecommendationCatalog {
-    private static let defaultEntries: [Entry] = [
+    nonisolated private static let defaultEntries: [Entry] = [
         Entry(
             keywords: [
                 "sleep", "bedtime", "nighttime", "night",
@@ -259,7 +259,7 @@ private extension ParentRecommendationCatalog {
         ),
     ]
 
-    private static let defaultFallbackRecommendation = ParentRecommendation(
+    nonisolated private static let defaultFallbackRecommendation = ParentRecommendation(
         title: "Observe and connect",
         recommendedActivities: [
             "Spend a few quiet minutes observing or joining the current activity.",

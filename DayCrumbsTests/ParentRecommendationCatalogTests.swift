@@ -153,10 +153,41 @@ struct ParentRecommendationCatalogTests {
 @MainActor
 struct DashboardTriggerDetailTests {
     @Test("Opening a trigger uses the existing insight and local catalog")
-    func selectsExistingTrigger() throws {
-        let viewModel = DashboardViewModel()
+    func selectsExistingTrigger() async throws {
+        let calendar = makeDashboardTestCalendar()
+        let referenceDate = makeDashboardTestDate(
+            year: 2026,
+            month: 7,
+            day: 17,
+            hour: 12
+        )
+        let insight = makeInsight(
+            triggerTitle: "Doing Homework",
+            triggerExplanation: "Homework appeared in a supplied school observation.",
+            patternTitle: "Homework observation",
+            patternEvidence: "One supplied school entry linked homework with a sad mood.",
+            contextTags: ["school", "study"]
+        )
+        let viewModel = makeDashboardTestViewModel(
+            source: DashboardStoryEntrySourceFake(
+                entries: makeDashboardTestEntries(
+                    dayOffsets: [0],
+                    referenceDate: referenceDate,
+                    calendar: calendar
+                )
+            ),
+            generator: DashboardInsightGeneratorFake(
+                behaviors: [
+                    .immediate(makeDashboardLocalizedResult(insight: insight)),
+                ]
+            ),
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
 
-        viewModel.selectTriggerDetail(for: "Doing Homework")
+        await viewModel.start()
+
+        viewModel.selectTrigger("Doing Homework")
         let detail = try #require(viewModel.selectedTriggerDetail)
 
         #expect(detail.title == "Doing Homework")
@@ -165,10 +196,41 @@ struct DashboardTriggerDetailTests {
     }
 
     @Test("Unknown trigger does not fabricate detail")
-    func rejectsUnknownTrigger() {
-        let viewModel = DashboardViewModel()
+    func rejectsUnknownTrigger() async {
+        let calendar = makeDashboardTestCalendar()
+        let referenceDate = makeDashboardTestDate(
+            year: 2026,
+            month: 7,
+            day: 17,
+            hour: 12
+        )
+        let insight = makeInsight(
+            triggerTitle: "Morning transition",
+            triggerExplanation: "A supplied morning transition may be worth observing.",
+            patternTitle: "Morning observation",
+            patternEvidence: "One supplied morning entry was observed.",
+            contextTags: ["morning", "house"]
+        )
+        let viewModel = makeDashboardTestViewModel(
+            source: DashboardStoryEntrySourceFake(
+                entries: makeDashboardTestEntries(
+                    dayOffsets: [0],
+                    referenceDate: referenceDate,
+                    calendar: calendar
+                )
+            ),
+            generator: DashboardInsightGeneratorFake(
+                behaviors: [
+                    .immediate(makeDashboardLocalizedResult(insight: insight)),
+                ]
+            ),
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
 
-        viewModel.selectTriggerDetail(for: "Not in the displayed insight")
+        await viewModel.start()
+
+        viewModel.selectTrigger("Not in the generated insight")
 
         #expect(viewModel.selectedTriggerDetail == nil)
     }
