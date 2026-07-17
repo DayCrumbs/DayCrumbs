@@ -362,6 +362,21 @@ The native translation layer is Apple-only preprocessing for future Foundation M
 - Use stable request identifiers and preserve input ordering so later translation stages can reconstruct fields safely.
 - Keep detected languages and translated text in memory only. Never write them back to SwiftData.
 
+## Apple Insight Native Translation Rules
+
+Native translation is an Apple-only preprocessing and postprocessing layer. It must not change the Gemma flow.
+
+- Use a protocol-backed `NativeTranslationService` implemented with Apple's `Translation` framework.
+- Check every required source-target pair with `LanguageAvailability(preferredStrategy: .lowLatency)` immediately before translation.
+- Map `.installed` to ready, `.supported` to download-required, and `.unsupported` to a blocking unsupported state.
+- Use `TranslationSession.Configuration` with `.lowLatency` for the future SwiftUI `.translationTask` host.
+- Group requests by detected source language. A translation batch must never contain more than one source language.
+- Set a stable `clientIdentifier` on every `TranslationSession.Request`, validate every response identifier, and restore results to original request order.
+- Call `prepareTranslation()` only after the parent starts Generate and a supported pair requires system-managed language assets.
+- Treat download denial, cancellation, and preparation failure as blocking input-translation failures; do not continue to Foundation Models.
+- Create the `TranslationSession` adapter inside the view-bound `.translationTask` operation and discard it when that operation ends. Services must never retain a `TranslationSession`.
+- Translation models are system-managed. Do not bundle, persist, or claim to manage their binary assets.
+
 ## LiteRT-LM Runtime Rules
 
 The local LLM runtime is not a chatbot. It is an analytics engine for dashboard insight.
