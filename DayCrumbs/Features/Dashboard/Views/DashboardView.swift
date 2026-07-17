@@ -163,13 +163,13 @@ struct DashboardView: View {
     // MARK: - Helper Function
     private func moodImageName(for score: Int) -> String {
         switch score {
-        case 6: return "HappyFace"
-        case 5: return "SadFace"
-        case 4: return "SurpriseFace"
-        case 3: return "FearFace"
-        case 2: return "DisgustFace"
-        case 1: return "AngryFace"
-        default: return "HappyFace"
+        case 6: return "ExpressionHappyFace_Girl"
+        case 5: return "ExpressionSadFace_Girl"
+        case 4: return "ExpressionSurpriseFace_Girl"
+        case 3: return "ExpressionFearFace_Girl"
+        case 2: return "ExpressionDisgustFace_Girl"
+        case 1: return "ExpressionAngryFace_Girl"
+        default: return "ExpressionHappyFace_Girl"
         }
     }
 }

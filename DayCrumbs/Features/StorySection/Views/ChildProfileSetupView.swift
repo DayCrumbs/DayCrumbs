@@ -32,7 +32,7 @@ struct ChildProfileSetupView: View {
             
             HStack(spacing: 200) {
                 
-                Image("IconAnakCewe")
+                Image("Profile_Girl")
                     .resizable()
                     .scaledToFit()
                     .frame(maxHeight: 500)
