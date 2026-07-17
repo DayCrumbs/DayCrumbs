@@ -10,6 +10,9 @@ import SwiftUI
 struct SessionOptionView: View {
     @Environment(\.dismiss) private var dismiss
     
+    @State private var selectedSession: Sessions?
+    @State private var navigateToPlace = false
+    
     var body: some View {
         ZStack {
             // 1. Grid Background 2x2
@@ -29,8 +32,8 @@ struct SessionOptionView: View {
             VStack {
                 HStack {
                     CircularBackButton(style: .whiteBtn) {
-                    dismiss()
-                }
+                        dismiss()
+                    }
                     Spacer()
                 }
                 .padding(.top, 24)
@@ -54,13 +57,22 @@ struct SessionOptionView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        // Memantau perubahan sesi yang dipilih
+        .onChange(of: selectedSession) { _, newValue in
+            navigateToPlace = newValue != nil
+        }
+        // Mengeksekusi navigasi ke PickPlaceView
+        .navigationDestination(isPresented: $navigateToPlace) {
+            PickPlaceView()
+        }
     }
     
     // MARK: - Komponen Kuadran Grid
     @ViewBuilder
     private func sessionCard(for session: Sessions) -> some View {
         Button(action: {
-            print("Sesi dipilih: \(session.title)")
+            // Memicu perubahan state untuk navigasi
+            selectedSession = session
         }) {
             ZStack {
                 Image(session.imageName)
