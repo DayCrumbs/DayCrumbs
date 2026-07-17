@@ -535,6 +535,10 @@ Correct design:
   - `ethicalNote`
 - App selects `ParentRecommendation` from a curated in-app catalog.
 - Recommendation matching is based primarily on common triggers, then observed patterns, then summary.
+- `ParentRecommendationCatalog` must match deterministically in this order: trigger title, trigger explanation, linked pattern context tags, linked pattern text, then summary.
+- `TriggerDetail` keeps its title, explanation, and evidence from the published `AnalyticsInsight`; recommended activities, what may help, and source labels come only from the catalog.
+- Opening an existing trigger detail must reuse the published insight and must never start another generation request.
+- If no catalog keyword matches, use a general curated fallback instead of model-authored advice.
 
 Allowed source labels:
 

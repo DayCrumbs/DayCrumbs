@@ -7,21 +7,60 @@ struct MoodDataPoint: Identifiable {
     let moodScore: Int
 }
 
-// Struktur data khusus untuk menampung hasil LLM di Alert
-struct TriggerDetail: Equatable {
-    let title: String
-    let description: String
-    let recommendedActivities: [String]
-    let preventions: [String]
-}
-
 @Observable
 class DashboardViewModel {
     var selectedTimeRange: TimeRange = .day
     
     var childName: String = "Melissa"
     var summaryText: String = "has been feeling down, mainly due to school homework"
-    var commonTriggers: [String] = ["Nighttime", "Doing Homework", "Sports Activity"]
+
+    private let recommendationCatalog = ParentRecommendationCatalog()
+
+    // Section 5 replaces this fixture with the automatically generated insight.
+    // Trigger selection already uses the final local catalog path and never calls an LLM.
+    private let displayedInsight = AnalyticsInsight(
+        summary: "Melissa has several moments that may be worth observing.",
+        commonTriggers: [
+            AnalyticsInsight.CommonTrigger(
+                title: "Nighttime",
+                explanation: "Nighttime appeared alongside a lower mood in the supplied story rows."
+            ),
+            AnalyticsInsight.CommonTrigger(
+                title: "Doing Homework",
+                explanation: "Homework appeared in a supplied school-related observation."
+            ),
+            AnalyticsInsight.CommonTrigger(
+                title: "Sports Activity",
+                explanation: "Outdoor sports appeared in a supplied activity observation."
+            ),
+        ],
+        observedPatterns: [
+            AnalyticsInsight.ObservedPattern(
+                title: "Night observation",
+                evidence: "One supplied nighttime entry recorded a sad mood.",
+                linkedTrigger: "Nighttime",
+                contextTags: ["night", "sleep"]
+            ),
+            AnalyticsInsight.ObservedPattern(
+                title: "Homework observation",
+                evidence: "One supplied school entry linked homework with a sad mood.",
+                linkedTrigger: "Doing Homework",
+                contextTags: ["school", "study"]
+            ),
+            AnalyticsInsight.ObservedPattern(
+                title: "Outdoor activity observation",
+                evidence: "One supplied outdoor entry included a sports activity.",
+                linkedTrigger: "Sports Activity",
+                contextTags: ["outdoor", "play"]
+            ),
+        ],
+        parentReflectionPrompt: "What felt different during these moments?",
+        ethicalNote: "This private observation is not a diagnosis."
+    )
+
+    var commonTriggers: [String] {
+        displayedInsight.commonTriggers.map(\.title)
+    }
     
     // 1. Dummy Data untuk 'Day' (Menggunakan Sessions yang ada di modelmu)
     private var dayData: [MoodDataPoint] = [
@@ -60,30 +99,24 @@ class DashboardViewModel {
         }
     }
     
-    // MARK: - Trigger Alert
-    // Variabel state untuk menampilkan/menyembunyikan alert
-        var selectedTriggerDetail: TriggerDetail? = nil
-        
-        // Fungsi yang dipanggil saat tombol Trigger di-klik
-        func fetchTriggerDetail(for trigger: String) {
-            // INI ADALAH DUMMY DATA.
-            // Nanti temanmu (Tim LLM) akan menghapus isi fungsi ini dan
-            // menggantinya dengan logika pemanggilan Gemma.
-            self.selectedTriggerDetail = TriggerDetail(
-                title: trigger,
-                description: "Melissa often feels sad when it's \(trigger.lowercased()) because she prefers the daytime where she can do various activities.",
-                recommendedActivities: [
-                    "Read a story together",
-                    "Listen to calming music"
-                ],
-                preventions: [
-                    "Keeps a consistent bedtime routine",
-                    "Provide reassurance and comfort"
-                ]
-            )
+    // MARK: - Trigger Detail
+    var selectedTriggerDetail: TriggerDetail?
+
+    func selectTriggerDetail(for triggerTitle: String) {
+        guard let trigger = displayedInsight.commonTriggers.first(where: {
+            $0.title == triggerTitle
+        }) else {
+            selectedTriggerDetail = nil
+            return
         }
-        
-        func dismissTriggerAlert() {
-            self.selectedTriggerDetail = nil
-        }
+
+        selectedTriggerDetail = recommendationCatalog.triggerDetail(
+            for: trigger,
+            in: displayedInsight
+        )
+    }
+
+    func dismissTriggerAlert() {
+        selectedTriggerDetail = nil
+    }
 }

@@ -93,8 +93,8 @@ struct DashboardView: View {
                     HStack(spacing: 12) {
                         ForEach(viewModel.commonTriggers, id: \.self) { trigger in
                             Button(action: {
-                                // Memicu pemanggilan data LLM
-                                viewModel.fetchTriggerDetail(for: trigger)
+                                // Detail is assembled from the published insight and local catalog.
+                                viewModel.selectTriggerDetail(for: trigger)
                             }) {
                                 Text(trigger)
                                     .font(.system(.subheadline, design: .rounded))
@@ -143,23 +143,18 @@ struct DashboardView: View {
             SessionOptionView()
         }
         .overlay {
-            // Jika ada data detail trigger, munculkan alert
             if let detail = viewModel.selectedTriggerDetail {
                 ZStack {
-                    // Latar belakang hitam transparan untuk menggelapkan layar
                     Color.black.opacity(0.4)
                         .ignoresSafeArea()
                         .onTapGesture {
-                            // Menutup alert jika area luar diklik
                             viewModel.dismissTriggerAlert()
                         }
                     
-                    // Memanggil komponen alert yang kita buat di Langkah 2
                     TriggerAlertView(detail: detail) {
                         viewModel.dismissTriggerAlert()
                     }
                 }
-                // Animasi halus saat muncul/hilang
                 .transition(.opacity)
                 .animation(.easeInOut, value: viewModel.selectedTriggerDetail)
             }
