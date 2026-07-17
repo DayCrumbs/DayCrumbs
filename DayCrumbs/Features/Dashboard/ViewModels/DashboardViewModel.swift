@@ -1,12 +1,6 @@
 import Foundation
 import Observation
 
-enum TimeRange: String, CaseIterable {
-    case day = "Day"
-    case week = "Week"
-    case month = "Month"
-}
-
 struct MoodDataPoint: Identifiable {
     let id = UUID()
     let timeLabel: String
@@ -23,7 +17,7 @@ struct TriggerDetail: Equatable {
 
 @Observable
 class DashboardViewModel {
-    var selectedTimeRange: TimeRange = .week
+    var selectedTimeRange: TimeRange = .day
     
     var childName: String = "Melissa"
     var summaryText: String = "has been feeling down, mainly due to school homework"
