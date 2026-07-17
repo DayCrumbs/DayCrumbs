@@ -28,15 +28,6 @@ extension Sessions {
         }
     }
     
-    var backgroundColour: Color {
-        switch self {
-        case .morning: return AppColour.bgMorning
-        case .afternoon: return AppColour.bgAfternoon
-        case .evening: return AppColour.bgEvening
-        case .night: return AppColour.bgNight
-        }
-    }
-    
     var textColour: Color {
         switch self {
         case .morning, .afternoon:
@@ -48,10 +39,10 @@ extension Sessions {
     
     var imageName: String {
         switch self {
-        case .morning: return "IlustrasiMorning"
-        case .afternoon: return "IlustrasiAfternoon"
-        case .evening: return "IlustrasiEvening"
-        case .night: return "IlustrasiNight"
+        case .morning: return "Session Morning"
+        case .afternoon: return "Session Afternoon"
+        case .evening: return "Session Evening"
+        case .night: return "Session Night"
         }
     }
 }
