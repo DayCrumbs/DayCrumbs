@@ -349,6 +349,62 @@ otherwise
 
 Do not automatically switch from a started Apple request to Gemma after a refusal or session/generation error. Discard the failed Apple session, retry once with smaller context only when appropriate, then show a user-friendly error. Use Gemma fallback only when Apple Foundation Models is unavailable before generation.
 
+## Apple Insight Language Detection Rules
+
+The native translation layer is Apple-only preprocessing for future Foundation Models generation. Gemma continues to receive the original `AnalyticsContext`.
+
+- Use a protocol-backed `LanguageDetectionService` implemented with `NLLanguageRecognizer`.
+- Detect every nonempty after-activity note and end-of-day reflection; do not inspect structured enum values, child names, or custom activity/place labels.
+- Determine the response language from all selected parent-authored text combined.
+- Short or individually undetermined segments inherit the combined response language.
+- If parent text exists but the combined language cannot be determined, stop with a typed detection error before generation.
+- If no parent notes or reflections exist, skip translation and use English output.
+- Use stable request identifiers and preserve input ordering so later translation stages can reconstruct fields safely.
+- Keep detected languages and translated text in memory only. Never write them back to SwiftData.
+
+## Apple Insight Native Translation Rules
+
+Native translation is an Apple-only preprocessing and postprocessing layer. It must not change the Gemma flow.
+
+- Use a protocol-backed `NativeTranslationService` implemented with Apple's `Translation` framework.
+- Check every required source-target pair with `LanguageAvailability(preferredStrategy: .lowLatency)` immediately before translation.
+- Map `.installed` to ready, `.supported` to download-required, and `.unsupported` to a blocking unsupported state.
+- Use `TranslationSession.Configuration` with `.lowLatency` for the future SwiftUI `.translationTask` host.
+- Group requests by detected source language. A translation batch must never contain more than one source language.
+- Set a stable `clientIdentifier` on every `TranslationSession.Request`, validate every response identifier, and restore results to original request order.
+- Call `prepareTranslation()` only after the parent starts Generate and a supported pair requires system-managed language assets.
+- Treat download denial, cancellation, and preparation failure as blocking input-translation failures; do not continue to Foundation Models.
+- Create the `TranslationSession` adapter inside the view-bound `.translationTask` operation and discard it when that operation ends. Services must never retain a `TranslationSession`.
+- Translation models are system-managed. Do not bundle, persist, or claim to manage their binary assets.
+
+## Apple Insight Translation Coordinator Rules
+
+The translation coordinator prepares an in-memory context only for Apple Foundation Models. It must not alter the Gemma path.
+
+- Accept the existing `AnalyticsContext`; do not fetch SwiftData or rebuild Dashboard scope inside the coordinator.
+- Detect and translate only `Event.afterActivityNote` and `Reflection.content`.
+- Preserve child profile values, dates, sessions, moods, activities, places, custom labels, and array ordering exactly.
+- Return the translated English context together with the dominant parent response language.
+- Keep the original `AnalyticsContext` unchanged and never persist detected languages or translated text.
+- Bypass native translation for English segments and when no parent-authored text exists.
+- Accept view-bound batch work as an operation supplied by the future `.translationTask` host; do not retain sessions in the coordinator.
+- Expose identified-text translation for future reverse translation of shared `AnalyticsInsight` fields without coupling this layer to that model.
+- Gemma must receive the original context and must never call the Apple translation coordinator.
+
+## Apple Insight Translation Flow Rules
+
+The translation flow is a contract around future Apple generation. It does not generate insight itself and must not be used by Gemma.
+
+- Input preparation must return either a ready English `AnalyticsContext` or a blocking typed failure. Only the ready result permits Apple generation.
+- Check each batch's runtime availability immediately before executing it.
+- For an installed pair, translate immediately. For a supported pair, tell the view-bound host to request approval, call `prepareTranslation()`, and then resume the same pending batch.
+- Normalize download denial, cancellation, preparation failure, translation failure, unsupported pairs, and unsafe response reconstruction into user-friendly domain failures.
+- Any input-stage failure stops before Foundation Models receives the context.
+- Output translation failure must preserve all generated English fields in memory, label them as an English fallback, and allow translation-only retry.
+- Retrying output translation must reuse the preserved English fields and must never regenerate the insight.
+- Do not persist flow state, detected languages, translated input, or English fallback data as part of this translation layer.
+- Dashboard state wiring, typed Apple generation, insight persistence, and physical-device Translation verification remain separate implementation work.
+
 ## LiteRT-LM Runtime Rules
 
 The local LLM runtime is not a chatbot. It is an analytics engine for dashboard insight.
