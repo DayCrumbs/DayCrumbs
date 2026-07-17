@@ -9,6 +9,7 @@ import SwiftUI
 
 struct AppColour {
     static let bgPutih = Color("PutihDayCrumbs")
+    static let bgKuning = Color("KuningDayCrumbs")
     static let btnKuning = Color("KuningDayCrumbs")
     static let btnPutih = Color("PutihDayCrumbs")
     static let chevPutih = Color("PutihDayCrumbs")
