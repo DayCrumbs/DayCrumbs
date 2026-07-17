@@ -63,14 +63,11 @@ struct SessionOptionView: View {
             print("Sesi dipilih: \(session.title)")
         }) {
             ZStack {
-                session.backgroundColour
-                
-//                Kalo sudah ada ilustrasinya hapus comment dan hapus session.backgroundColor di atas
-//                Image(session.imageName)
-//                    .resizable()
-//                    .scaledToFill()
-//                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-//                    .clipped()
+                Image(session.imageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
                 
                 VStack {
                     HStack {
@@ -88,6 +85,7 @@ struct SessionOptionView: View {
                             }
                         }
                         .font(.system(.title3, design: .rounded).weight(.medium))
+                        .fontWeight(.bold)
                         .foregroundColor(session.textColour)
                         
                         if session == .afternoon || session == .night {
