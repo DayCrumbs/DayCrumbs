@@ -360,6 +360,9 @@ Required implementation:
 - Create one fresh `LanguageModelSession` per Dashboard insight request; do not retain a chat transcript between requests.
 - Use `@Generable` and `@Guide` to create a typed Apple transport schema. Map it into the shared `AnalyticsInsight` domain model.
 - Use the same `AnalyticsSystemPrompt`, `AnalyticsContextBuilder`, data-scope rules, privacy constraints, and non-diagnostic wording as LiteRT-LM.
+- Validate and normalize every typed Apple field before publishing it as `AnalyticsInsight`; incomplete required fields are generation failures.
+- A primary typed Apple request uses at most 24 selected events. Retry at most once with a newly built and retranslated context of at most 10 events, and only for context-window or typed-decoding failures.
+- Refusal, guardrail, availability, unsupported-guide, unsupported-language, rate-limit, concurrent-request, and cancellation failures must not trigger the smaller-context retry.
 - Do not call `respond` while a session is already responding.
 - On completion, cancellation, background, or memory warning, release the app's session, prompt, response, transcript, and task references.
 - Do not claim to manually load or offload Apple's system model. The app only releases its own session; iOS/iPadOS manages the system model memory.
