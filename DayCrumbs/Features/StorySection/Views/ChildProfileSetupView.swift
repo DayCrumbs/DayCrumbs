@@ -6,9 +6,11 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ChildProfileSetupView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @State private var viewModel = ChildProfileSetupViewModel()
     @State private var navigateToSession: Bool = false
     
@@ -32,12 +34,11 @@ struct ChildProfileSetupView: View {
             
             HStack(spacing: 200) {
                 
-                Image("Profile_Girl")
+                Image(viewModel.selectedGender == .boy ? "Profile_Boy" : "Profile_Girl")
                     .resizable()
                     .scaledToFit()
                     .frame(maxHeight: 500)
-                
-                
+                    .frame(width: 300)
                 
                 // --- KANAN: FORM ---
                 VStack(alignment: .leading, spacing: 24) {
@@ -96,9 +97,11 @@ struct ChildProfileSetupView: View {
                         
                         // Baris 4: Save Button
                         Button(action: {
-                            viewModel.saveProfile()
+                            // Inisialisasi repositori menggunakan modelContext
+                            let repository = ChildProfileRepository(modelContext: modelContext)
+                            viewModel.saveProfile(using: repository)
                             
-                            if viewModel.isFormValid {
+                            if viewModel.isFormValid && viewModel.errorMessage == nil {
                                 navigateToSession = true
                             }
                             
@@ -142,7 +145,7 @@ struct ChildProfileSetupView: View {
                 .foregroundColor(AppColour.txtCoklat)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
-                .background(isSelected ? Color.white.opacity(0.6) : Color.clear)
+                .background(isSelected ? Color.clear : Color.white.opacity(0.6))
                 .clipShape(Capsule())
                 .overlay(
                     Capsule()
