@@ -391,6 +391,20 @@ The translation coordinator prepares an in-memory context only for Apple Foundat
 - Expose identified-text translation for future reverse translation of shared `AnalyticsInsight` fields without coupling this layer to that model.
 - Gemma must receive the original context and must never call the Apple translation coordinator.
 
+## Apple Insight Translation Flow Rules
+
+The translation flow is a contract around future Apple generation. It does not generate insight itself and must not be used by Gemma.
+
+- Input preparation must return either a ready English `AnalyticsContext` or a blocking typed failure. Only the ready result permits Apple generation.
+- Check each batch's runtime availability immediately before executing it.
+- For an installed pair, translate immediately. For a supported pair, tell the view-bound host to request approval, call `prepareTranslation()`, and then resume the same pending batch.
+- Normalize download denial, cancellation, preparation failure, translation failure, unsupported pairs, and unsafe response reconstruction into user-friendly domain failures.
+- Any input-stage failure stops before Foundation Models receives the context.
+- Output translation failure must preserve all generated English fields in memory, label them as an English fallback, and allow translation-only retry.
+- Retrying output translation must reuse the preserved English fields and must never regenerate the insight.
+- Do not persist flow state, detected languages, translated input, or English fallback data as part of this translation layer.
+- Dashboard state wiring, typed Apple generation, insight persistence, and physical-device Translation verification remain separate implementation work.
+
 ## LiteRT-LM Runtime Rules
 
 The local LLM runtime is not a chatbot. It is an analytics engine for dashboard insight.
