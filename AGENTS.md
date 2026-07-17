@@ -349,6 +349,19 @@ otherwise
 
 Do not automatically switch from a started Apple request to Gemma after a refusal or session/generation error. Discard the failed Apple session, retry once with smaller context only when appropriate, then show a user-friendly error. Use Gemma fallback only when Apple Foundation Models is unavailable before generation.
 
+## Apple Insight Language Detection Rules
+
+The native translation layer is Apple-only preprocessing for future Foundation Models generation. Gemma continues to receive the original `AnalyticsContext`.
+
+- Use a protocol-backed `LanguageDetectionService` implemented with `NLLanguageRecognizer`.
+- Detect every nonempty after-activity note and end-of-day reflection; do not inspect structured enum values, child names, or custom activity/place labels.
+- Determine the response language from all selected parent-authored text combined.
+- Short or individually undetermined segments inherit the combined response language.
+- If parent text exists but the combined language cannot be determined, stop with a typed detection error before generation.
+- If no parent notes or reflections exist, skip translation and use English output.
+- Use stable request identifiers and preserve input ordering so later translation stages can reconstruct fields safely.
+- Keep detected languages and translated text in memory only. Never write them back to SwiftData.
+
 ## LiteRT-LM Runtime Rules
 
 The local LLM runtime is not a chatbot. It is an analytics engine for dashboard insight.
