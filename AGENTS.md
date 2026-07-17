@@ -377,6 +377,20 @@ Native translation is an Apple-only preprocessing and postprocessing layer. It m
 - Create the `TranslationSession` adapter inside the view-bound `.translationTask` operation and discard it when that operation ends. Services must never retain a `TranslationSession`.
 - Translation models are system-managed. Do not bundle, persist, or claim to manage their binary assets.
 
+## Apple Insight Translation Coordinator Rules
+
+The translation coordinator prepares an in-memory context only for Apple Foundation Models. It must not alter the Gemma path.
+
+- Accept the existing `AnalyticsContext`; do not fetch SwiftData or rebuild Dashboard scope inside the coordinator.
+- Detect and translate only `Event.afterActivityNote` and `Reflection.content`.
+- Preserve child profile values, dates, sessions, moods, activities, places, custom labels, and array ordering exactly.
+- Return the translated English context together with the dominant parent response language.
+- Keep the original `AnalyticsContext` unchanged and never persist detected languages or translated text.
+- Bypass native translation for English segments and when no parent-authored text exists.
+- Accept view-bound batch work as an operation supplied by the future `.translationTask` host; do not retain sessions in the coordinator.
+- Expose identified-text translation for future reverse translation of shared `AnalyticsInsight` fields without coupling this layer to that model.
+- Gemma must receive the original context and must never call the Apple translation coordinator.
+
 ## LiteRT-LM Runtime Rules
 
 The local LLM runtime is not a chatbot. It is an analytics engine for dashboard insight.
