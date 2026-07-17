@@ -45,7 +45,7 @@ struct PickPlaceView: View {
                 .padding(.top, 24)
                 .padding(.leading, 32)
             }
-            .onChange(of: selectedPlace) { _, newValue in
+            .onChange(of: selectedPlace) {_, newValue in
                 navigateToActivity = newValue != nil
             }
             .navigationDestination(isPresented: $navigateToActivity) {
