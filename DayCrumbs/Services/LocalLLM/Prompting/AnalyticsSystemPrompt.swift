@@ -51,4 +51,36 @@ nonisolated enum AnalyticsSystemPrompt {
     recommendations separately from its curated catalog. Do not greet the parent, \
     ask follow-up questions, offer additional help, or produce conversational chat.
     """
+
+    /// Adds request-specific wording without coupling the shared system prompt to
+    /// a model runtime. The selected Dashboard range is transient request context.
+    static func scopeInstructions(for range: TimeRange) -> String {
+        switch range {
+        case .day:
+            """
+            Requested dashboard scope: DAY (the selected current-day window).
+            - Describe only the supplied observations from this day.
+            - Do not generalize one day's observations into a routine or longer-term trend.
+            - When evidence is sparse, say that the insight is based on limited data.
+            """
+
+        case .week:
+            """
+            Requested dashboard scope: WEEK (the selected rolling seven-day window).
+            - Summarize the supplied observations across the selected week as a whole.
+            - Do not describe the result as a daily routine, day-to-day routine, "every day", or "on this day".
+            - Call something repeated only when supplied events support it on multiple distinct dates; otherwise describe it as one observation within the week.
+            - Do not imply that missing calendar days contained unrecorded events.
+            """
+
+        case .month:
+            """
+            Requested dashboard scope: MONTH (the selected rolling thirty-day window).
+            - Summarize the supplied observations across the selected month as a whole.
+            - Do not describe the result as a daily routine, day-to-day routine, "every day", or "on this day".
+            - Call something repeated only when supplied events support it on multiple distinct dates; otherwise describe it as one observation within the month.
+            - Do not imply that missing calendar days contained unrecorded events.
+            """
+        }
+    }
 }

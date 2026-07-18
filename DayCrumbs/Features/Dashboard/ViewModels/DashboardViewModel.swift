@@ -299,6 +299,7 @@ final class DashboardViewModel {
 
                 let result = try await generationService.generateInsight(
                     from: entries,
+                    for: range,
                     using: executeTranslationBatch
                 )
 

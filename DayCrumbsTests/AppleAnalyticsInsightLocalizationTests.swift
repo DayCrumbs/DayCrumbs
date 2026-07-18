@@ -93,11 +93,13 @@ struct AppleAnalyticsInsightLocalizationTests {
 
         let result = try await pipeline.generateInsight(
             from: [],
+            for: .week,
             using: unusedBatchHandler
         )
 
         #expect(flow.prepareInputCallCount == 1)
         #expect(generator.generationCallCount == 1)
+        #expect(generator.ranges == [.week])
         #expect(flow.localizeCallCount == 1)
         #expect(result.responseLanguage == .indonesian)
         #expect(result.insight.summary == "ID: Limited English summary.")
@@ -328,13 +330,16 @@ private final class TranslationFlowFake: AppleInsightTranslationFlow {
 @MainActor
 private final class AnalyticsInsightGeneratorFake: AnalyticsInsightGenerating {
     private(set) var generationCallCount = 0
+    private(set) var ranges: [TimeRange] = []
     private(set) var releaseCallCount = 0
 
     func generateInsight(
         from entries: [StoryEntry],
+        for range: TimeRange,
         preparingInputWith prepareInput: AppleAnalyticsInputPreparationHandler
     ) async throws -> AppleAnalyticsGenerationResult {
         generationCallCount += 1
+        ranges.append(range)
         let preparation = await prepareInput(makeContext())
         guard case let .ready(inputTranslation) = preparation else {
             guard case let .blocked(failure) = preparation else {

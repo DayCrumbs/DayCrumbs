@@ -42,6 +42,7 @@ struct DashboardViewModelTests {
         #expect(viewModel.generatedInsight?.summary == "Day insight")
         #expect(source.fetchCallCount == 1)
         #expect(generator.generatedEntries.count == 1)
+        #expect(generator.generatedRanges == [.day])
         #expect(generator.generatedEntries[0].count == 1)
         #expect(
             calendar.isDate(
@@ -104,6 +105,7 @@ struct DashboardViewModelTests {
         #expect(viewModel.selectedTimeRange == .month)
         #expect(viewModel.generatedInsight?.summary == "Month")
         #expect(generator.generatedEntries.map(\.count) == [1, 7, 30])
+        #expect(generator.generatedRanges == [.day, .week, .month])
     }
 
     @Test("A late cancelled result cannot replace the new range")
@@ -270,6 +272,7 @@ final class DashboardInsightGeneratorFake: AppleLocalizedInsightGenerating {
     ] = [:]
 
     private(set) var generatedEntries: [[StoryEntry]] = []
+    private(set) var generatedRanges: [TimeRange] = []
     private(set) var retryCallCount = 0
     private(set) var releaseCallCount = 0
 
@@ -283,10 +286,12 @@ final class DashboardInsightGeneratorFake: AppleLocalizedInsightGenerating {
 
     func generateInsight(
         from entries: [StoryEntry],
+        for range: TimeRange,
         using executeBatch: PreparedNativeTranslationBatchHandler
     ) async throws -> AppleLocalizedAnalyticsInsight {
         let callIndex = generatedEntries.count
         generatedEntries.append(entries)
+        generatedRanges.append(range)
 
         guard behaviors.indices.contains(callIndex) else {
             throw AppleAnalyticsGenerationError.generationFailed(.unavailableRuntime)

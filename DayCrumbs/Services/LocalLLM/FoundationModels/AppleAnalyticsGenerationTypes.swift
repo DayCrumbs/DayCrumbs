@@ -47,6 +47,7 @@ nonisolated enum AppleAnalyticsGenerationError: Error, Equatable, Sendable {
 protocol AnalyticsInsightGenerating {
     func generateInsight(
         from entries: [StoryEntry],
+        for range: TimeRange,
         preparingInputWith prepareInput: AppleAnalyticsInputPreparationHandler
     ) async throws -> AppleAnalyticsGenerationResult
 
@@ -62,6 +63,7 @@ protocol AppleTypedInsightGeneratingRuntime: AnyObject {
 
     func generateTypedInsight(
         from context: AnalyticsContext,
+        for range: TimeRange,
         configuration: LocalLLMConfiguration
     ) async throws -> AppleGeneratedAnalyticsInsight
 

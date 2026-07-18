@@ -47,6 +47,40 @@ struct AnalyticsSystemPromptTests {
         #expect(prompt.contains("conversational chat"))
     }
 
+    @Test("Day scope remains limited to the selected day")
+    func dayScope() {
+        let instructions = AnalyticsSystemPrompt.scopeInstructions(for: .day)
+            .lowercased()
+
+        #expect(instructions.contains("scope: day"))
+        #expect(instructions.contains("this day"))
+        #expect(instructions.contains("do not generalize"))
+        #expect(instructions.contains("limited data"))
+    }
+
+    @Test(
+        "Multi-day scopes describe their complete range without daily-routine claims",
+        arguments: [
+            (TimeRange.week, "selected week", "seven-day"),
+            (TimeRange.month, "selected month", "thirty-day"),
+        ]
+    )
+    func multiDayScope(
+        _ range: TimeRange,
+        expectedPeriod: String,
+        expectedWindow: String
+    ) {
+        let instructions = AnalyticsSystemPrompt.scopeInstructions(for: range)
+            .lowercased()
+
+        #expect(instructions.contains(expectedPeriod))
+        #expect(instructions.contains(expectedWindow))
+        #expect(instructions.contains("as a whole"))
+        #expect(instructions.contains("do not describe the result as a daily routine"))
+        #expect(instructions.contains("multiple distinct dates"))
+        #expect(instructions.contains("missing calendar days"))
+    }
+
     @Test(
         "Prompt contains no runtime or transport terminology",
         arguments: [

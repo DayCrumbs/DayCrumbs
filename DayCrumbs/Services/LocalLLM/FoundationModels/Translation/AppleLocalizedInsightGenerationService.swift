@@ -7,6 +7,7 @@ import Foundation
 protocol AppleLocalizedInsightGenerating: AnyObject {
     func generateInsight(
         from entries: [StoryEntry],
+        for range: TimeRange,
         using executeBatch: PreparedNativeTranslationBatchHandler
     ) async throws -> AppleLocalizedAnalyticsInsight
 
@@ -48,10 +49,12 @@ final class AppleLocalizedInsightGenerationService: AppleLocalizedInsightGenerat
 
     func generateInsight(
         from entries: [StoryEntry],
+        for range: TimeRange,
         using executeBatch: PreparedNativeTranslationBatchHandler
     ) async throws -> AppleLocalizedAnalyticsInsight {
         let generationResult = try await generationService.generateInsight(
-            from: entries
+            from: entries,
+            for: range
         ) { [translationFlow] context in
             await translationFlow.prepareInputContext(
                 context,
