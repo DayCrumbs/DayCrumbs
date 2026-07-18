@@ -51,4 +51,8 @@ final class AppleTranslationSessionAdapter: NativeTranslationSession {
             )
         }
     }
+
+    func cancel() {
+        session.cancel()
+    }
 }

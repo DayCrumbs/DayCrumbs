@@ -53,9 +53,17 @@ nonisolated struct AppleInsightTranslationFailure: Equatable, Sendable {
         case .unsupportedLanguagePair:
             "On-device translation is not available for one of the detected languages."
         case .downloadDenied:
-            "The language download was not approved, so private insight generation did not continue."
+            if stage == .input {
+                "The language download was not approved, so private insight generation did not continue."
+            } else {
+                "The language download was not approved. The generated insight is shown in English and translation can be retried."
+            }
         case .cancelled:
-            "Translation was cancelled. You can try again when you are ready."
+            if stage == .input {
+                "Translation was cancelled. You can try insight generation again when you are ready."
+            } else {
+                "Output translation was cancelled. The generated insight remains available in English."
+            }
         case .preparationFailed:
             "The required on-device language could not be prepared. Please try again."
         case .translationFailed:

@@ -26,4 +26,6 @@ protocol NativeTranslationSession: AnyObject {
     func translations(
         from requests: [NativeTranslationSessionRequest]
     ) async throws -> [NativeTranslationSessionResponse]
+
+    func cancel()
 }

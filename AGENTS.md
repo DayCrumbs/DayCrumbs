@@ -84,6 +84,25 @@ Do not restore or introduce the older `All data`, `Weekly`, or `Specific date` s
 - The same selected entries must drive deterministic Dashboard analytics and LLM context generation.
 - If the selected range contains no entries, stop before prompt construction or model availability checks and expose an empty state.
 
+## Automatic Dashboard Generation Rules
+
+Dashboard insight generation is lifecycle- and range-driven. It is not started by
+a production `Generate Insight` button.
+
+- The Dashboard defaults to `Day` and automatically generates after its entries load.
+- Selecting `Week` or `Month` cancels the active request, filters that rolling range, clears stale presentation data, and automatically starts a new request.
+- Selecting the already-active range must not start another request.
+- Use a `StoryEntrySource` boundary for Dashboard input. `DummyStoryEntrySource` is the current fixture implementation and must be replaceable by a repository without changing the Dashboard UI or generation services.
+- Keep fetched entries and range selection separate from prompt construction. Range output must be chronological and may be empty.
+- Empty ranges stop before translation, model availability checks, or prompt construction.
+- Keep one cancellable generation task and verify its captured range still matches the selected range immediately before publishing results. Cancellation alone is not sufficient stale-result protection.
+- The first `Day` request starts without debounce. Rapid user-driven range changes may use a short debounce.
+- The root Dashboard lifecycle owns initial start, disappearance cancellation, app-background cancellation, and regeneration after active-range boundaries change.
+- Mount the view-bound `.translationTask` on a stable Dashboard root/host, never on a summary card, chart, trigger chip, or layout-specific subview.
+- Production manual insight actions are limited to retry after a generation error and translation-only retry for an English fallback.
+- Output-translation retry must reuse the preserved English result and must never regenerate the insight.
+- Chart data and statistical aggregation remain independent of this generation pipeline.
+
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 
 Use language such as:
@@ -120,6 +139,17 @@ Do not require an internet connection for existing stored dashboard analytics.
 Do not send child data to external APIs.
 Do not put analytics logic directly inside SwiftUI Views.
 Do not use Private Cloud Compute, server-backed language models, or external AI APIs for child data.
+
+## Xcode Project File Protection
+
+`DayCrumbs.xcodeproj/project.pbxproj` is user-managed configuration.
+
+- Do not edit, rewrite, normalize, regenerate, or automatically repair `project.pbxproj`.
+- A request to implement, build, test, or fix application code does not authorize changes to `project.pbxproj`.
+- A build or test failure caused by Xcode project configuration does not authorize changes to `project.pbxproj`. Report the exact problem and the suggested Xcode setting instead.
+- Before any `project.pbxproj` change, explain the exact required edit and obtain explicit user approval for that specific change in the current conversation.
+- If explicit approval is given, make only the approved minimal edit and preserve every unrelated user-managed project setting.
+- Prefer the existing file-system-synchronized groups when adding source or test files so target membership does not require a `project.pbxproj` edit.
 
 ## Architecture Rule
 
@@ -235,9 +265,10 @@ Rules:
 - The only production user-facing on-device intelligence actions are:
   - view Apple Intelligence readiness
   - download Gemma-4-E2B-it
-  - generate insight from Dashboard
+  - view automatically generated Dashboard insight
+  - retry after generation error or retry output translation
 - The Dashboard must show a download-required alert only when Apple Foundation Models is unavailable and Gemma-4-E2B-it is not installed.
-- If Apple Foundation Models is available, Generate Insight must work without requiring Gemma download.
+- If Apple Foundation Models is available, automatic Dashboard generation must work without requiring Gemma download.
 - Do not auto-download the model without explicit user confirmation.
 - Do not bundle the 2.58 GB `.litertlm` file in the app binary.
 - `Resources/LocalModels/` may contain manifest/license files only.
@@ -266,19 +297,22 @@ Cancel
 Generate flow:
 
 ```text
-Generate Insight tapped
+Dashboard starts or selected range changes
+-> Cancel the prior range request when applicable
+-> Select Dashboard time range: Day, Week, or Month
+-> Stop with an empty state when the selected range has no entries
 -> Check Apple Foundation Models availability
 -> If available, select Apple Foundation Models internally
 -> Otherwise check validated Gemma-4-E2B-it installation
 -> If Gemma is missing, show DownloadModelRequiredAlert and stop
 -> If Gemma is installed, select LiteRT-LM internally
--> Select Dashboard time range: Day, Week, or Month
 -> Build analytics prompt
 -> Generate a typed Apple insight or LiteRT compact JSON insight
 -> Normalize output to AnalyticsInsight; parse/repair is LiteRT-only
 -> Match parent recommendations from curated catalog
 -> Save insight
 -> Release Apple session or internally offload LiteRT model from memory
+-> Publish only if the generated range is still selected
 ```
 
 ## LiteRT-LM Dependency Rules
@@ -326,6 +360,9 @@ Required implementation:
 - Create one fresh `LanguageModelSession` per Dashboard insight request; do not retain a chat transcript between requests.
 - Use `@Generable` and `@Guide` to create a typed Apple transport schema. Map it into the shared `AnalyticsInsight` domain model.
 - Use the same `AnalyticsSystemPrompt`, `AnalyticsContextBuilder`, data-scope rules, privacy constraints, and non-diagnostic wording as LiteRT-LM.
+- Validate and normalize every typed Apple field before publishing it as `AnalyticsInsight`; incomplete required fields are generation failures.
+- A primary typed Apple request uses at most 24 selected events. Retry at most once with a newly built and retranslated context of at most 10 events, and only for context-window or typed-decoding failures.
+- Refusal, guardrail, availability, unsupported-guide, unsupported-language, rate-limit, concurrent-request, and cancellation failures must not trigger the smaller-context retry.
 - Do not call `respond` while a session is already responding.
 - On completion, cancellation, background, or memory warning, release the app's session, prompt, response, transcript, and task references.
 - Do not claim to manually load or offload Apple's system model. The app only releases its own session; iOS/iPadOS manages the system model memory.
@@ -369,7 +406,7 @@ Native translation is an Apple-only preprocessing and postprocessing layer. It m
 - Use a protocol-backed `NativeTranslationService` implemented with Apple's `Translation` framework.
 - Check every required source-target pair with `LanguageAvailability(preferredStrategy: .lowLatency)` immediately before translation.
 - Map `.installed` to ready, `.supported` to download-required, and `.unsupported` to a blocking unsupported state.
-- Use `TranslationSession.Configuration` with `.lowLatency` for the future SwiftUI `.translationTask` host.
+- Use `TranslationSession.Configuration` with `.lowLatency` for the SwiftUI `.translationTask` host.
 - Group requests by detected source language. A translation batch must never contain more than one source language.
 - Set a stable `clientIdentifier` on every `TranslationSession.Request`, validate every response identifier, and restore results to original request order.
 - Call `prepareTranslation()` only after the parent starts Generate and a supported pair requires system-managed language assets.
@@ -387,8 +424,8 @@ The translation coordinator prepares an in-memory context only for Apple Foundat
 - Return the translated English context together with the dominant parent response language.
 - Keep the original `AnalyticsContext` unchanged and never persist detected languages or translated text.
 - Bypass native translation for English segments and when no parent-authored text exists.
-- Accept view-bound batch work as an operation supplied by the future `.translationTask` host; do not retain sessions in the coordinator.
-- Expose identified-text translation for future reverse translation of shared `AnalyticsInsight` fields without coupling this layer to that model.
+- Accept view-bound batch work as an operation supplied by the `.translationTask` host; do not retain sessions in the coordinator.
+- Expose identified-text translation for reverse translation of shared `AnalyticsInsight` fields without coupling this layer to that model.
 - Gemma must receive the original context and must never call the Apple translation coordinator.
 
 ## Apple Insight Translation Flow Rules
@@ -401,9 +438,10 @@ The translation flow is a contract around future Apple generation. It does not g
 - Normalize download denial, cancellation, preparation failure, translation failure, unsupported pairs, and unsafe response reconstruction into user-friendly domain failures.
 - Any input-stage failure stops before Foundation Models receives the context.
 - Output translation failure must preserve all generated English fields in memory, label them as an English fallback, and allow translation-only retry.
+- Convert every generated `AnalyticsInsight` text field to a stable identified request and reconstruct the exact same trigger, pattern, optional-link, and context-tag shape after translation.
 - Retrying output translation must reuse the preserved English fields and must never regenerate the insight.
 - Do not persist flow state, detected languages, translated input, or English fallback data as part of this translation layer.
-- Dashboard state wiring, typed Apple generation, insight persistence, and physical-device Translation verification remain separate implementation work.
+- Dashboard generation orchestration, insight persistence, and physical-device Translation verification remain separate implementation work.
 
 ## LiteRT-LM Runtime Rules
 
@@ -497,6 +535,10 @@ Correct design:
   - `ethicalNote`
 - App selects `ParentRecommendation` from a curated in-app catalog.
 - Recommendation matching is based primarily on common triggers, then observed patterns, then summary.
+- `ParentRecommendationCatalog` must match deterministically in this order: trigger title, trigger explanation, linked pattern context tags, linked pattern text, then summary.
+- `TriggerDetail` keeps its title, explanation, and evidence from the published `AnalyticsInsight`; recommended activities, what may help, and source labels come only from the catalog.
+- Opening an existing trigger detail must reuse the published insight and must never start another generation request.
+- If no catalog keyword matches, use a general curated fallback instead of model-authored advice.
 
 Allowed source labels:
 
