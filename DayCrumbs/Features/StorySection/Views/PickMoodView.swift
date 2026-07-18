@@ -19,7 +19,12 @@ struct PickMoodView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
-                Color.white
+                BlurredStorySelectionBackground(
+                    imageNames: [
+                        StorySelectionAsset.imageName(for: selectedPlace),
+                        StorySelectionAsset.imageName(for: selectedActivity)
+                    ]
+                )
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
@@ -27,7 +32,7 @@ struct PickMoodView: View {
                         characterImageName: "PickMood_Girl",
                         text: "How did you feel when you \(activityPastTense(selectedActivity))?\nPick a face that looks like how you felt."
                     )
-                    .frame(height: proxy.size.height * 0.68)
+                    .frame(height: proxy.size.height * 0.60)
 
                     HStack(alignment: .top, spacing: 0) {
                         Spacer()
@@ -39,13 +44,13 @@ struct PickMoodView: View {
                             Text("Hold any emotion to learn more about it")
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(AppColour.txtCoklat.opacity(0.9))
-                                .padding(.top, 26)
+                                .padding(.top, 20)
                         }
                         .frame(width: proxy.size.width * 0.47)
 
                         Spacer(minLength: 0)
                     }
-                    .frame(height: proxy.size.height * 0.32, alignment: .top)
+                    .frame(height: proxy.size.height * 0.40, alignment: .top)
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
 
@@ -76,7 +81,7 @@ struct PickMoodView: View {
                         Image(mood.expressionImageName)
                             .resizable()
                             .scaledToFit()
-                            .frame(height: 78)
+                            .frame(height: 90)
 
                         Text(mood.rawValue.capitalized)
                             .font(.system(.headline, design: .rounded).weight(.semibold))

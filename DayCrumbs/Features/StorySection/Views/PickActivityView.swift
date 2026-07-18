@@ -29,7 +29,9 @@ struct PickActivityView: View {
   var body: some View {
       GeometryReader { proxy in
           ZStack(alignment: .topLeading) {
-              selectedPlaceBackground
+              BlurredStorySelectionBackground(
+                  imageNames: [StorySelectionAsset.imageName(for: selectedPlace)]
+              )
                   .ignoresSafeArea()
               
               VStack(spacing: 0) {
@@ -74,29 +76,8 @@ struct PickActivityView: View {
       .navigationBarBackButtonHidden(true)
   }
   
-  @ViewBuilder
-  private var selectedPlaceBackground: some View {
-      switch selectedPlace {
-      case .house:
-          Color(red: 0.96, green: 0.84, blue: 0.67)
-      case .outdoor:
-          Color(red: 0.86, green: 0.92, blue: 0.73)
-      case .publicPlace:
-          Color(red: 0.93, green: 0.88, blue: 0.75)
-      case .school:
-          Color(red: 0.88, green: 0.90, blue: 0.97)
-      }
-  }
-
   private func activityImageName(for activity: Activity.BuiltInActivity) -> String {
-      switch activity {
-      case .play: return "Activity_Play"
-      case .sleep: return "Activity_Sleep"
-      case .study: return "Activity_Study"
-      case .eat: return "Activity_Eat"
-      case .getReady: return "Activity_GetReady"
-      case .wakeUp: return "Activity_WakeUp"
-      }
+      StorySelectionAsset.imageName(for: activity)
   }
 }
 

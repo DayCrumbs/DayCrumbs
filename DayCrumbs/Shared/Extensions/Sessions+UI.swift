@@ -19,24 +19,6 @@ extension Sessions {
         self.rawValue.capitalized
     }
     
-    var iconName: String {
-        switch self {
-        case .morning: return "sun.max"
-        case .afternoon: return "cloud.sun"
-        case .evening: return "sunset.fill"
-        case .night: return "moon"
-        }
-    }
-    
-    var textColour: Color {
-        switch self {
-        case .morning, .afternoon:
-            return .black
-        case .evening, .night:
-            return .white
-        }
-    }
-    
     var imageName: String {
         switch self {
         case .morning: return "Session_Morning"
