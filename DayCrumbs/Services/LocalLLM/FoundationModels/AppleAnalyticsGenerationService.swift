@@ -28,6 +28,7 @@ final class AppleAnalyticsGenerationService: AnalyticsInsightGenerating {
 
     func generateInsight(
         from entries: [StoryEntry],
+        for range: TimeRange,
         preparingInputWith prepareInput: AppleAnalyticsInputPreparationHandler
     ) async throws -> AppleAnalyticsGenerationResult {
         guard !isGenerating else {
@@ -46,6 +47,7 @@ final class AppleAnalyticsGenerationService: AnalyticsInsightGenerating {
         do {
             return try await generateAttempt(
                 from: entries,
+                for: range,
                 eventLimit: .primary,
                 preparingInputWith: prepareInput
             )
@@ -57,6 +59,7 @@ final class AppleAnalyticsGenerationService: AnalyticsInsightGenerating {
 
             return try await generateAttempt(
                 from: entries,
+                for: range,
                 eventLimit: .retry,
                 preparingInputWith: prepareInput
             )
@@ -71,6 +74,7 @@ final class AppleAnalyticsGenerationService: AnalyticsInsightGenerating {
 
     private func generateAttempt(
         from entries: [StoryEntry],
+        for range: TimeRange,
         eventLimit: AnalyticsContextBuilder.EventLimit,
         preparingInputWith prepareInput: AppleAnalyticsInputPreparationHandler
     ) async throws -> AppleAnalyticsGenerationResult {
@@ -101,6 +105,7 @@ final class AppleAnalyticsGenerationService: AnalyticsInsightGenerating {
         do {
             let generated = try await runtime.generateTypedInsight(
                 from: inputTranslation.englishContext,
+                for: range,
                 configuration: configuration
             )
             let insight = try generated.validatedAnalyticsInsight()

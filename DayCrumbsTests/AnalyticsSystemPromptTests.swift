@@ -25,6 +25,16 @@ struct AnalyticsSystemPromptTests {
         #expect(prompt.contains("without guessing"))
     }
 
+    @Test("Trigger wording preserves specific evidence for catalog matching")
+    func triggerSpecificityRules() {
+        #expect(prompt.contains("trigger-specificity rules"))
+        #expect(prompt.contains("most specific supplied circumstance"))
+        #expect(prompt.contains("noise-interrupted sleep"))
+        #expect(prompt.contains("nature or gardening"))
+        #expect(prompt.contains("keep the trigger broad and tentative"))
+        #expect(prompt.contains("curated recommendation matcher"))
+    }
+
     @Test(
         "Prompt declares every shared output field",
         arguments: [
@@ -45,6 +55,40 @@ struct AnalyticsSystemPromptTests {
         #expect(prompt.contains("curated catalog"))
         #expect(prompt.contains("do not greet"))
         #expect(prompt.contains("conversational chat"))
+    }
+
+    @Test("Day scope remains limited to the selected day")
+    func dayScope() {
+        let instructions = AnalyticsSystemPrompt.scopeInstructions(for: .day)
+            .lowercased()
+
+        #expect(instructions.contains("scope: day"))
+        #expect(instructions.contains("this day"))
+        #expect(instructions.contains("do not generalize"))
+        #expect(instructions.contains("limited data"))
+    }
+
+    @Test(
+        "Multi-day scopes describe their complete range without daily-routine claims",
+        arguments: [
+            (TimeRange.week, "selected week", "seven-day"),
+            (TimeRange.month, "selected month", "thirty-day"),
+        ]
+    )
+    func multiDayScope(
+        _ range: TimeRange,
+        expectedPeriod: String,
+        expectedWindow: String
+    ) {
+        let instructions = AnalyticsSystemPrompt.scopeInstructions(for: range)
+            .lowercased()
+
+        #expect(instructions.contains(expectedPeriod))
+        #expect(instructions.contains(expectedWindow))
+        #expect(instructions.contains("as a whole"))
+        #expect(instructions.contains("do not describe the result as a daily routine"))
+        #expect(instructions.contains("multiple distinct dates"))
+        #expect(instructions.contains("missing calendar days"))
     }
 
     @Test(

@@ -7,7 +7,23 @@ import Foundation
 nonisolated struct ParentRecommendationCatalog: Sendable {
     private struct Entry: Sendable {
         let keywords: [String]
+        let requiredKeywordGroups: [[String]]
+        let excludedKeywords: [String]
         let recommendation: ParentRecommendation
+
+        init(
+            keywords: [String],
+            requiredKeywordGroups: [[String]] = [],
+            excludedKeywords: [String] = [],
+            recommendation: ParentRecommendation
+        ) {
+            self.keywords = keywords
+            self.requiredKeywordGroups = requiredKeywordGroups.isEmpty
+                ? [keywords]
+                : requiredKeywordGroups
+            self.excludedKeywords = excludedKeywords
+            self.recommendation = recommendation
+        }
     }
 
     private let entries: [Entry]
@@ -53,7 +69,8 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
             recommendationTitle: recommendation.title,
             recommendedActivities: recommendation.recommendedActivities,
             whatMayHelp: recommendation.whatMayHelp,
-            sourceLabels: recommendation.sourceLabels
+            sourceLabels: recommendation.sourceLabels,
+            sectionLabels: .english
         )
     }
 
@@ -87,6 +104,28 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
         relatedPatterns: [AnalyticsInsight.ObservedPattern],
         summary: String
     ) -> Int {
+        let relatedTexts = [
+            trigger.title,
+            trigger.explanation,
+        ] + relatedPatterns.flatMap { pattern in
+            [pattern.title, pattern.evidence] + pattern.contextTags
+        }
+        let allTexts = relatedTexts + [summary]
+
+        // Required groups prevent one broad word from selecting a recommendation.
+        // Exclusions let a more specific entry handle materially different cases.
+        guard entry.requiredKeywordGroups.allSatisfy({
+            Self.containsKeyword(in: allTexts, keywords: $0)
+        }) else {
+            return 0
+        }
+        guard entry.excludedKeywords.isEmpty || !Self.containsKeyword(
+            in: relatedTexts,
+            keywords: entry.excludedKeywords
+        ) else {
+            return 0
+        }
+
         var score = 0
 
         // Large gaps preserve the intended priority even when several lower-level
@@ -132,6 +171,13 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
         }
     }
 
+    private static func containsKeyword(
+        in texts: [String],
+        keywords: [String]
+    ) -> Bool {
+        texts.contains { containsKeyword(in: $0, keywords: keywords) }
+    }
+
     private static func normalized(_ text: String) -> String {
         text
             .folding(
@@ -146,25 +192,75 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
 }
 
 private extension ParentRecommendationCatalog {
+    nonisolated private static let sleepContextKeywords = [
+        "sleep", "nap", "bedtime", "night",
+        "tidur", "tidur siang", "waktu tidur", "malam",
+    ]
+
+    nonisolated private static let sleepInterruptionKeywords = [
+        "noise", "noisy", "loud", "interrupted", "disrupted", "disturbance",
+        "woke", "awakened", "gangguan", "terganggu", "kebisingan",
+        "berisik", "bising", "terbangun",
+    ]
+
+    nonisolated private static let natureKeywords = [
+        "garden", "gardening", "plant", "watering plants", "nature",
+        "leaves", "soil", "berkebun", "kebun", "tanaman",
+        "menyiram tanaman", "alam", "daun", "tanah",
+    ]
+
+    nonisolated private static let outdoorMovementKeywords = [
+        "outdoor", "outdoor play", "sports", "playground", "physical activity",
+        "running", "luar ruangan", "bermain di luar", "olahraga",
+        "taman bermain", "aktivitas fisik", "berlari",
+    ]
+
     nonisolated private static let defaultEntries: [Entry] = [
+        // AAP: "How Noise Affects Children" and "Healthy Sleep Habits".
         Entry(
-            keywords: [
-                "sleep", "bedtime", "nighttime", "night",
-                "tidur", "waktu tidur", "malam",
+            keywords: sleepContextKeywords + sleepInterruptionKeywords,
+            requiredKeywordGroups: [
+                sleepContextKeywords,
+                sleepInterruptionKeywords,
             ],
             recommendation: ParentRecommendation(
-                title: "Predictable bedtime steps",
+                title: "Reduce avoidable sleep-area noise",
                 recommendedActivities: [
-                    "Choose one short calming activity, such as reading together.",
-                    "Follow the same simple wind-down steps in the same order.",
+                    "Before the next sleep period, move television, loud conversation, or noisy tasks away from the sleep area.",
+                    "If a sound interrupts sleep, use one familiar quiet activity, such as reading together, before settling again.",
                 ],
                 whatMayHelp: [
-                    "Keep bedtime and the sequence of steps predictable.",
-                    "Offer a limited choice, such as which story to read.",
+                    "Observe whether the same sound, room, or time is linked to another interruption.",
+                    "Keep the sleep space quiet, dim, and comfortably cool.",
+                ],
+                sourceLabels: [.aap]
+            )
+        ),
+
+        // AAP "Brush, Book, Bed" guidance plus CDC predictable routines.
+        Entry(
+            keywords: [
+                "bedtime", "nighttime", "bedtime routine", "wind down",
+                "settling", "resists bedtime", "waktu tidur",
+                "rutinitas tidur", "rutinitas malam", "sulit tidur",
+                "menolak tidur", "malam",
+            ],
+            excludedKeywords: sleepInterruptionKeywords,
+            recommendation: ParentRecommendation(
+                title: "Predictable bedtime wind-down",
+                recommendedActivities: [
+                    "Use the same short sequence, such as brushing teeth, reading one book, and going to bed.",
+                    "Let the child choose between two available books or other quiet wind-down options.",
+                ],
+                whatMayHelp: [
+                    "Begin the sequence at a consistent time and keep the order predictable.",
+                    "Keep the period before sleep calm, quiet, and screen-free.",
                 ],
                 sourceLabels: [.aap, .cdc]
             )
         ),
+
+        // CDC: predictable structure, one clear direction, and limited choices.
         Entry(
             keywords: [
                 "transition", "routine", "get ready", "wake up", "morning",
@@ -184,6 +280,8 @@ private extension ParentRecommendationCatalog {
                 sourceLabels: [.cdc]
             )
         ),
+
+        // CDC: age-appropriate directions, one step at a time, and specific praise.
         Entry(
             keywords: [
                 "study", "homework", "school", "learning",
@@ -202,42 +300,106 @@ private extension ParentRecommendationCatalog {
                 sourceLabels: [.cdc]
             )
         ),
+
+        // AAP nature exploration, CDC child-led play, and Harvard serve-and-return.
         Entry(
-            keywords: [
-                "play", "sports", "outdoor", "public place",
-                "bermain", "olahraga", "luar ruangan", "tempat umum",
-            ],
+            keywords: natureKeywords,
             recommendation: ParentRecommendation(
-                title: "Shared play and observation",
+                title: "Child-led garden and nature exploration",
                 recommendedActivities: [
-                    "Join a short activity and follow what holds the child's attention.",
-                    "Try a simple matching game, puzzle, or turn-taking activity.",
+                    "Continue one safe task already present in the observation, such as watering a plant, collecting fallen leaves, or drawing in soil.",
+                    "Follow the child's focus by naming a color, texture, action, or change, then pause for a response.",
                 ],
                 whatMayHelp: [
-                    "Allow time for the child to respond before taking the next turn.",
-                    "Name what the child is seeing or doing in calm, concrete words.",
+                    "Keep the task short, supervised, and appropriate for the child's current skill.",
+                    "Use specific praise for safe participation or helpful actions.",
+                ],
+                sourceLabels: [.aap, .cdc, .harvard]
+            )
+        ),
+
+        // CDC child-led play and Harvard responsive back-and-forth interaction.
+        Entry(
+            keywords: outdoorMovementKeywords,
+            excludedKeywords: natureKeywords,
+            recommendation: ParentRecommendation(
+                title: "Child-led outdoor movement",
+                recommendedActivities: [
+                    "Continue the safe outdoor movement already present in the observation, such as a ball activity, a short walk, or playground play.",
+                    "Join briefly by imitating or describing what the child chooses to do.",
+                ],
+                whatMayHelp: [
+                    "Let the child's attention guide the activity instead of introducing an unrelated game.",
+                    "Use one short, specific direction when a safety boundary is needed.",
                 ],
                 sourceLabels: [.harvard, .cdc]
             )
         ),
+
+        // AAP environmental-noise guidance plus CDC clear directions.
         Entry(
             keywords: [
-                "eat", "meal", "mealtime", "food",
-                "makan", "waktu makan", "makanan",
+                "public place", "crowd", "crowded", "public noise",
+                "restaurant noise", "tempat umum", "keramaian",
+                "ramai", "tempat berisik",
             ],
             recommendation: ParentRecommendation(
-                title: "A predictable mealtime step",
+                title: "A manageable public-place pause",
                 recommendedActivities: [
-                    "Invite the child to help with one simple mealtime task.",
-                    "Use one clear direction for what happens next.",
+                    "Before the next step, move to a quieter nearby spot when one is available.",
+                    "Give one short direction or offer two manageable choices for what happens next.",
                 ],
                 whatMayHelp: [
-                    "Keep the routine and expectations consistent.",
-                    "Offer specific positive attention for helpful participation.",
+                    "Observe whether noise, waiting, or the transition into the place aligns with the response.",
+                    "Use a calm voice and state the specific behavior you want to see.",
                 ],
-                sourceLabels: [.cdc]
+                sourceLabels: [.aap, .cdc]
             )
         ),
+
+        // CDC special playtime and Harvard serve-and-return.
+        Entry(
+            keywords: [
+                "play", "shared play", "turn taking", "toy",
+                "bermain", "bermain bersama", "bergiliran", "mainan",
+            ],
+            excludedKeywords: natureKeywords + outdoorMovementKeywords,
+            recommendation: ParentRecommendation(
+                title: "Child-led shared play",
+                recommendedActivities: [
+                    "Join the activity already holding the child's attention and let the child lead for a few minutes.",
+                    "Imitate or describe the child's action, then pause to allow a response or another turn.",
+                ],
+                whatMayHelp: [
+                    "Keep questions and directions limited during this short shared-play period.",
+                    "Use specific praise for a helpful, safe, or cooperative action.",
+                ],
+                sourceLabels: [.cdc, .harvard]
+            )
+        ),
+
+        // AAP Committee on Nutrition guidance for low-pressure toddler meals.
+        Entry(
+            keywords: [
+                "eat", "meal", "mealtime", "food", "food refusal",
+                "picky eating", "refused meal", "makan", "waktu makan",
+                "makanan", "menolak makan", "pilih pilih makanan",
+            ],
+            recommendation: ParentRecommendation(
+                title: "Low-pressure mealtime participation",
+                recommendedActivities: [
+                    "Offer a small amount of an available food alongside at least one familiar option.",
+                    "Invite the child to help with one safe, age-appropriate food or table task.",
+                ],
+                whatMayHelp: [
+                    "Avoid arguing, pressuring, or punishing when the child does not eat.",
+                    "Keep family meals free from television and phone distractions when possible.",
+                ],
+                sourceLabels: [.aap]
+            )
+        ),
+
+        // CDC active listening and Harvard responsive interaction.
         Entry(
             keywords: [
                 "angry", "sad", "fear", "disgust", "upset", "worry",
@@ -245,14 +407,14 @@ private extension ParentRecommendationCatalog {
                 "cemas", "frustrasi",
             ],
             recommendation: ParentRecommendation(
-                title: "Calm, responsive connection",
+                title: "Calm listening and connection",
                 recommendedActivities: [
-                    "Pause for a short back-and-forth activity led by the child's focus.",
-                    "Read, talk, or play together for a few quiet minutes.",
+                    "Get close to the child's level and reflect the words or cues you observed.",
+                    "Pause for a short, quiet back-and-forth activity led by the child's focus.",
                 ],
                 whatMayHelp: [
-                    "Respond calmly to the child's cue and allow time for a response.",
-                    "Name what the child is doing or feeling without assigning a label.",
+                    "Allow time for a response before adding another question or direction.",
+                    "Name a possible feeling tentatively instead of treating it as certain.",
                 ],
                 sourceLabels: [.harvard, .cdc]
             )

@@ -27,7 +27,7 @@ struct ParentRecommendationCatalogTests {
                 contextTags: ["night", "sleep"]
             ),
         ])
-        #expect(detail.recommendationTitle == "Predictable bedtime steps")
+        #expect(detail.recommendationTitle == "Predictable bedtime wind-down")
         #expect(detail.sourceLabels == [.aap, .cdc])
     }
 
@@ -49,7 +49,7 @@ struct ParentRecommendationCatalogTests {
             relatedPatterns: [relatedPattern]
         )
 
-        #expect(recommendation.title == "Predictable bedtime steps")
+        #expect(recommendation.title == "Predictable bedtime wind-down")
     }
 
     @Test("Linked context tags can select a recommendation")
@@ -86,7 +86,105 @@ struct ParentRecommendationCatalogTests {
             relatedPatterns: []
         )
 
-        #expect(recommendation.title == "Predictable bedtime steps")
+        #expect(recommendation.title == "Predictable bedtime wind-down")
+    }
+
+    @Test("Noise-interrupted sleep does not select the bedtime-routine entry")
+    func distinguishesSleepNoiseFromBedtimeRoutine() {
+        let trigger = AnalyticsInsight.CommonTrigger(
+            title: "Gangguan saat tidur",
+            explanation: "Tidur siang terganggu oleh kebisingan di sekitar kamar."
+        )
+        let relatedPattern = AnalyticsInsight.ObservedPattern(
+            title: "Tidur siang berisik",
+            evidence: "Satu tidur siang terputus setelah suara keras.",
+            linkedTrigger: trigger.title,
+            contextTags: ["tidur siang", "kebisingan"]
+        )
+
+        let recommendation = catalog.recommendation(
+            for: trigger,
+            relatedPatterns: [relatedPattern]
+        )
+
+        #expect(recommendation.title == "Reduce avoidable sleep-area noise")
+        #expect(recommendation.title != "Predictable bedtime wind-down")
+        #expect(recommendation.sourceLabels == [.aap])
+    }
+
+    @Test("Gardening evidence overrides a broad outdoor-play label")
+    func matchesGardeningEvidenceSpecifically() {
+        let trigger = AnalyticsInsight.CommonTrigger(
+            title: "Bermain di luar ruangan",
+            explanation: "Maya terlihat terlibat saat menyiram tanaman."
+        )
+        let relatedPattern = AnalyticsInsight.ObservedPattern(
+            title: "Berkebun bersama",
+            evidence: "Satu observasi mencatat kegiatan menyiram tanaman.",
+            linkedTrigger: trigger.title,
+            contextTags: ["luar ruangan", "berkebun", "tanaman"]
+        )
+
+        let recommendation = catalog.recommendation(
+            for: trigger,
+            relatedPatterns: [relatedPattern]
+        )
+
+        #expect(recommendation.title == "Child-led garden and nature exploration")
+        #expect(
+            recommendation.recommendedActivities[0]
+                .contains("watering a plant")
+        )
+        #expect(recommendation.sourceLabels == [.aap, .cdc, .harvard])
+    }
+
+    @Test("Generic outdoor play receives an outdoor-specific action")
+    func matchesOutdoorMovement() {
+        let trigger = AnalyticsInsight.CommonTrigger(
+            title: "Outdoor play",
+            explanation: "One supplied row recorded active play outside."
+        )
+
+        let recommendation = catalog.recommendation(
+            for: trigger,
+            relatedPatterns: []
+        )
+
+        #expect(recommendation.title == "Child-led outdoor movement")
+        #expect(!recommendation.recommendedActivities.joined().contains("puzzle"))
+    }
+
+    @Test("Public-place observations no longer use the shared-play entry")
+    func matchesPublicPlaceSeparately() {
+        let trigger = AnalyticsInsight.CommonTrigger(
+            title: "Keramaian di tempat umum",
+            explanation: "Satu observasi terjadi di tempat yang ramai."
+        )
+
+        let recommendation = catalog.recommendation(
+            for: trigger,
+            relatedPatterns: []
+        )
+
+        #expect(recommendation.title == "A manageable public-place pause")
+        #expect(recommendation.sourceLabels == [.aap, .cdc])
+    }
+
+    @Test("Food refusal selects low-pressure AAP guidance")
+    func matchesFoodRefusal() {
+        let trigger = AnalyticsInsight.CommonTrigger(
+            title: "Menolak makan",
+            explanation: "Satu waktu makan mencatat makanan tidak dimakan."
+        )
+
+        let recommendation = catalog.recommendation(
+            for: trigger,
+            relatedPatterns: []
+        )
+
+        #expect(recommendation.title == "Low-pressure mealtime participation")
+        #expect(recommendation.sourceLabels == [.aap])
+        #expect(recommendation.whatMayHelp[0].contains("Avoid arguing"))
     }
 
     @Test("Unknown text receives the general curated fallback")

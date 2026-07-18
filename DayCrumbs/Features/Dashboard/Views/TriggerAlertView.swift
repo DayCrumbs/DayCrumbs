@@ -75,7 +75,10 @@ struct TriggerAlertView: View {
 
     private var recommendationSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionHeader(title: "Recommended Activities", systemImage: "lightbulb.fill")
+            sectionHeader(
+                title: detail.sectionLabels.recommendedActivities,
+                systemImage: "lightbulb.fill"
+            )
 
             Text(detail.recommendationTitle)
                 .font(.system(.subheadline, design: .rounded).bold())
@@ -89,7 +92,10 @@ struct TriggerAlertView: View {
 
     private var whatMayHelpSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionHeader(title: "What may help", systemImage: "heart.circle")
+            sectionHeader(
+                title: detail.sectionLabels.whatMayHelp,
+                systemImage: "heart.circle"
+            )
 
             ForEach(detail.whatMayHelp, id: \.self) { suggestion in
                 bullet(suggestion)
@@ -99,7 +105,7 @@ struct TriggerAlertView: View {
 
     private var sourceSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Curated sources")
+            Text(detail.sectionLabels.curatedSources)
                 .font(.system(.caption, design: .rounded).bold())
                 .foregroundColor(AppColour.txtCoklat.opacity(0.7))
 

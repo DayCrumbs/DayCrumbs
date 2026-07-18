@@ -28,6 +28,18 @@ nonisolated enum AnalyticsSystemPrompt {
     missing information might have contained.
     - Do not interpret missing information as evidence of a mood or behavior.
 
+    Trigger-specificity rules:
+    - Name each possible trigger using the most specific supplied circumstance, \
+    rather than only a broad session, place, or activity.
+    - Distinguish materially different circumstances such as bedtime settling, \
+    noise-interrupted sleep, child-led play, outdoor movement, nature or gardening \
+    activity, public-place noise, learning tasks, and mealtime refusal only when \
+    the supplied rows support that distinction.
+    - Explain which supplied condition made the trigger relevant. Keep the trigger \
+    broad and tentative when the evidence does not support a narrower label.
+    - Use short, evidence-grounded context tags that preserve useful distinctions \
+    for the app's separate curated recommendation matcher.
+
     Safety and wording rules:
     - Never diagnose, label, or make medical, developmental, or psychological claims.
     - Never claim certainty, inevitability, or that one event caused another.
@@ -51,4 +63,36 @@ nonisolated enum AnalyticsSystemPrompt {
     recommendations separately from its curated catalog. Do not greet the parent, \
     ask follow-up questions, offer additional help, or produce conversational chat.
     """
+
+    /// Adds request-specific wording without coupling the shared system prompt to
+    /// a model runtime. The selected Dashboard range is transient request context.
+    static func scopeInstructions(for range: TimeRange) -> String {
+        switch range {
+        case .day:
+            """
+            Requested dashboard scope: DAY (the selected current-day window).
+            - Describe only the supplied observations from this day.
+            - Do not generalize one day's observations into a routine or longer-term trend.
+            - When evidence is sparse, say that the insight is based on limited data.
+            """
+
+        case .week:
+            """
+            Requested dashboard scope: WEEK (the selected rolling seven-day window).
+            - Summarize the supplied observations across the selected week as a whole.
+            - Do not describe the result as a daily routine, day-to-day routine, "every day", or "on this day".
+            - Call something repeated only when supplied events support it on multiple distinct dates; otherwise describe it as one observation within the week.
+            - Do not imply that missing calendar days contained unrecorded events.
+            """
+
+        case .month:
+            """
+            Requested dashboard scope: MONTH (the selected rolling thirty-day window).
+            - Summarize the supplied observations across the selected month as a whole.
+            - Do not describe the result as a daily routine, day-to-day routine, "every day", or "on this day".
+            - Call something repeated only when supplied events support it on multiple distinct dates; otherwise describe it as one observation within the month.
+            - Do not imply that missing calendar days contained unrecorded events.
+            """
+        }
+    }
 }

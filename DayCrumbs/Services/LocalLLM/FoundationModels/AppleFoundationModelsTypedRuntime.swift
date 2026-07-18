@@ -15,6 +15,7 @@ final class AppleFoundationModelsTypedRuntime: AppleTypedInsightGeneratingRuntim
 
     func generateTypedInsight(
         from context: AnalyticsContext,
+        for range: TimeRange,
         configuration: LocalLLMConfiguration
     ) async throws -> AppleGeneratedAnalyticsInsight {
         guard activeSession == nil else {
@@ -35,7 +36,7 @@ final class AppleFoundationModelsTypedRuntime: AppleTypedInsightGeneratingRuntim
 
         do {
             let response = try await session.respond(
-                to: Self.prompt(from: context),
+                to: Self.prompt(from: context, for: range),
                 generating: AppleGeneratedAnalyticsInsight.self,
                 options: Self.options(from: configuration)
             )
@@ -61,9 +62,14 @@ final class AppleFoundationModelsTypedRuntime: AppleTypedInsightGeneratingRuntim
     - When the context contains only one or very few observations, explicitly state that the insight is based on limited data. Do not claim a repeated pattern or trend.
     """
 
-    private static func prompt(from context: AnalyticsContext) -> String {
+    private static func prompt(
+        from context: AnalyticsContext,
+        for range: TimeRange
+    ) -> String {
         """
         Analyze only the following analytics context and produce the typed insight.
+
+        \(AnalyticsSystemPrompt.scopeInstructions(for: range))
 
         \(context.text)
         """

@@ -42,6 +42,7 @@ struct DashboardViewModelTests {
         #expect(viewModel.generatedInsight?.summary == "Day insight")
         #expect(source.fetchCallCount == 1)
         #expect(generator.generatedEntries.count == 1)
+        #expect(generator.generatedRanges == [.day])
         #expect(generator.generatedEntries[0].count == 1)
         #expect(
             calendar.isDate(
@@ -104,6 +105,7 @@ struct DashboardViewModelTests {
         #expect(viewModel.selectedTimeRange == .month)
         #expect(viewModel.generatedInsight?.summary == "Month")
         #expect(generator.generatedEntries.map(\.count) == [1, 7, 30])
+        #expect(generator.generatedRanges == [.day, .week, .month])
     }
 
     @Test("A late cancelled result cannot replace the new range")
@@ -239,6 +241,74 @@ struct DashboardViewModelTests {
         #expect(generator.generatedEntries.count == 1)
         #expect(generator.retryCallCount == 1)
     }
+
+    @Test("Trigger selection uses the published localized recommendation")
+    func selectsLocalizedRecommendation() async throws {
+        let insight = makeDashboardTestInsight(
+            summary: "Ringkasan terbatas.",
+            triggerTitle: "Transisi pagi",
+            triggerExplanation: "Satu transisi pagi tercatat.",
+            patternTitle: "Observasi pagi",
+            patternEvidence: "Satu kegiatan terjadi pada pagi hari.",
+            contextTags: ["pagi", "rumah"]
+        )
+        let localizedDetail = TriggerDetail(
+            title: "Transisi pagi",
+            explanation: "Satu transisi pagi tercatat.",
+            evidence: [
+                TriggerDetail.Evidence(
+                    title: "Observasi pagi",
+                    explanation: "Satu kegiatan terjadi pada pagi hari.",
+                    contextTags: ["pagi", "rumah"]
+                ),
+            ],
+            recommendationTitle: "Langkah transisi yang jelas",
+            recommendedActivities: ["Jelaskan satu langkah berikutnya."],
+            whatMayHelp: ["Gunakan urutan yang dapat diperkirakan."],
+            sourceLabels: [.cdc],
+            sectionLabels: TriggerDetail.SectionLabels(
+                recommendedActivities: "Aktivitas yang disarankan",
+                whatMayHelp: "Yang mungkin membantu",
+                curatedSources: "Sumber terkurasi"
+            )
+        )
+        let generator = DashboardInsightGeneratorFake(
+            behaviors: [
+                .immediate(
+                    makeDashboardLocalizedResult(
+                        insight: insight,
+                        triggerDetails: [localizedDetail]
+                    )
+                ),
+            ]
+        )
+        let viewModel = makeDashboardTestViewModel(
+            source: DashboardStoryEntrySourceFake(
+                entries: makeDashboardTestEntries(
+                    dayOffsets: [0],
+                    referenceDate: referenceDate,
+                    calendar: calendar
+                )
+            ),
+            generator: generator,
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
+
+        await viewModel.start()
+        viewModel.selectTrigger("Transisi pagi")
+
+        let selectedDetail = try #require(viewModel.selectedTriggerDetail)
+        #expect(
+            selectedDetail.recommendationTitle
+                == "Langkah transisi yang jelas"
+        )
+        #expect(
+            selectedDetail.sectionLabels.recommendedActivities
+                == "Aktivitas yang disarankan"
+        )
+        #expect(selectedDetail.sourceLabels == [.cdc])
+    }
 }
 
 @MainActor
@@ -270,6 +340,7 @@ final class DashboardInsightGeneratorFake: AppleLocalizedInsightGenerating {
     ] = [:]
 
     private(set) var generatedEntries: [[StoryEntry]] = []
+    private(set) var generatedRanges: [TimeRange] = []
     private(set) var retryCallCount = 0
     private(set) var releaseCallCount = 0
 
@@ -283,10 +354,12 @@ final class DashboardInsightGeneratorFake: AppleLocalizedInsightGenerating {
 
     func generateInsight(
         from entries: [StoryEntry],
+        for range: TimeRange,
         using executeBatch: PreparedNativeTranslationBatchHandler
     ) async throws -> AppleLocalizedAnalyticsInsight {
         let callIndex = generatedEntries.count
         generatedEntries.append(entries)
+        generatedRanges.append(range)
 
         guard behaviors.indices.contains(callIndex) else {
             throw AppleAnalyticsGenerationError.generationFailed(.unavailableRuntime)
@@ -309,6 +382,7 @@ final class DashboardInsightGeneratorFake: AppleLocalizedInsightGenerating {
         retryCallCount += 1
         return retryResult ?? AppleLocalizedAnalyticsInsight(
             insight: fallback.englishInsight,
+            triggerDetails: fallback.englishTriggerDetails,
             responseLanguage: fallback.translationFallback.targetLanguage,
             englishFallback: fallback
         )
@@ -427,8 +501,11 @@ func makeDashboardLocalizedResult(
 
 func makeDashboardLocalizedResult(
     insight: AnalyticsInsight,
+    triggerDetails: [TriggerDetail]? = nil,
     withEnglishFallback: Bool = false
 ) -> AppleLocalizedAnalyticsInsight {
+    let triggerDetails = triggerDetails
+        ?? ParentRecommendationCatalog().triggerDetails(for: insight)
     let translationFallback = AppleInsightEnglishFallback(
         englishTexts: [],
         targetLanguage: .indonesian,
@@ -444,12 +521,14 @@ func makeDashboardLocalizedResult(
     let fallback = withEnglishFallback
         ? AppleAnalyticsInsightEnglishFallback(
             englishInsight: insight,
+            englishTriggerDetails: triggerDetails,
             translationFallback: translationFallback
         )
         : nil
 
     return AppleLocalizedAnalyticsInsight(
         insight: insight,
+        triggerDetails: triggerDetails,
         responseLanguage: .indonesian,
         englishFallback: fallback
     )

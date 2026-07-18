@@ -59,15 +59,69 @@ struct AppleAnalyticsInsightLocalizationTests {
         }
     }
 
+    @Test("Recommendation mapper translates catalog copy but preserves sources")
+    func recommendationMapperRoundTrip() throws {
+        let insightMapper = AnalyticsInsightTranslationMapper()
+        let recommendationMapper = TriggerDetailTranslationMapper()
+        let englishInsight = makeInsight()
+        let englishDetails = makeTriggerDetails(for: englishInsight)
+        let recommendationTexts = recommendationMapper.identifiedTexts(
+            from: englishDetails
+        )
+
+        #expect(recommendationTexts.map(\.id) == [
+            "recommendations.labels.recommendedActivities",
+            "recommendations.labels.whatMayHelp",
+            "recommendations.labels.curatedSources",
+            "recommendations.0.title",
+            "recommendations.0.activities.0",
+            "recommendations.0.activities.1",
+            "recommendations.0.whatMayHelp.0",
+            "recommendations.0.whatMayHelp.1",
+        ])
+
+        let localizedInsight = try insightMapper.reconstructedInsight(
+            from: insightMapper.identifiedTexts(from: englishInsight).map {
+                IdentifiedTranslationText(id: $0.id, text: "ID: \($0.text)")
+            },
+            matching: englishInsight
+        )
+        let localizedDetails =
+            try recommendationMapper.reconstructedTriggerDetails(
+                from: recommendationTexts.map {
+                    IdentifiedTranslationText(
+                        id: $0.id,
+                        text: "ID: \($0.text)"
+                    )
+                },
+                matching: englishDetails,
+                englishInsight: englishInsight,
+                localizedInsight: localizedInsight
+            )
+
+        #expect(localizedDetails[0].title == "ID: Morning transition")
+        #expect(
+            localizedDetails[0].recommendationTitle
+                == "ID: A clear, predictable transition"
+        )
+        #expect(
+            localizedDetails[0].sectionLabels.whatMayHelp
+                == "ID: What may help"
+        )
+        #expect(localizedDetails[0].sourceLabels == [.cdc])
+    }
+
     @Test("Successful output translation reconstructs localized insight")
     func localizesGeneratedInsight() async {
         let flow = TranslationFlowFake(localizeBehavior: .localized(prefix: "ID: "))
         let service = AppleAnalyticsInsightLocalizationService(
             translationFlow: flow
         )
+        let englishInsight = makeInsight()
 
         let result = await service.localize(
-            makeInsight(),
+            englishInsight,
+            triggerDetails: makeTriggerDetails(for: englishInsight),
             to: .indonesian,
             using: unusedBatchHandler
         )
@@ -75,6 +129,15 @@ struct AppleAnalyticsInsightLocalizationTests {
         #expect(result.responseLanguage == .indonesian)
         #expect(!result.isEnglishFallback)
         #expect(result.insight.summary == "ID: Limited English summary.")
+        #expect(
+            result.triggerDetails[0].recommendationTitle
+                == "ID: A clear, predictable transition"
+        )
+        #expect(
+            result.triggerDetails[0].sectionLabels.recommendedActivities
+                == "ID: Recommended Activities"
+        )
+        #expect(result.triggerDetails[0].sourceLabels == [.cdc])
         #expect(flow.localizeCallCount == 1)
         #expect(flow.retryCallCount == 0)
     }
@@ -93,14 +156,20 @@ struct AppleAnalyticsInsightLocalizationTests {
 
         let result = try await pipeline.generateInsight(
             from: [],
+            for: .week,
             using: unusedBatchHandler
         )
 
         #expect(flow.prepareInputCallCount == 1)
         #expect(generator.generationCallCount == 1)
+        #expect(generator.ranges == [.week])
         #expect(flow.localizeCallCount == 1)
         #expect(result.responseLanguage == .indonesian)
         #expect(result.insight.summary == "ID: Limited English summary.")
+        #expect(
+            result.triggerDetails[0].recommendedActivities[0]
+                .hasPrefix("ID: ")
+        )
     }
 
     @Test("Translation failure publishes the preserved English insight")
@@ -113,11 +182,20 @@ struct AppleAnalyticsInsightLocalizationTests {
 
         let result = await service.localize(
             englishInsight,
+            triggerDetails: makeTriggerDetails(for: englishInsight),
             to: .indonesian,
             using: unusedBatchHandler
         )
 
         #expect(result.insight == englishInsight)
+        #expect(
+            result.triggerDetails
+                == makeTriggerDetails(for: englishInsight)
+        )
+        #expect(
+            result.englishFallback?.englishTriggerDetails
+                == makeTriggerDetails(for: englishInsight)
+        )
         #expect(result.englishFallback?.displayLabel == "English fallback")
         #expect(result.englishFallback?.failure.reason == .translationFailed)
     }
@@ -132,6 +210,7 @@ struct AppleAnalyticsInsightLocalizationTests {
 
         let result = await service.localize(
             englishInsight,
+            triggerDetails: makeTriggerDetails(for: englishInsight),
             to: .indonesian,
             using: unusedBatchHandler
         )
@@ -149,9 +228,11 @@ struct AppleAnalyticsInsightLocalizationTests {
         let service = AppleAnalyticsInsightLocalizationService(
             translationFlow: flow
         )
+        let englishInsight = makeInsight()
 
         let initialResult = await service.localize(
-            makeInsight(),
+            englishInsight,
+            triggerDetails: makeTriggerDetails(for: englishInsight),
             to: .indonesian,
             using: unusedBatchHandler
         )
@@ -163,6 +244,10 @@ struct AppleAnalyticsInsightLocalizationTests {
 
         #expect(!retriedResult.isEnglishFallback)
         #expect(retriedResult.insight.summary == "Retry: Limited English summary.")
+        #expect(
+            retriedResult.triggerDetails[0].whatMayHelp[0]
+                .hasPrefix("Retry: ")
+        )
         #expect(flow.localizeCallCount == 1)
         #expect(flow.retryCallCount == 1)
     }
@@ -328,13 +413,16 @@ private final class TranslationFlowFake: AppleInsightTranslationFlow {
 @MainActor
 private final class AnalyticsInsightGeneratorFake: AnalyticsInsightGenerating {
     private(set) var generationCallCount = 0
+    private(set) var ranges: [TimeRange] = []
     private(set) var releaseCallCount = 0
 
     func generateInsight(
         from entries: [StoryEntry],
+        for range: TimeRange,
         preparingInputWith prepareInput: AppleAnalyticsInputPreparationHandler
     ) async throws -> AppleAnalyticsGenerationResult {
         generationCallCount += 1
+        ranges.append(range)
         let preparation = await prepareInput(makeContext())
         guard case let .ready(inputTranslation) = preparation else {
             guard case let .blocked(failure) = preparation else {
@@ -488,6 +576,12 @@ private func makeInsight() -> AnalyticsInsight {
         parentReflectionPrompt: "What felt different this morning?",
         ethicalNote: "This private observation is not a diagnosis."
     )
+}
+
+private func makeTriggerDetails(
+    for insight: AnalyticsInsight
+) -> [TriggerDetail] {
+    ParentRecommendationCatalog().triggerDetails(for: insight)
 }
 
 private func makeContext() -> AnalyticsContext {

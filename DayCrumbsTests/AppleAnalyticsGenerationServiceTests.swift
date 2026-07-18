@@ -16,6 +16,7 @@ struct AppleAnalyticsGenerationServiceTests {
         await #expect(throws: AppleAnalyticsGenerationError.emptyEntries) {
             try await service.generateInsight(
                 from: [],
+                for: .day,
                 preparingInputWith: preparation.handler
             )
         }
@@ -39,6 +40,7 @@ struct AppleAnalyticsGenerationServiceTests {
         ) {
             try await service.generateInsight(
                 from: makeEntries(count: 1),
+                for: .day,
                 preparingInputWith: preparation.handler
             )
         }
@@ -56,11 +58,13 @@ struct AppleAnalyticsGenerationServiceTests {
 
         let result = try await service.generateInsight(
             from: makeEntries(count: 30),
+            for: .month,
             preparingInputWith: preparation.handler
         )
 
         #expect(preparation.contextEventCounts == [24])
         #expect(runtime.contextEventCounts == [24])
+        #expect(runtime.ranges == [.month])
         #expect(runtime.availabilityReadCount == 2)
         #expect(runtime.releaseCount == 1)
         #expect(result.responseLanguage == .indonesian)
@@ -83,11 +87,13 @@ struct AppleAnalyticsGenerationServiceTests {
 
         _ = try await service.generateInsight(
             from: makeEntries(count: 30),
+            for: .week,
             preparingInputWith: preparation.handler
         )
 
         #expect(preparation.contextEventCounts == [24, 10])
         #expect(runtime.contextEventCounts == [24, 10])
+        #expect(runtime.ranges == [.week, .week])
         #expect(runtime.availabilityReadCount == 4)
         #expect(runtime.releaseCount == 1)
     }
@@ -110,6 +116,7 @@ struct AppleAnalyticsGenerationServiceTests {
         ) {
             try await service.generateInsight(
                 from: makeEntries(count: 30),
+                for: .day,
                 preparingInputWith: preparation.handler
             )
         }
@@ -129,6 +136,7 @@ struct AppleAnalyticsGenerationServiceTests {
         ) {
             try await service.generateInsight(
                 from: makeEntries(count: 30),
+                for: .day,
                 preparingInputWith: preparation.handler
             )
         }
@@ -153,6 +161,7 @@ struct AppleAnalyticsGenerationServiceTests {
         ) {
             try await service.generateInsight(
                 from: makeEntries(count: 1),
+                for: .day,
                 preparingInputWith: preparation.handler
             )
         }
@@ -178,6 +187,7 @@ struct AppleAnalyticsGenerationServiceTests {
         ) {
             try await service.generateInsight(
                 from: makeEntries(count: 1),
+                for: .day,
                 preparingInputWith: preparation.handler
             )
         }
@@ -200,6 +210,7 @@ struct AppleAnalyticsGenerationServiceTests {
         ) {
             try await service.generateInsight(
                 from: makeEntries(count: 1),
+                for: .day,
                 preparingInputWith: InputPreparationFake().handler
             )
         }
@@ -226,6 +237,7 @@ private final class RuntimeFake: AppleTypedInsightGeneratingRuntime {
     private var behaviors: [Behavior]
     private(set) var availabilityReadCount = 0
     private(set) var contextEventCounts: [Int] = []
+    private(set) var ranges: [TimeRange] = []
     private(set) var releaseCount = 0
 
     init(
@@ -249,9 +261,11 @@ private final class RuntimeFake: AppleTypedInsightGeneratingRuntime {
 
     func generateTypedInsight(
         from context: AnalyticsContext,
+        for range: TimeRange,
         configuration: LocalLLMConfiguration
     ) async throws -> AppleGeneratedAnalyticsInsight {
         contextEventCounts.append(context.events.count)
+        ranges.append(range)
         guard !behaviors.isEmpty else {
             throw AppleFoundationModelsSessionError.unavailableRuntime
         }
