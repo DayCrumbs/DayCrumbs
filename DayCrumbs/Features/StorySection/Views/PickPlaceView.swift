@@ -43,7 +43,7 @@ struct PickPlaceView: View {
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 
-                CircularBackButton(style: .whiteBtn) {
+                CircularBackButton() {
                     dismiss()
                 }
                 .padding(.top, 24)

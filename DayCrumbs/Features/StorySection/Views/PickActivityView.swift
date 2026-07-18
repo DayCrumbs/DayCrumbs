@@ -66,7 +66,7 @@ struct PickActivityView: View {
                   }
               }
               
-              CircularBackButton(style: .whiteBtn) {
+              CircularBackButton() {
                   dismiss()
               }
               .padding(.top, 24)

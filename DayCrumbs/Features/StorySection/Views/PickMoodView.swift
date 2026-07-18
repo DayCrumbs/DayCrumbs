@@ -7,6 +7,7 @@ struct PickMoodView: View {
     let selectedActivity: Activity.BuiltInActivity
     @State private var selectedMood: Moods?
     @State private var moodAlert: Moods?
+    @State private var navigateToReason = false
 
     private let moodOptions: [Moods] = [
         .disgust,
@@ -29,9 +30,11 @@ struct PickMoodView: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    CharacterBubble(
+                    QuestionCharacterBubble(
                         characterImageName: "PickMood_Girl",
-                        text: "How did you feel when you \(activityPastTense(selectedActivity))?\nPick a face that looks like how you felt."
+                        characterHeightRatio: 1084.0 / 655.0,
+                        title: moodQuestionTitle,
+                        subtitle: "Pick a face that looks like how you felt."
                     )
                     .frame(height: proxy.size.height * 0.60)
 
@@ -78,6 +81,15 @@ struct PickMoodView: View {
             .animation(.easeInOut(duration: 0.2), value: moodAlert)
         }
         .navigationBarBackButtonHidden(true)
+        .navigationDestination(isPresented: $navigateToReason) {
+            if let selectedMood {
+                ReasonView(
+                    selectedPlace: selectedPlace,
+                    selectedActivity: selectedActivity,
+                    selectedMood: selectedMood
+                )
+            }
+        }
     }
 
     private var moodGrid: some View {
@@ -92,7 +104,10 @@ struct PickMoodView: View {
             ForEach(moodOptions, id: \.self) { mood in
                 MoodExpressionButton(
                     mood: mood,
-                    selectMood: { selectedMood = mood },
+                    selectMood: {
+                        selectedMood = mood
+                        navigateToReason = true
+                    },
                     showMoodAlert: { moodAlert = mood }
                 )
             }
@@ -109,6 +124,10 @@ struct PickMoodView: View {
         case .getReady: return "got ready"
         case .wakeUp: return "woke up"
         }
+    }
+
+    private var moodQuestionTitle: Text {
+        Text("How did you feel when you \(Text(activityPastTense(selectedActivity)).underline())?")
     }
 }
 

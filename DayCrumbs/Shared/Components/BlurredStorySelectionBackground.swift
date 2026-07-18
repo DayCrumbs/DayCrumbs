@@ -17,7 +17,6 @@ struct BlurredStorySelectionBackground: View {
                         .frame(width: proxy.size.width, height: proxy.size.height)
                         .clipped()
                         .blur(radius: 12)
-                        .opacity(index == 0 ? 1 : 0.58)
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
