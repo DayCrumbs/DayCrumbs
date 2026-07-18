@@ -6,6 +6,7 @@ struct PickMoodView: View {
     let selectedPlace: Place.BuiltInPlace
     let selectedActivity: Activity.BuiltInActivity
     @State private var selectedMood: Moods?
+    @State private var moodAlert: Moods?
 
     private let moodOptions: [Moods] = [
         .disgust,
@@ -40,6 +41,8 @@ struct PickMoodView: View {
 
                         VStack(spacing: 0) {
                             moodGrid
+                                .offset(y: -84)
+                                .padding(.bottom, -84)
 
                             Text("Hold any emotion to learn more about it")
                                 .font(.system(.subheadline, design: .rounded))
@@ -59,7 +62,20 @@ struct PickMoodView: View {
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
+
+                if let moodAlert {
+                    MoodAlertView(mood: moodAlert) {
+                        self.moodAlert = nil
+                    }
+                    .frame(
+                        width: proxy.size.width,
+                        height: proxy.size.height,
+                        alignment: .center
+                    )
+                    .transition(.scale.combined(with: .opacity))
+                }
             }
+            .animation(.easeInOut(duration: 0.2), value: moodAlert)
         }
         .navigationBarBackButtonHidden(true)
     }
@@ -74,22 +90,11 @@ struct PickMoodView: View {
             spacing: 22
         ) {
             ForEach(moodOptions, id: \.self) { mood in
-                Button {
-                    selectedMood = mood
-                } label: {
-                    VStack(spacing: 10) {
-                        Image(mood.expressionImageName)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 90)
-
-                        Text(mood.rawValue.capitalized)
-                            .font(.system(.headline, design: .rounded).weight(.semibold))
-                            .foregroundStyle(AppColour.txtCoklat)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.plain)
+                MoodExpressionButton(
+                    mood: mood,
+                    selectMood: { selectedMood = mood },
+                    showMoodAlert: { moodAlert = mood }
+                )
             }
         }
         .padding(.horizontal, 8)
@@ -103,6 +108,42 @@ struct PickMoodView: View {
         case .eat: return "ate"
         case .getReady: return "got ready"
         case .wakeUp: return "woke up"
+        }
+    }
+}
+
+private struct MoodExpressionButton: View {
+    let mood: Moods
+    let selectMood: () -> Void
+    let showMoodAlert: () -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(mood.expressionImageName)
+                .resizable()
+                .scaledToFit()
+                .frame(height: 132)
+
+            Text(mood.rawValue.capitalized)
+                .font(.system(.headline, design: .rounded).weight(.semibold))
+                .foregroundStyle(AppColour.txtCoklat)
+        }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .gesture(
+            LongPressGesture(minimumDuration: 0.5)
+                .onEnded { _ in
+                    showMoodAlert()
+                }
+                .exclusively(before: TapGesture().onEnded { _ in
+                    selectMood()
+                })
+        )
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(mood.rawValue.capitalized)
+        .accessibilityHint("Double tap to select. Hold to learn more.")
+        .accessibilityAction {
+            selectMood()
         }
     }
 }
