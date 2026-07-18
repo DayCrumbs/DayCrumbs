@@ -2,6 +2,9 @@ import SwiftUI
 
 struct PickPlaceView: View {
     @Environment(\.dismiss) private var dismiss
+
+    let selectedSession: Sessions
+
     @State private var selectedPlace: Place.BuiltInPlace?
     @State private var navigateToActivity = false
     
@@ -16,7 +19,7 @@ struct PickPlaceView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
-                AppColour.bgKuning
+                sessionBackground(in: proxy.size)
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
@@ -33,7 +36,8 @@ struct PickPlaceView: View {
                         itemName: { $0.rawValue },
                         onAddCustom: {
                             // Custom place creation will be added in a later flow.
-                        }
+                        },
+                        itemImageName: placeImageName(for:)
                     )
                     .frame(height: proxy.size.height * 0.26)
                 }
@@ -56,8 +60,27 @@ struct PickPlaceView: View {
         }
         .navigationBarBackButtonHidden(true)
     }
+
+    private func sessionBackground(in size: CGSize) -> some View {
+        Image(selectedSession.imageName)
+            .resizable()
+            .scaledToFill()
+            .frame(width: size.width * 1.08, height: size.height * 1.08)
+            .frame(width: size.width, height: size.height)
+            .clipped()
+            .blur(radius: 12)
+    }
+
+    private func placeImageName(for place: Place.BuiltInPlace) -> String {
+        switch place {
+        case .house: return "Place_House"
+        case .outdoor: return "Place_Outdoor"
+        case .school: return "Place_School"
+        case .publicPlace: return "Place_PublicArea"
+        }
+    }
 }
 
 #Preview {
-    PickPlaceView()
+    PickPlaceView(selectedSession: .morning)
 }

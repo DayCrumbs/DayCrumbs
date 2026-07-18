@@ -39,10 +39,10 @@ extension Sessions {
     
     var imageName: String {
         switch self {
-        case .morning: return "Session Morning"
-        case .afternoon: return "Session Afternoon"
-        case .evening: return "Session Evening"
-        case .night: return "Session Night"
+        case .morning: return "Session_Morning"
+        case .afternoon: return "Session_Afternoon"
+        case .evening: return "Session_Evening"
+        case .night: return "Session_Night"
         }
     }
 }

@@ -13,6 +13,7 @@ struct ChildProfileSetupView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel = ChildProfileSetupViewModel()
     @State private var navigateToSession: Bool = false
+    @State private var childAgeText: String = ""
     
     var body: some View {
         ZStack {
@@ -21,7 +22,7 @@ struct ChildProfileSetupView: View {
             
             VStack {
                 HStack {
-                    CircularBackButton() {
+                    CircularBackButton(style: .yellowBtn) {
                         dismiss()
                     }
                     Spacer()
@@ -57,7 +58,7 @@ struct ChildProfileSetupView: View {
                                 .foregroundColor(AppColour.txtCoklat)
                                 .frame(width: 80, alignment: .leading)
                             
-                            TextField("Placeholder", text: $viewModel.childName)
+                            TextField("What is your name", text: $viewModel.childName)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
                                 .background(Color.white.opacity(0.3))
@@ -72,8 +73,11 @@ struct ChildProfileSetupView: View {
                                 .foregroundColor(AppColour.txtCoklat)
                                 .frame(width: 80, alignment: .leading)
                             
-                            TextField("Placeholder", value: $viewModel.childAge, format: .number)
+                            TextField("How old are you", text: $childAgeText)
                                 .keyboardType(.numberPad)
+                                .onChange(of: childAgeText) { _, ageText in
+                                    viewModel.childAge = Int(ageText) ?? 0
+                                }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
                                 .background(Color.white.opacity(0.3))
@@ -88,11 +92,15 @@ struct ChildProfileSetupView: View {
                                 .foregroundColor(AppColour.txtCoklat)
                                 .frame(width: 80, alignment: .leading)
                             
-                            HStack(spacing: 16) {
+                            HStack(spacing: 0) {
                                 ForEach(ChildGender.allCases, id: \.self) { gender in
-                                    genderButton(for: gender)
+                                    genderSegment(for: gender)
                                 }
                             }
+                            .padding(3)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.white.opacity(0.3))
+                            .clipShape(Capsule())
                         }
                         
                         // Baris 4: Save Button
@@ -111,9 +119,17 @@ struct ChildProfileSetupView: View {
                                 .foregroundColor(AppColour.txtCoklat)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
-                                .background(AppColour.btnPutih)
+                                .background(
+                                    AppColour.btnPutih.opacity(viewModel.isFormValid ? 1 : 0.45)
+                                )
                                 .clipShape(Capsule())
                         }
+                        .disabled(!viewModel.isFormValid)
+                        .accessibilityHint(
+                            viewModel.isFormValid
+                                ? "Menyimpan profil anak"
+                                : "Masukkan nama dan umur anak yang valid untuk menyimpan profil"
+                        )
                         .padding(.top, 8)
                         
                     }
@@ -134,24 +150,22 @@ struct ChildProfileSetupView: View {
     
     // MARK: - Komponen Bantuan
     @ViewBuilder
-    private func genderButton(for gender: ChildGender) -> some View {
+    private func genderSegment(for gender: ChildGender) -> some View {
         let isSelected = viewModel.selectedGender == gender
         
         Button(action: {
             viewModel.selectedGender = gender
         }) {
             Text(gender.rawValue.capitalized)
-                .font(.system(.body, design: .rounded))
+                .font(.system(.body, design: .rounded).weight(.medium))
                 .foregroundColor(AppColour.txtCoklat)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(isSelected ? Color.clear : Color.white.opacity(0.6))
+                .frame(minHeight: 44)
+                .background(isSelected ? AppColour.btnPutih : Color.clear)
                 .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(Color.white, lineWidth: 1.5)
-                )
         }
+        .buttonStyle(.plain)
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
     }
 }
 

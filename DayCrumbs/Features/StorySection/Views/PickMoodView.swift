@@ -1,10 +1,3 @@
-//
-//  PickMoodView.swift
-//  DayCrumbs
-//
-//  Created by Ibnu Taufick Ahraza on 7/17/26.
-//
-
 import SwiftUI
 
 struct PickMoodView: View {
@@ -14,13 +7,13 @@ struct PickMoodView: View {
     let selectedActivity: Activity.BuiltInActivity
     @State private var selectedMood: Moods?
 
-    private let moodOptions: [MoodOption] = [
-        MoodOption(mood: .disgust, imageName: "ExpressionDisgustFace_Girl"),
-        MoodOption(mood: .sad, imageName: "ExpressionSadFace_Girl"),
-        MoodOption(mood: .angry, imageName: "ExpressionAngryFace_Girl"),
-        MoodOption(mood: .surprise, imageName: "ExpressionSurpriseFace_Girl"),
-        MoodOption(mood: .fear, imageName: "ExpressionFearFace_Girl"),
-        MoodOption(mood: .happy, imageName: "ExpressionHappyFace_Girl")
+    private let moodOptions: [Moods] = [
+        .disgust,
+        .sad,
+        .angry,
+        .surprise,
+        .fear,
+        .happy
     ]
 
     var body: some View {
@@ -29,28 +22,32 @@ struct PickMoodView: View {
                 Color.white
                     .ignoresSafeArea()
 
-                HStack(spacing: 0) {
-                    CharacterMoodHero()
-                        .frame(width: proxy.size.width * 0.46)
+                VStack(spacing: 0) {
+                    CharacterBubble(
+                        characterImageName: "PickMood_Girl",
+                        text: "How did you feel when you \(activityPastTense(selectedActivity))?\nPick a face that looks like how you felt."
+                    )
+                    .frame(height: proxy.size.height * 0.68)
 
-                    VStack(spacing: 0) {
-                        moodHeader
-                            .padding(.top, proxy.size.height * 0.10)
-                            .padding(.trailing, proxy.size.width * 0.03)
+                    HStack(alignment: .top, spacing: 0) {
+                        Spacer()
+                            .frame(width: proxy.size.width * 0.47)
 
-                        Spacer(minLength: proxy.size.height * 0.05)
+                        VStack(spacing: 0) {
+                            moodGrid
 
-                        moodGrid
-                            .padding(.trailing, proxy.size.width * 0.05)
+                            Text("Hold any emotion to learn more about it")
+                                .font(.system(.subheadline, design: .rounded))
+                                .foregroundStyle(AppColour.txtCoklat.opacity(0.9))
+                                .padding(.top, 26)
+                        }
+                        .frame(width: proxy.size.width * 0.47)
 
-                        Text("Hold any emotion to learn more about it")
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundColor(AppColour.txtCoklat.opacity(0.9))
-                            .padding(.top, 30)
-                            .padding(.bottom, 24)
+                        Spacer(minLength: 0)
                     }
-                    .frame(width: proxy.size.width * 0.54, height: proxy.size.height)
+                    .frame(height: proxy.size.height * 0.32, alignment: .top)
                 }
+                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
 
                 CircularBackButton(style: .yellowBtn) {
                     dismiss()
@@ -62,15 +59,6 @@ struct PickMoodView: View {
         .navigationBarBackButtonHidden(true)
     }
 
-    private var moodHeader: some View {
-        ZStack {
-            BubbleMessage(
-                title: "How did you feel when you \(activityPastTense(selectedActivity))?",
-                subtitle: "Pick a face that looks like how you felt."
-            )
-        }
-    }
-
     private var moodGrid: some View {
         LazyVGrid(
             columns: [
@@ -80,19 +68,19 @@ struct PickMoodView: View {
             ],
             spacing: 22
         ) {
-            ForEach(moodOptions) { option in
+            ForEach(moodOptions, id: \.self) { mood in
                 Button {
-                    selectedMood = option.mood
+                    selectedMood = mood
                 } label: {
                     VStack(spacing: 10) {
-                        Image(option.imageName)
+                        Image(mood.expressionImageName)
                             .resizable()
                             .scaledToFit()
                             .frame(height: 78)
 
-                        Text(option.mood.rawValue.capitalized)
+                        Text(mood.rawValue.capitalized)
                             .font(.system(.headline, design: .rounded).weight(.semibold))
-                            .foregroundColor(AppColour.txtCoklat)
+                            .foregroundStyle(AppColour.txtCoklat)
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -104,71 +92,14 @@ struct PickMoodView: View {
 
     private func activityPastTense(_ activity: Activity.BuiltInActivity) -> String {
         switch activity {
-        case .play:
-            return "played"
-        case .sleep:
-            return "slept"
-        case .study:
-            return "studied"
-        case .eat:
-            return "ate"
-        case .getReady:
-            return "got ready"
-        case .wakeUp:
-            return "woke up"
+        case .play: return "played"
+        case .sleep: return "slept"
+        case .study: return "studied"
+        case .eat: return "ate"
+        case .getReady: return "got ready"
+        case .wakeUp: return "woke up"
         }
     }
-}
-
-private struct CharacterMoodHero: View {
-    var body: some View {
-        GeometryReader { proxy in
-            Image("PickMood_Girl")
-                .resizable()
-                .scaledToFit()
-                .frame(width: proxy.size.width * 1.18)
-                .offset(x: -proxy.size.width * 0.08, y: proxy.size.height * 0.03)
-        }
-    }
-}
-
-private struct BubbleMessage: View {
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        Image("BubbleAsset")
-            .resizable()
-            .scaledToFit()
-            .overlay(alignment: .center) {
-                VStack(spacing: 10) {
-                    Text(title)
-                        .font(.system(size: 32, design: .rounded).weight(.bold))
-                        .foregroundColor(AppColour.txtCoklat)
-                        .multilineTextAlignment(.center)
-                        .minimumScaleFactor(0.65)
-                        .lineLimit(2)
-
-                    Text(subtitle)
-                        .font(.system(size: 20, design: .rounded))
-                        .foregroundColor(AppColour.txtCoklat)
-                        .multilineTextAlignment(.center)
-                        .minimumScaleFactor(0.7)
-                        .lineLimit(2)
-                }
-                .padding(.horizontal, 44)
-                .padding(.vertical, 18)
-                .offset(y: -6)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.trailing, 12)
-    }
-}
-
-private struct MoodOption: Identifiable {
-    let id = UUID()
-    let mood: Moods
-    let imageName: String
 }
 
 #Preview {
