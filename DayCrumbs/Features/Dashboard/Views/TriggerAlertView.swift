@@ -7,72 +7,125 @@
 
 import SwiftUI
 
-// MARK: - Custom Trigger Alert View
 struct TriggerAlertView: View {
     let detail: TriggerDetail
     let onDismiss: () -> Void
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            
-            // 1. Judul
-            Text(detail.title)
-                .font(.system(.title2, design: .rounded).bold())
-                .foregroundColor(AppColour.txtCoklat)
-            
-            // 2. Deskripsi LLM
-            Text(detail.description)
-                .font(.system(.body, design: .rounded))
-                .foregroundColor(AppColour.txtCoklat)
-                .multilineTextAlignment(.leading)
-            
-            // 3. Recommended Activities
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Image(systemName: "lightbulb.fill")
-                    Text("Recommended Activities")
-                        .font(.system(.headline, design: .rounded).bold())
-                }
-                .foregroundColor(AppColour.txtCoklat)
-                
-                ForEach(detail.recommendedActivities, id: \.self) { activity in
-                    Text("• \(activity)")
-                        .font(.system(.subheadline, design: .rounded))
-                        .foregroundColor(AppColour.txtCoklat.opacity(0.8))
-                }
-            }
-            
-            // 4. What helps / prevents it
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Image(systemName: "heart.circle") 
-                    Text("What helps/prevents it")
-                        .font(.system(.headline, design: .rounded).bold())
-                }
-                .foregroundColor(AppColour.txtCoklat)
-                
-                ForEach(detail.preventions, id: \.self) { prevention in
-                    Text("• \(prevention)")
-                        .font(.system(.subheadline, design: .rounded))
-                        .foregroundColor(AppColour.txtCoklat.opacity(0.8))
-                }
-            }
-            
-            // 5. Tombol Done
-            Button(action: onDismiss) {
-                Text("Done")
-                    .font(.system(.headline, design: .rounded).bold())
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(AppColour.btnKuning) // Menggunakan warna tema kita
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text(detail.title)
+                    .font(.system(.title2, design: .rounded).bold())
                     .foregroundColor(AppColour.txtCoklat)
-                    .clipShape(Capsule())
+
+                Text(detail.explanation)
+                    .font(.system(.body, design: .rounded))
+                    .foregroundColor(AppColour.txtCoklat)
+                    .multilineTextAlignment(.leading)
+
+                if !detail.evidence.isEmpty {
+                    evidenceSection
+                }
+
+                recommendationSection
+                whatMayHelpSection
+                sourceSection
+
+                Button(action: onDismiss) {
+                    Text("Done")
+                        .font(.system(.headline, design: .rounded).bold())
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(AppColour.btnKuning)
+                        .foregroundColor(AppColour.txtCoklat)
+                        .clipShape(Capsule())
+                }
+                .padding(.top, 8)
             }
-            .padding(.top, 8)
+            .padding(24)
         }
-        .padding(24)
         .background(AppColour.bgPutih)
         .clipShape(RoundedRectangle(cornerRadius: 24))
-        .frame(maxWidth: 400)
+        .frame(maxWidth: 440, maxHeight: 680)
+    }
+
+    private var evidenceSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionHeader(title: "Evidence", systemImage: "list.bullet.clipboard")
+
+            ForEach(detail.evidence.indices, id: \.self) { index in
+                let evidence = detail.evidence[index]
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(evidence.title)
+                        .font(.system(.subheadline, design: .rounded).bold())
+                    Text(evidence.explanation)
+                        .font(.system(.subheadline, design: .rounded))
+
+                    if !evidence.contextTags.isEmpty {
+                        Text(evidence.contextTags.joined(separator: " • "))
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundColor(AppColour.txtCoklat.opacity(0.65))
+                    }
+                }
+                .foregroundColor(AppColour.txtCoklat.opacity(0.8))
+            }
+        }
+    }
+
+    private var recommendationSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionHeader(title: "Recommended Activities", systemImage: "lightbulb.fill")
+
+            Text(detail.recommendationTitle)
+                .font(.system(.subheadline, design: .rounded).bold())
+                .foregroundColor(AppColour.txtCoklat)
+
+            ForEach(detail.recommendedActivities, id: \.self) { activity in
+                bullet(activity)
+            }
+        }
+    }
+
+    private var whatMayHelpSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionHeader(title: "What may help", systemImage: "heart.circle")
+
+            ForEach(detail.whatMayHelp, id: \.self) { suggestion in
+                bullet(suggestion)
+            }
+        }
+    }
+
+    private var sourceSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Curated sources")
+                .font(.system(.caption, design: .rounded).bold())
+                .foregroundColor(AppColour.txtCoklat.opacity(0.7))
+
+            HStack(spacing: 8) {
+                ForEach(detail.sourceLabels, id: \.self) { source in
+                    Text(source.rawValue)
+                        .font(.system(.caption, design: .rounded).bold())
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(AppColour.btnKuning.opacity(0.25))
+                        .clipShape(Capsule())
+                }
+            }
+            .foregroundColor(AppColour.txtCoklat)
+        }
+    }
+
+    private func sectionHeader(title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.system(.headline, design: .rounded).bold())
+            .foregroundColor(AppColour.txtCoklat)
+    }
+
+    private func bullet(_ text: String) -> some View {
+        Text("• \(text)")
+            .font(.system(.subheadline, design: .rounded))
+            .foregroundColor(AppColour.txtCoklat.opacity(0.8))
     }
 }

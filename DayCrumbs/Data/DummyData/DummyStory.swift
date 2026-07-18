@@ -28,11 +28,15 @@ enum DummyStory {
     ///   - child: Profil anak yang diasosiasikan dengan data dummy.
     ///   - startDay: Hari awal yang ingin diambil (Indeks dimulai dari 1).
     ///   - endDay: Hari akhir yang ingin diambil (Opsional, default adalah hari terakhir dari jumlah template).
+    ///   - referenceDate: Tanggal acuan untuk template terbaru; dapat diinjeksi agar test deterministik.
+    ///   - calendar: Kalender dan zona waktu yang dipakai untuk membentuk batas hari.
     /// - Returns: Array berisi `DailySession` yang berada dalam rentang tersebut dengan tanggal yang disesuaikan secara logis.
     static func generateSessions(
         for child: ChildProfile,
         startDay: Int = 1,
-        endDay: Int? = nil
+        endDay: Int? = nil,
+        referenceDate: Date = .now,
+        calendar: Calendar = .current
     ) -> [DailySession] {
         let maxDays = templates.count
         
@@ -47,7 +51,11 @@ enum DummyStory {
         guard resolvedStartDay <= resolvedEndDay else { return [] }
         
         // Buat terlebih dahulu semua sesi (seluruh template) agar kalkulasi tanggal mundurnya tepat terhadap "Hari Ini"
-        let allSessions = generateAllAvailableSessions(for: child)
+        let allSessions = generateAllAvailableSessions(
+            for: child,
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
         
         // Slicing menggunakan indeks berbasis 0 (0-based index)
         let startIndex = resolvedStartDay - 1
@@ -58,16 +66,23 @@ enum DummyStory {
     
     // MARK: - Helper Internal
     /// Membuat seluruh sesi harian yang tersedia berdasarkan jumlah template.
-    private static func generateAllAvailableSessions(for child: ChildProfile) -> [DailySession] {
-        let calendar = Calendar.current
-        let today = Date()
+    private static func generateAllAvailableSessions(
+        for child: ChildProfile,
+        referenceDate: Date,
+        calendar: Calendar
+    ) -> [DailySession] {
         let totalTemplates = templates.count
         var sessions: [DailySession] = []
 
         for i in 0..<totalTemplates {
-            // Menghitung tanggal mundur agar indeks terakhir (Hari ke-7) selalu jatuh pada "Hari Ini" [14]
+            // Anchor the newest template to the injected day so tests and
+            // development reseeds do not depend on the wall clock.
             let dayOffset = -(totalTemplates - 1 - i)
-            guard let baseDate = calendar.date(byAdding: .day, value: dayOffset, to: today) else { continue }
+            guard let baseDate = calendar.date(
+                byAdding: .day,
+                value: dayOffset,
+                to: referenceDate
+            ) else { continue }
             
             let startOfDay = calendar.startOfDay(for: baseDate)
             let template = templates[i]
