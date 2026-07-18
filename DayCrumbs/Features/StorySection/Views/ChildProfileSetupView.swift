@@ -22,7 +22,7 @@ struct ChildProfileSetupView: View {
             
             VStack {
                 HStack {
-                    CircularBackButton() {
+                    CircularBackButton(style: .yellowBtn) {
                         dismiss()
                     }
                     Spacer()

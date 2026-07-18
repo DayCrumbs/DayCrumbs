@@ -2,6 +2,7 @@ import Charts
 import SwiftUI
 
 struct DashboardView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var viewModel: DashboardViewModel
@@ -48,6 +49,13 @@ struct DashboardView: View {
         }
         .navigationDestination(isPresented: $navigateToSession) {
             SessionOptionView()
+        }
+        .overlay(alignment: .topLeading) {
+            CircularBackButton(style: .yellowBtn) {
+                dismiss()
+            }
+            .padding(.top, 24)
+            .padding(.leading, 32)
         }
         .overlay {
             if let detail = viewModel.selectedTriggerDetail {
@@ -206,7 +214,7 @@ struct DashboardView: View {
                 AxisTick(stroke: StrokeStyle(lineWidth: 0))
                 AxisValueLabel(anchor: .trailing) {
                     if let moodScore = value.as(Int.self) {
-                        Image(moodImageName(for: moodScore))
+                        Image(Moods.expressionImageName(forDashboardMoodScore: moodScore))
                             .resizable()
                             .scaledToFit()
                             .frame(width: 48, height: 48)
@@ -329,17 +337,6 @@ struct DashboardView: View {
         }
     }
 
-    private func moodImageName(for score: Int) -> String {
-        switch score {
-        case 6: return "ExpressionHappyFace_Girl"
-        case 5: return "ExpressionSadFace_Girl"
-        case 4: return "ExpressionSurpriseFace_Girl"
-        case 3: return "ExpressionFearFace_Girl"
-        case 2: return "ExpressionDisgustFace_Girl"
-        case 1: return "ExpressionAngryFace_Girl"
-        default: return "ExpressionHappyFace_Girl"
-        }
-    }
 }
 
 #Preview {

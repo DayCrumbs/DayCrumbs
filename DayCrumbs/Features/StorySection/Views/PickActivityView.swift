@@ -46,7 +46,8 @@ struct PickActivityView: View {
                       itemName: { $0.rawValue },
                       onAddCustom: {
                           // Custom activity creation will be added in a later flow.
-                      }
+                      },
+                      itemImageName: activityImageName(for:)
                   )
                   .frame(height: proxy.size.height * 0.26)
               }
@@ -84,6 +85,17 @@ struct PickActivityView: View {
           Color(red: 0.93, green: 0.88, blue: 0.75)
       case .school:
           Color(red: 0.88, green: 0.90, blue: 0.97)
+      }
+  }
+
+  private func activityImageName(for activity: Activity.BuiltInActivity) -> String {
+      switch activity {
+      case .play: return "Activity_Play"
+      case .sleep: return "Activity_Sleep"
+      case .study: return "Activity_Study"
+      case .eat: return "Activity_Eat"
+      case .getReady: return "Activity_GetReady"
+      case .wakeUp: return "Activity_WakeUp"
       }
   }
 }
