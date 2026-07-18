@@ -98,6 +98,8 @@ struct DashboardView: View {
         let triggerColumnWidth = contentWidth * 0.30
         let columnSpacing = contentWidth * 0.047
         let chartWidth = max(0, contentWidth - triggerColumnWidth - columnSpacing)
+        let triggerCardHeight = chartHeight * 0.72
+        let triggerButtonSpacing = max(24, size.height * 0.035)
 
         return VStack(alignment: .leading, spacing: 0) {
             insightSection
@@ -111,9 +113,9 @@ struct DashboardView: View {
                     .frame(width: chartWidth, height: chartHeight)
 
                 VStack(spacing: 0) {
-                    commonTriggersCard(height: chartHeight * 0.74)
+                    commonTriggersCard(height: triggerCardHeight)
 
-                    Spacer(minLength: 0)
+                    Spacer(minLength: triggerButtonSpacing)
 
                     addStoryButton
                 }
@@ -136,6 +138,7 @@ struct DashboardView: View {
                 moodChart(height: max(300, size.height * 0.42))
 
                 commonTriggersCard(height: 330)
+                    .padding(.bottom, 12)
 
                 addStoryButton
             }
@@ -244,29 +247,37 @@ struct DashboardView: View {
                     .font(.system(.body, design: .rounded))
                     .foregroundStyle(AppColour.txtCoklat.opacity(0.75))
             } else {
-                ForEach(Array(viewModel.commonTriggers.prefix(5)), id: \.self) { trigger in
-                    Button {
-                        viewModel.selectTrigger(trigger)
-                    } label: {
-                        Text(trigger)
-                            .font(.system(.body, design: .rounded))
-                            .foregroundStyle(AppColour.txtCoklat)
-                            .lineLimit(1)
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                            .padding(.horizontal, 12)
-                            .overlay {
-                                Capsule()
-                                    .stroke(AppColour.btnKuning, lineWidth: 1.5)
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVStack(spacing: 14) {
+                        ForEach(viewModel.commonTriggers, id: \.self) { trigger in
+                            Button {
+                                viewModel.selectTrigger(trigger)
+                            } label: {
+                                Text(trigger)
+                                    .font(.system(.body, design: .rounded))
+                                    .foregroundStyle(AppColour.txtCoklat)
+                                    .lineLimit(1)
+                                    .frame(maxWidth: .infinity, minHeight: 44)
+                                    .padding(.horizontal, 12)
+                                    .overlay {
+                                        Capsule()
+                                            .stroke(AppColour.btnKuning, lineWidth: 1.5)
+                                    }
                             }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
 
-            Spacer(minLength: 0)
+            if viewModel.commonTriggers.isEmpty {
+                Spacer(minLength: 0)
+            }
         }
         .padding(34)
-        .frame(maxWidth: .infinity, minHeight: height, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(height: height, alignment: .topLeading)
         .background(AppColour.btnKuning.opacity(0.16))
         .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
     }
