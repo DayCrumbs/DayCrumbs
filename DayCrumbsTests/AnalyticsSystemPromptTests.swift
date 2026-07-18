@@ -25,6 +25,16 @@ struct AnalyticsSystemPromptTests {
         #expect(prompt.contains("without guessing"))
     }
 
+    @Test("Trigger wording preserves specific evidence for catalog matching")
+    func triggerSpecificityRules() {
+        #expect(prompt.contains("trigger-specificity rules"))
+        #expect(prompt.contains("most specific supplied circumstance"))
+        #expect(prompt.contains("noise-interrupted sleep"))
+        #expect(prompt.contains("nature or gardening"))
+        #expect(prompt.contains("keep the trigger broad and tentative"))
+        #expect(prompt.contains("curated recommendation matcher"))
+    }
+
     @Test(
         "Prompt declares every shared output field",
         arguments: [

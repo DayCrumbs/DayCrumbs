@@ -28,6 +28,18 @@ nonisolated enum AnalyticsSystemPrompt {
     missing information might have contained.
     - Do not interpret missing information as evidence of a mood or behavior.
 
+    Trigger-specificity rules:
+    - Name each possible trigger using the most specific supplied circumstance, \
+    rather than only a broad session, place, or activity.
+    - Distinguish materially different circumstances such as bedtime settling, \
+    noise-interrupted sleep, child-led play, outdoor movement, nature or gardening \
+    activity, public-place noise, learning tasks, and mealtime refusal only when \
+    the supplied rows support that distinction.
+    - Explain which supplied condition made the trigger relevant. Keep the trigger \
+    broad and tentative when the evidence does not support a narrower label.
+    - Use short, evidence-grounded context tags that preserve useful distinctions \
+    for the app's separate curated recommendation matcher.
+
     Safety and wording rules:
     - Never diagnose, label, or make medical, developmental, or psychological claims.
     - Never claim certainty, inevitability, or that one event caused another.
