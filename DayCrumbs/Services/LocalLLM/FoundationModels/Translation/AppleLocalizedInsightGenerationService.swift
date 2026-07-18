@@ -26,6 +26,7 @@ final class AppleLocalizedInsightGenerationService: AppleLocalizedInsightGenerat
     private let generationService: any AnalyticsInsightGenerating
     private let translationFlow: any AppleInsightTranslationFlow
     private let localizationService: any AppleAnalyticsInsightLocalizing
+    private let recommendationCatalog: ParentRecommendationCatalog
 
     init() {
         let translationFlow = AppleInsightTranslationFlowService()
@@ -34,17 +35,21 @@ final class AppleLocalizedInsightGenerationService: AppleLocalizedInsightGenerat
         localizationService = AppleAnalyticsInsightLocalizationService(
             translationFlow: translationFlow
         )
+        recommendationCatalog = ParentRecommendationCatalog()
     }
 
     init(
         generationService: any AnalyticsInsightGenerating,
-        translationFlow: any AppleInsightTranslationFlow
+        translationFlow: any AppleInsightTranslationFlow,
+        recommendationCatalog: ParentRecommendationCatalog =
+            ParentRecommendationCatalog()
     ) {
         self.generationService = generationService
         self.translationFlow = translationFlow
         localizationService = AppleAnalyticsInsightLocalizationService(
             translationFlow: translationFlow
         )
+        self.recommendationCatalog = recommendationCatalog
     }
 
     func generateInsight(
@@ -62,8 +67,14 @@ final class AppleLocalizedInsightGenerationService: AppleLocalizedInsightGenerat
             )
         }
 
+        let englishInsight = generationResult.englishInsight
+        let englishTriggerDetails = recommendationCatalog.triggerDetails(
+            for: englishInsight
+        )
+
         return await localizationService.localize(
-            generationResult.englishInsight,
+            englishInsight,
+            triggerDetails: englishTriggerDetails,
             to: generationResult.responseLanguage,
             using: executeBatch
         )

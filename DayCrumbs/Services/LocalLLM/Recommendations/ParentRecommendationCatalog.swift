@@ -69,7 +69,8 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
             recommendationTitle: recommendation.title,
             recommendedActivities: recommendation.recommendedActivities,
             whatMayHelp: recommendation.whatMayHelp,
-            sourceLabels: recommendation.sourceLabels
+            sourceLabels: recommendation.sourceLabels,
+            sectionLabels: .english
         )
     }
 

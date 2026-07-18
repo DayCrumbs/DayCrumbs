@@ -48,6 +48,7 @@ final class DashboardViewModel {
     @ObservationIgnored private var activeRequestID: UUID?
     @ObservationIgnored private var selectionRevision = UUID()
     @ObservationIgnored private var generationTask: Task<Void, Never>?
+    @ObservationIgnored private var publishedTriggerDetails: [TriggerDetail] = []
 
     init(
         entrySource: (any StoryEntrySource)? = nil,
@@ -178,18 +179,9 @@ final class DashboardViewModel {
     }
 
     func selectTrigger(_ triggerTitle: String) {
-        guard let insight = generatedInsight,
-              let trigger = insight.commonTriggers.first(where: {
-                  $0.title == triggerTitle
-              }) else {
-            selectedTriggerDetail = nil
-            return
+        selectedTriggerDetail = publishedTriggerDetails.first {
+            $0.title == triggerTitle
         }
-
-        selectedTriggerDetail = recommendationCatalog.triggerDetail(
-            for: trigger,
-            in: insight
-        )
     }
 
     func dismissTrigger() {
@@ -332,6 +324,11 @@ final class DashboardViewModel {
     private func publish(_ result: AppleLocalizedAnalyticsInsight) {
         generatedInsight = result.insight
         englishFallback = result.englishFallback
+        // Legacy/test generators may not provide prelocalized details. Production
+        // Apple generation always publishes translated catalog content here.
+        publishedTriggerDetails = result.triggerDetails.isEmpty
+            ? recommendationCatalog.triggerDetails(for: result.insight)
+            : result.triggerDetails
         selectedTriggerDetail = nil
         state = .loaded
     }
@@ -352,6 +349,7 @@ final class DashboardViewModel {
     private func clearPublishedInsight(keepingState: Bool = false) {
         generatedInsight = nil
         englishFallback = nil
+        publishedTriggerDetails = []
         selectedTriggerDetail = nil
         if !keepingState {
             state = .idle
