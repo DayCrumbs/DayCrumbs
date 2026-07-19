@@ -6,22 +6,62 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		F0EC338930063466008F76AE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F0FFEB772FFFA7BA00500BC0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F0FFEB7E2FFFA7BA00500BC0;
+			remoteInfo = DayCrumbs;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
-		F0FFEB7F2FFFA7BA00500BC0 /* DayCrumbs.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DayCrumbs.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F0EC338530063466008F76AE /* DayCrumbsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DayCrumbsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F0FFEB7F2FFFA7BA00500BC0 /* DayCrumbs:ChildDiary.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "DayCrumbs:ChildDiary.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		F09C228F3000F2EA006D1C04 /* Exceptions for "DayCrumbs" folder in "DayCrumbs" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Data/DummyData/Temp.swift,
 				Data/Repositories/Temp.swift,
-				Data/SwiftData/Temp.swift,
+				Features/Dashboard/ViewModels/Temp.swift,
+				Features/Dashboard/Views/Temp.swift,
+				Features/LocalModelPickers/Temp.swift,
+				Features/StorySection/ViewModels/Temp.swift,
+				Features/StorySection/Views/Temp.swift,
+				Models/Enums/Temp.swift,
+				Services/Analytics/Temp.swift,
+				Services/Audio/Temp.swift,
+				Services/LocalLLM/Catalog/Temp.swift,
+				Services/LocalLLM/Download/Temp.swift,
+				Services/LocalLLM/Parsing/Temp.swift,
+				Services/LocalLLM/Prompting/Temp.swift,
+				Services/LocalLLM/Recommendations/Temp.swift,
+				Services/LocalLLM/Runtime/Temp.swift,
+				Services/LocalLLM/Storage/Temp.swift,
+				Services/LocalLLM/Vendor/Frameworks/Temp.swift,
+				Services/LocalLLM/Vendor/Swift/Temp.swift,
+				Services/Media/Temp.swift,
+				Services/Speech/Temp.swift,
+				Services/StoryFlow/Temp.swift,
+				Shared/Components/Temp.swift,
+				Shared/Extensions/Temp.swift,
+				Shared/Theme/Temp.swift,
+				Shared/Utilities/Temp.swift,
 			);
 			target = F0FFEB7E2FFFA7BA00500BC0 /* DayCrumbs */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		F0EC338630063466008F76AE /* DayCrumbsTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = DayCrumbsTests;
+			sourceTree = "<group>";
+		};
 		F0FFEB812FFFA7BA00500BC0 /* DayCrumbs */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -33,6 +73,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		F0EC338230063466008F76AE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F0FFEB7C2FFFA7BA00500BC0 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -47,6 +94,7 @@
 			isa = PBXGroup;
 			children = (
 				F0FFEB812FFFA7BA00500BC0 /* DayCrumbs */,
+				F0EC338630063466008F76AE /* DayCrumbsTests */,
 				F0FFEB802FFFA7BA00500BC0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,7 +102,8 @@
 		F0FFEB802FFFA7BA00500BC0 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				F0FFEB7F2FFFA7BA00500BC0 /* DayCrumbs.app */,
+				F0FFEB7F2FFFA7BA00500BC0 /* DayCrumbs:ChildDiary.app */,
+				F0EC338530063466008F76AE /* DayCrumbsTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -62,6 +111,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		F0EC338430063466008F76AE /* DayCrumbsTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F0EC338B30063466008F76AE /* Build configuration list for PBXNativeTarget "DayCrumbsTests" */;
+			buildPhases = (
+				F0EC338130063466008F76AE /* Sources */,
+				F0EC338230063466008F76AE /* Frameworks */,
+				F0EC338330063466008F76AE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F0EC338A30063466008F76AE /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				F0EC338630063466008F76AE /* DayCrumbsTests */,
+			);
+			name = DayCrumbsTests;
+			packageProductDependencies = (
+			);
+			productName = DayCrumbsTests;
+			productReference = F0EC338530063466008F76AE /* DayCrumbsTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		F0FFEB7E2FFFA7BA00500BC0 /* DayCrumbs */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F0FFEB8A2FFFA7BB00500BC0 /* Build configuration list for PBXNativeTarget "DayCrumbs" */;
@@ -81,7 +153,7 @@
 			packageProductDependencies = (
 			);
 			productName = DayCrumbs;
-			productReference = F0FFEB7F2FFFA7BA00500BC0 /* DayCrumbs.app */;
+			productReference = F0FFEB7F2FFFA7BA00500BC0 /* DayCrumbs:ChildDiary.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -94,6 +166,10 @@
 				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
+					F0EC338430063466008F76AE = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = F0FFEB7E2FFFA7BA00500BC0;
+					};
 					F0FFEB7E2FFFA7BA00500BC0 = {
 						CreatedOnToolsVersion = 26.6;
 					};
@@ -114,11 +190,19 @@
 			projectRoot = "";
 			targets = (
 				F0FFEB7E2FFFA7BA00500BC0 /* DayCrumbs */,
+				F0EC338430063466008F76AE /* DayCrumbsTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		F0EC338330063466008F76AE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F0FFEB7D2FFFA7BA00500BC0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -129,6 +213,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		F0EC338130063466008F76AE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F0FFEB7B2FFFA7BA00500BC0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -138,7 +229,57 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		F0EC338A30063466008F76AE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F0FFEB7E2FFFA7BA00500BC0 /* DayCrumbs */;
+			targetProxy = F0EC338930063466008F76AE /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		F0EC338C30063466008F76AE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TLC6Y5XJMM;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ibnu.DayCrumbsTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DayCrumbs:ChildDiary.app/DayCrumbs:ChildDiary";
+			};
+			name = Debug;
+		};
+		F0EC338D30063466008F76AE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TLC6Y5XJMM;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ibnu.DayCrumbsTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DayCrumbs:ChildDiary.app/DayCrumbs:ChildDiary";
+			};
+			name = Release;
+		};
 		F0FFEB882FFFA7BB00500BC0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -265,6 +406,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LF442H2D9J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -278,7 +420,8 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ibnu.DayCrumbs;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = DayCrumbs;
+				PRODUCT_NAME = "DayCrumbs:ChildDiary";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -296,6 +439,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LF442H2D9J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -309,7 +453,8 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ibnu.DayCrumbs;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = DayCrumbs;
+				PRODUCT_NAME = "DayCrumbs:ChildDiary";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -323,6 +468,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		F0EC338B30063466008F76AE /* Build configuration list for PBXNativeTarget "DayCrumbsTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F0EC338C30063466008F76AE /* Debug */,
+				F0EC338D30063466008F76AE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		F0FFEB7A2FFFA7BA00500BC0 /* Build configuration list for PBXProject "DayCrumbs" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

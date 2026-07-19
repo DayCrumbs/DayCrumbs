@@ -1,0 +1,803 @@
+# .agents
+
+Project: DayCrumbs
+Purpose: Guide Codex / coding LLM agents to build an iOS/iPadOS app for guided storytelling analytics for first-time parents.
+
+This file is the project instruction source for coding agents. Follow it when creating, editing, reviewing, or refactoring code in this repository.
+
+## App Statement
+
+Build an iOS/iPadOS app that helps first-time parents understand their child's behavior by turning daily reflections into structured story data, dashboard analytics, and on-device generated insight.
+
+Primary user:
+
+- First-time parents with young children.
+- They need calm, practical, non-diagnostic observations.
+- They should be able to inspect story data, understand behavior patterns, and generate local on-device insight.
+
+Core assumption:
+
+- After Activity Notes are optional and are not reliably available.
+- End of Day Reflection is not optional but there is a chance it isn't given
+- Analytics must work when `AfterActivityNotes` and/or End of Day Reflection is nil, empty, or rarely provided.
+- The main analytics signal comes from structured data:
+  - child profile
+  - date
+  - session
+  - place
+  - activity
+  - mood
+  - End of day reflection
+
+## Current Domain Vocabulary
+
+Use the existing project models and enum cases as the source of truth. Do not rename them or introduce replacement vocabulary unless the user explicitly requests a domain change.
+
+- Analytics event entity: `StoryEntry`
+- Session (`Sessions`): `morning`, `afternoon`, `evening`, `night`
+- Mood (`Moods`): `angry`, `disgust`, `fear`, `happy`, `sad`, `surprise`
+- Built-in activity (`Activity.BuiltInActivity`): `play`, `sleep`, `study`, `eat`, `getReady`, `wakeUp`
+- Custom activity marker (`Activity.CustomActivity`): `customActivity`
+- Built-in place (`Place.BuiltInPlace`): `house`, `outdoor`, `school`, `publicPlace`
+- Custom place marker (`Place.CustomPlace`): `customPlace`
+- Child gender (`ChildGender`): `boy`, `girl`
+
+Prompts, dummy data, analytics grouping, tests, and UI labels must derive from or map explicitly to this vocabulary. Do not add cases such as `tired`, `excited`, `calm`, `confused`, `scared`, `breakfast`, `screenTime`, `park`, or `car` merely to satisfy an older example or guide.
+
+## Child Profile Rules
+
+DayCrumbs supports exactly one `ChildProfile`.
+
+- Do not add multiple-profile support, an active-child selector, or a profile picker.
+- If no profile exists, show the child-profile setup flow.
+- Creating a profile is allowed only when no profile exists.
+- Subsequent profile changes must update the existing profile instead of inserting another one.
+- Repositories and seeders must preserve the single-profile invariant.
+- All `DailySession` and `StoryEntry` data belongs to that one profile.
+- If persistence contains more than one profile, treat it as a data-integrity error. Do not silently select the first profile or merge children’s data.
+- Tests and dummy data must use exactly one profile.
+
+## Dashboard Data Scope
+
+The Dashboard uses exactly these time ranges:
+
+- `Day`
+- `Week`
+- `Month`
+
+Do not restore or introduce the older `All data`, `Weekly`, or `Specific date` scope contract.
+
+- These ranges are based on the current date. The production Dashboard has no date picker or user-selected anchor date.
+- `Day` selects entries from the start of today through, but not including, the start of tomorrow.
+- `Week` is a rolling 7-day range: the start of 6 calendar days before today through, but not including, the start of tomorrow.
+- `Month` is a rolling 30-day range: the start of 29 calendar days before today through, but not including, the start of tomorrow.
+- Use the user's current calendar and timezone consistently when calculating boundaries.
+- Use half-open date ranges (`start <= recordedAt < nextStart`) to avoid boundary duplication.
+- Do not use calendar-week or calendar-month boundaries; the Dashboard must not reset to a partial range every Monday or on the first day of a month.
+- Recalculate the active range when the app becomes active or the calendar day changes.
+- Moving out of the active range must never delete stored entries. The repository only filters which entries are currently shown or sent for generation.
+- A rolling range can contain fewer than 7 or 30 days when the parent has not recorded data every day. Show gaps or an incomplete-data state; never fabricate missing entries.
+- Any nonempty range is valid for analytics. For `Day`, one `StoryEntry` containing one activity in one session is sufficient to run deterministic analytics and generate an insight.
+- Do not require completion of all four sessions (`morning`, `afternoon`, `evening`, and `night`) before analysis. Four-session coverage is a logging and seed-data goal, not an analytics gate.
+- When data is sparse, describe only the supplied observation, avoid claiming a repeated pattern or trend, and clearly indicate that the insight is based on limited data.
+- Return selected `StoryEntry` values in chronological order.
+- The same selected entries must drive deterministic Dashboard analytics and LLM context generation.
+- If the selected range contains no entries, stop before prompt construction or model availability checks and expose an empty state.
+
+## Automatic Dashboard Generation Rules
+
+Dashboard insight generation is lifecycle- and range-driven. It is not started by
+a production `Generate Insight` button.
+
+- The Dashboard defaults to `Day` and automatically generates after its entries load.
+- Selecting `Week` or `Month` cancels the active request, filters that rolling range, clears stale presentation data, and automatically starts a new request.
+- Selecting the already-active range must not start another request.
+- Use a `StoryEntrySource` boundary for Dashboard input. `DummyStoryEntrySource` is the current fixture implementation and must be replaceable by a repository without changing the Dashboard UI or generation services.
+- Keep fetched entries and range selection separate from prompt construction. Range output must be chronological and may be empty.
+- Empty ranges stop before translation, model availability checks, or prompt construction.
+- Keep one cancellable generation task and verify its captured range still matches the selected range immediately before publishing results. Cancellation alone is not sufficient stale-result protection.
+- The first `Day` request starts without debounce. Rapid user-driven range changes may use a short debounce.
+- The root Dashboard lifecycle owns initial start, disappearance cancellation, app-background cancellation, and regeneration after active-range boundaries change.
+- Mount the view-bound `.translationTask` on a stable Dashboard root/host, never on a summary card, chart, trigger chip, or layout-specific subview.
+- Production manual insight actions are limited to retry after a generation error and translation-only retry for an English fallback.
+- Output-translation retry must reuse the preserved English result and must never regenerate the insight.
+- Chart data and statistical aggregation remain independent of this generation pipeline.
+
+## Dashboard Accessibility Rules
+
+Dashboard accessibility must remain part of the shared Dashboard view hierarchy so
+that compact and wide layouts expose the same VoiceOver behavior.
+
+- Keep programmatic VoiceOver focus as `@AccessibilityFocusState` UI state in
+  `DashboardView`; never move it into `DashboardViewModel`, a repository, or a
+  generation/translation service.
+- Use a typed focus destination contract for the insight, range selector, trigger
+  chips, trigger dialog title, empty state, and error state.
+- Move VoiceOver focus only for meaningful user or presentation transitions. A
+  normal SwiftUI re-render must never move focus.
+- Place accessibility semantics on shared Dashboard sections and components, not
+  only on `wideDashboard`, `compactDashboard`, or layout containers.
+- Post `AccessibilityNotification.Announcement` from the stable Dashboard root
+  only when `DashboardPresentationState` makes a meaningful transition.
+- Announce insight generation, completion, empty ranges, user-friendly failures,
+  and English fallback availability. Do not announce technical errors or a
+  cancellation caused by changing ranges.
+- Announcing a completed result must not programmatically move VoiceOver focus
+  away from the element the parent is currently exploring.
+- Treat the shared "On this day/week/month" label as a heading. Present the
+  selected range, child name, and generated summary as one complete summary
+  accessibility element.
+- Combine the progress indicator and its loading copy into one status element.
+  Keep an English fallback label and its translation retry button as separate
+  elements.
+- Give generation retry and translation-only retry distinct accessibility hints;
+  translation retry must clearly state that it reuses the existing English
+  insight instead of generating again.
+- Keep Day, Week, and Month as native buttons labeled "Day range", "Week range",
+  and "Month range". Apply `.isSelected` only to the active range and describe
+  each rolling period in its accessibility hint.
+- Make the range picker's outer layout container non-readable with
+  `.accessibilityElement(children: .contain)`. Never apply
+  `.accessibilityHidden(true)` to that parent because it also hides the range
+  buttons.
+- Never express an inactive Dashboard range with a "Not selected" accessibility
+  value. Selecting the active range must remain a no-op and must not post another
+  generation announcement.
+- Describe the shared mood chart with `accessibilityChartDescriptor`. Its title
+  must name the active Day, Week, or Month range; its x-axis must describe the
+  session/day/week categories; and its y-axis must speak canonical `Moods` labels.
+- Keep mood score values internal. VoiceOver must hear labels such as "Surprise
+  mood", never the numeric 1–6 score or an image asset filename.
+- Hide decorative mood images used as chart axis labels from VoiceOver. A mood
+  image used as standalone content must instead have a label such as "Happy mood".
+- Chart accessibility is a semantic representation of existing data only. It must
+  not change chart calculation, score mapping, or the current mood vocabulary.
+- Mark the shared "Common Triggers" title as a heading. Keep every trigger chip a
+  native button labeled "[title], common trigger" with a hint that it opens the
+  explanation, evidence, and recommended activities.
+- Store the trigger that opens detail as a view-owned VoiceOver focus-return
+  target. Selecting a trigger must only reveal its published detail and must never
+  start another generation request.
+- Expose an empty common-trigger message as one static-text element, and hide
+  decorative capsule borders from the accessibility tree.
+- Make the Common Triggers card's outer layout container non-readable with
+  `.accessibilityElement(children: .contain)`. Never hide the parent container,
+  because its heading, empty message, and trigger buttons must remain accessible.
+- Treat trigger detail as a VoiceOver modal: hide the Dashboard and decorative
+  dimming layer from the accessibility tree, apply the modal trait to a container
+  that preserves its readable children, and move focus to the trigger title.
+- Keep Evidence, Recommended Activities, What May Help, and Curated Sources as
+  separate headings in the trigger detail reading order. Do not combine the full
+  scrollable detail into one accessibility element.
+- Keep Done as the clear VoiceOver dismissal control. After dismissal, restore
+  focus to the originating trigger chip; if that trigger is no longer available,
+  restore focus to the Common Triggers heading.
+- Label the shared circular navigation control "Back" and preserve its native
+  button trait at every call site. Hide its chevron because the button supplies
+  the accessible name.
+- Label the Dashboard story action "Add story" and hide its decorative plus icon.
+  Keep loading progress combined with its status message.
+- Hide decorative backgrounds, borders, dimming layers, and section symbols from
+  the accessibility tree. Read curated source badges by their source names only.
+- Keep accessibility labels, traits, focus bindings, chart descriptors, and modal
+  behavior on shared Dashboard sections and controls. Compact and wide functions
+  may arrange or size those sections but must not define different semantics.
+- Prefer the natural accessibility order produced by shared content. Add explicit
+  sort priorities only after manual VoiceOver testing proves the natural order is
+  incorrect.
+- Verify Dashboard accessibility in both a compact iPhone layout and a wide iPad
+  layout. Runtime accessibility snapshots may confirm names, roles, reachability,
+  and range transitions, but they do not replace a VoiceOver walkthrough for
+  announcement timing, spoken chart output, modal focus, or focus restoration.
+- Keep pure accessibility policies covered by unit tests, including announcement
+  messages, stale-range publication guards, chart descriptors, active-range
+  no-ops, and translation-only retry behavior.
+- Run accessibility audits for loaded, empty, failed, and trigger-detail states
+  when an existing UI-test target supports them. If the project has no UI-test
+  target, report that coverage gap; do not edit `project.pbxproj` merely to add
+  one without the user's explicit approval.
+- Before merging Dashboard accessibility changes, run the full `DayCrumbs` scheme
+  test suite on an iOS Simulator and record any manual VoiceOver checks that still
+  require a person to confirm audio or focus behavior.
+
+The app must never diagnose the child. Insights must be phrased as observations or possibilities.
+
+Use language such as:
+
+- "This may suggest..."
+- "A possible pattern is..."
+- "You may want to observe..."
+
+Avoid language such as:
+
+- "Your child has..."
+- "Your child is always..."
+- "This means your child..."
+
+## Technical Stack
+
+Use Apple-native technology unless the task explicitly requires otherwise.
+
+Required:
+
+- Swift
+- SwiftUI
+- SwiftData
+- Swift Charts
+- Apple Foundation Models through `FoundationModels` and `SystemLanguageModel.default` when Apple Intelligence is available
+- LiteRT-LM through vendored `CLiteRTLM.xcframework`
+- Local-first data storage
+- MVVM + Services + Repository architecture
+- On-device analytics and local model inference
+- Speech framework for voice notes
+
+Do not add server/backend dependencies.
+Do not require an internet connection for existing stored dashboard analytics.
+Do not send child data to external APIs.
+Do not put analytics logic directly inside SwiftUI Views.
+Do not use Private Cloud Compute, server-backed language models, or external AI APIs for child data.
+
+## Xcode Project File Protection
+
+`DayCrumbs.xcodeproj/project.pbxproj` is user-managed configuration.
+
+- Do not edit, rewrite, normalize, regenerate, or automatically repair `project.pbxproj`.
+- A request to implement, build, test, or fix application code does not authorize changes to `project.pbxproj`.
+- A build or test failure caused by Xcode project configuration does not authorize changes to `project.pbxproj`. Report the exact problem and the suggested Xcode setting instead.
+- Before any `project.pbxproj` change, explain the exact required edit and obtain explicit user approval for that specific change in the current conversation.
+- If explicit approval is given, make only the approved minimal edit and preserve every unrelated user-managed project setting.
+- Prefer the existing file-system-synchronized groups when adding source or test files so target membership does not require a `project.pbxproj` edit.
+
+## Architecture Rule
+
+Use MVVM + Services + Repository.
+
+High-level flow:
+
+```text
+SwiftUI Views
+-> ViewModels
+-> Services / Repositories
+-> SwiftData / Apple Foundation Models or LiteRT-LM runtime
+```
+
+Responsibilities:
+
+Views:
+
+- Render UI only.
+- Hold minimal UI state.
+- Trigger ViewModel actions.
+- Do not fetch SwiftData directly except in simple preview-only code.
+- Do not calculate analytics directly.
+- Do not start model downloads or model inference directly.
+
+ViewModels:
+
+- Own screen state.
+- Call repositories to load data.
+- Call services to process data.
+- Expose UI-ready values to Views.
+- Keep async work structured and cancellable where appropriate.
+- Convert technical errors into user-friendly UI messages.
+
+Repositories:
+
+- Encapsulate SwiftData access.
+- Provide fetch, insert, update, delete methods.
+- Keep persistence details out of ViewModels.
+- Store local model metadata only, never model binary content.
+
+Services:
+
+- Contain business logic, analytics logic, downloads, parsing, and runtime orchestration.
+- Must be protocol-based when there may be multiple implementations.
+- Examples:
+  - `RuleBasedAnalyticsService`
+  - `BehaviorPatternDetector`
+  - `LocalLLMService`
+  - `LocalModelDownloadService`
+  - `LocalModelStorage`
+
+Models:
+
+- Store domain entities and enums.
+- Must not contain UI rendering logic.
+- SwiftData models should remain simple and persistence-safe.
+
+## Required Feature Tabs
+
+Build exactly three main tabs:
+
+1. Story
+   - Purpose: Guide the parent through daily storytelling and structured activity logging.
+   - If no child profile exists, the first step must be creating a child profile with name, age, and gender.
+   - After profile setup, the parent chooses session, place, activity, mood, and optional after-activity notes.
+   - The parent can add another activity in the same session or move to another session.
+   - When moving on from the night session, end-of-day reflection is required.
+   - This tab can also include a data explorer/history view, but guided storytelling is the primary flow.
+
+2. Dashboard
+   - Purpose: Show analytics cards, charts, pattern summaries, and generated insight.
+
+3. Models
+   - Purpose: Show Apple Intelligence readiness and let the user download the single app-managed fallback model, `Gemma-4-E2B-it`.
+   - This is not a model picker.
+   - Apple Foundation Models is status-only and is chosen automatically when available; it cannot be downloaded or selected by the user.
+   - The only user-facing action here is downloading Gemma. Insight generation happens from Dashboard.
+   - Loading, offloading, repair, deletion, diagnostics, and prompt/configuration are internal or development-only behaviors, not production user controls.
+
+
+## On-Device Intelligence Rules
+
+This is the most important implementation area.
+
+The production app supports two on-device analytics engines, but only one app-managed downloadable model:
+
+```text
+Apple Foundation Models
+Runtime: FoundationModels / SystemLanguageModel.default
+Download: managed by iOS/iPadOS, not by this app
+Use: preferred automatically when Apple Intelligence is available
+```
+
+```text
+Gemma fallback
+
+Name: Gemma-4-E2B-it
+Runtime: LiteRT-LM
+Format: .litertlm
+Hugging Face repo: litert-community/gemma-4-E2B-it-litert-lm
+File: gemma-4-E2B-it.litertlm
+Approx size: 2.58 GB
+Approx peak memory: 8.59 GB
+```
+
+Rules:
+
+- Do not add a model picker in production.
+- Do not expose E4B, Gemma-3, Qwen, MLC, Core ML model choices, or server model choices.
+- The Models tab shows Apple Intelligence readiness as a status and provides Gemma-4-E2B-it download as the only action.
+- Apple Foundation Models is not a model download and is not user-selectable. It is selected automatically only when `SystemLanguageModel.default.availability` is `.available`.
+- The only production user-facing on-device intelligence actions are:
+  - view Apple Intelligence readiness
+  - download Gemma-4-E2B-it
+  - view automatically generated Dashboard insight
+  - retry after generation error or retry output translation
+- The Dashboard must show a download-required alert only when Apple Foundation Models is unavailable and Gemma-4-E2B-it is not installed.
+- If Apple Foundation Models is available, automatic Dashboard generation must work without requiring Gemma download.
+- Do not auto-download the model without explicit user confirmation.
+- Do not bundle the 2.58 GB `.litertlm` file in the app binary.
+- `Resources/LocalModels/` may contain manifest/license files only.
+- Store downloaded model files in Application Support or Documents.
+- Store only metadata/path/checksum/status in SwiftData.
+- Never store large binary model content in SwiftData.
+- Do not send child data to external APIs.
+- Do not use Private Cloud Compute or any server-backed Foundation Models configuration.
+
+Download-required alert copy:
+
+```text
+Title:
+Set Up On-Device Insights
+
+Message:
+Apple Intelligence is not ready on this device. Download Gemma-4-E2B-it to generate private, on-device insights. The download is about 2.58 GB and stays on this iPhone or iPad.
+
+Primary button:
+Download Model
+
+Secondary button:
+Cancel
+```
+
+Generate flow:
+
+```text
+Dashboard starts or selected range changes
+-> Cancel the prior range request when applicable
+-> Select Dashboard time range: Day, Week, or Month
+-> Stop with an empty state when the selected range has no entries
+-> Check Apple Foundation Models availability
+-> If available, select Apple Foundation Models internally
+-> Otherwise check validated Gemma-4-E2B-it installation
+-> If Gemma is missing, show DownloadModelRequiredAlert and stop
+-> If Gemma is installed, select LiteRT-LM internally
+-> Build analytics prompt
+-> Generate a typed Apple insight or LiteRT compact JSON insight
+-> Normalize output to AnalyticsInsight; parse/repair is LiteRT-only
+-> Match parent recommendations from curated catalog
+-> Save insight
+-> Release Apple session or internally offload LiteRT model from memory
+-> Publish only if the generated range is still selected
+```
+
+## LiteRT-LM Dependency Rules
+
+Do not attach SwiftPM product `LiteRTLM` directly to the app target.
+
+Even if the dependency URL is official, Xcode can reject the SwiftPM product because it uses unsafe linker/build flags.
+
+Known error:
+
+```text
+The package product 'LiteRTLM' cannot be used as a dependency of this target because it uses unsafe build flags.
+```
+
+Required fix:
+
+- Vendor official LiteRT-LM runtime pieces locally.
+- Link and embed `CLiteRTLM.xcframework`.
+- Copy Google's Swift wrapper sources into `Services/LocalLLM/Vendor/Swift`.
+- Runtime code must import `CLiteRTLM`, not `LiteRTLM`.
+- Remove stale `Package.resolved` after removing the Swift Package dependency.
+- Run a clean Xcode build after vendoring the framework.
+
+Xcode target requirements:
+
+- `CLiteRTLM.xcframework` is in Link Binary With Libraries.
+- `CLiteRTLM.xcframework` is in Embed Frameworks.
+- Embed setting is `Embed & Sign`.
+- Vendored Swift wrapper files are included in the app target.
+- Simulator and device slices exist:
+  - `ios-arm64`
+  - `ios-arm64-simulator`
+
+## Apple Foundation Models Rules
+
+Apple Foundation Models is an on-device analytics engine. It is not a downloadable model card, a chat feature, or a fallback to a server.
+
+Required implementation:
+
+- Isolate Foundation Models code in `Services/LocalLLM/FoundationModels/`.
+- Import with `#if canImport(FoundationModels)`.
+- Use `SystemLanguageModel.default` only.
+- Check `SystemLanguageModel.default.availability` immediately before generation. Never infer availability from the OS version or device name.
+- Map `.available`, `.appleIntelligenceNotEnabled`, `.modelNotReady`, `.deviceNotEligible`, and unknown unavailable states to the app's `AppleFoundationModelAvailability` domain type.
+- Create one fresh `LanguageModelSession` per Dashboard insight request; do not retain a chat transcript between requests.
+- Use `@Generable` and `@Guide` to create a typed Apple transport schema. Map it into the shared `AnalyticsInsight` domain model.
+- Use the same `AnalyticsSystemPrompt`, `AnalyticsContextBuilder`, data-scope rules, privacy constraints, and non-diagnostic wording as LiteRT-LM.
+- Validate and normalize every typed Apple field before publishing it as `AnalyticsInsight`; incomplete required fields are generation failures.
+- A primary typed Apple request uses at most 24 selected events. Retry at most once with a newly built and retranslated context of at most 10 events, and only for context-window or typed-decoding failures.
+- Refusal, guardrail, availability, unsupported-guide, unsupported-language, rate-limit, concurrent-request, and cancellation failures must not trigger the smaller-context retry.
+- Do not call `respond` while a session is already responding.
+- On completion, cancellation, background, or memory warning, release the app's session, prompt, response, transcript, and task references.
+- Do not claim to manually load or offload Apple's system model. The app only releases its own session; iOS/iPadOS manages the system model memory.
+- Do not use Private Cloud Compute, external tools, or network-backed models for analytics.
+- Treat model updates in iOS/iPadOS as a compatibility event: regression-test prompt behavior on each supported OS model version.
+
+Engine selection:
+
+```text
+SystemLanguageModel.default.availability == .available
+-> Apple Foundation Models runtime
+
+otherwise, validated Gemma-4-E2B-it installation exists
+-> LiteRT-LM runtime
+
+otherwise
+-> show Set Up On-Device Insights alert
+```
+
+`AnalysisEngine` must represent `.appleFoundationModels` and `.gemma4E2B`. It is an internal resolved state, not a user preference persisted as a model picker.
+
+Do not automatically switch from a started Apple request to Gemma after a refusal or session/generation error. Discard the failed Apple session, retry once with smaller context only when appropriate, then show a user-friendly error. Use Gemma fallback only when Apple Foundation Models is unavailable before generation.
+
+## Apple Insight Language Detection Rules
+
+The native translation layer is Apple-only preprocessing for future Foundation Models generation. Gemma continues to receive the original `AnalyticsContext`.
+
+- Use a protocol-backed `LanguageDetectionService` implemented with `NLLanguageRecognizer`.
+- Detect every nonempty after-activity note and end-of-day reflection; do not inspect structured enum values, child names, or custom activity/place labels.
+- Determine the response language from all selected parent-authored text combined.
+- Short or individually undetermined segments inherit the combined response language.
+- If parent text exists but the combined language cannot be determined, stop with a typed detection error before generation.
+- If no parent notes or reflections exist, skip translation and use English output.
+- Use stable request identifiers and preserve input ordering so later translation stages can reconstruct fields safely.
+- Keep detected languages and translated text in memory only. Never write them back to SwiftData.
+
+## Apple Insight Native Translation Rules
+
+Native translation is an Apple-only preprocessing and postprocessing layer. It must not change the Gemma flow.
+
+- Use a protocol-backed `NativeTranslationService` implemented with Apple's `Translation` framework.
+- Check every required source-target pair with `LanguageAvailability(preferredStrategy: .lowLatency)` immediately before translation.
+- Map `.installed` to ready, `.supported` to download-required, and `.unsupported` to a blocking unsupported state.
+- Use `TranslationSession.Configuration` with `.lowLatency` for the SwiftUI `.translationTask` host.
+- Group requests by detected source language. A translation batch must never contain more than one source language.
+- Set a stable `clientIdentifier` on every `TranslationSession.Request`, validate every response identifier, and restore results to original request order.
+- Call `prepareTranslation()` only after the parent starts Generate and a supported pair requires system-managed language assets.
+- Treat download denial, cancellation, and preparation failure as blocking input-translation failures; do not continue to Foundation Models.
+- Create the `TranslationSession` adapter inside the view-bound `.translationTask` operation and discard it when that operation ends. Services must never retain a `TranslationSession`.
+- Translation models are system-managed. Do not bundle, persist, or claim to manage their binary assets.
+
+## Apple Insight Translation Coordinator Rules
+
+The translation coordinator prepares an in-memory context only for Apple Foundation Models. It must not alter the Gemma path.
+
+- Accept the existing `AnalyticsContext`; do not fetch SwiftData or rebuild Dashboard scope inside the coordinator.
+- Detect and translate only `Event.afterActivityNote` and `Reflection.content`.
+- Preserve child profile values, dates, sessions, moods, activities, places, custom labels, and array ordering exactly.
+- Return the translated English context together with the dominant parent response language.
+- Keep the original `AnalyticsContext` unchanged and never persist detected languages or translated text.
+- Bypass native translation for English segments and when no parent-authored text exists.
+- Accept view-bound batch work as an operation supplied by the `.translationTask` host; do not retain sessions in the coordinator.
+- Expose identified-text translation for reverse translation of shared `AnalyticsInsight` fields without coupling this layer to that model.
+- Gemma must receive the original context and must never call the Apple translation coordinator.
+
+## Apple Insight Translation Flow Rules
+
+The translation flow is a contract around future Apple generation. It does not generate insight itself and must not be used by Gemma.
+
+- Input preparation must return either a ready English `AnalyticsContext` or a blocking typed failure. Only the ready result permits Apple generation.
+- Check each batch's runtime availability immediately before executing it.
+- For an installed pair, translate immediately. For a supported pair, tell the view-bound host to request approval, call `prepareTranslation()`, and then resume the same pending batch.
+- Normalize download denial, cancellation, preparation failure, translation failure, unsupported pairs, and unsafe response reconstruction into user-friendly domain failures.
+- Any input-stage failure stops before Foundation Models receives the context.
+- Output translation failure must preserve all generated English fields in memory, label them as an English fallback, and allow translation-only retry.
+- Convert every generated `AnalyticsInsight` text field to a stable identified request and reconstruct the exact same trigger, pattern, optional-link, and context-tag shape after translation.
+- Retrying output translation must reuse the preserved English fields and must never regenerate the insight.
+- Do not persist flow state, detected languages, translated input, or English fallback data as part of this translation layer.
+- Dashboard generation orchestration, insight persistence, and physical-device Translation verification remain separate implementation work.
+
+## LiteRT-LM Runtime Rules
+
+The local LLM runtime is not a chatbot. It is an analytics engine for dashboard insight.
+
+The runtime must:
+
+- Load Gemma-4-E2B-it only when needed.
+- Generate insight from structured story rows.
+- Return compact JSON only.
+- Release model references after generation.
+- Offload on app background.
+- Offload on memory warning.
+- Cancel generation safely if needed.
+- Avoid keeping raw LLM output in memory longer than necessary.
+
+Memory lifecycle:
+
+```text
+load
+-> generate
+-> parse compact insight
+-> save compact insight
+-> cancel conversation if needed
+-> nil conversation
+-> nil engine
+-> offloaded state
+```
+
+Do not keep the model loaded indefinitely in production. Do not expose manual load/offload controls to production users. The normal app flow should load just-in-time and offload after generation.
+
+## Prompting Rules
+
+System prompt must instruct the model to:
+
+- Act as an on-device storytelling analytics engine.
+- Analyze parent-logged child story events.
+- Produce dashboard-ready insight only.
+- Not chat with the parent.
+- Not diagnose, label, or make medical claims.
+- Prefer concrete patterns from supplied rows.
+- Not invent research claims.
+- Not generate free-form parenting science claims.
+- Produce only the shared analytics fields and no chat response.
+
+Required output schema:
+
+```json
+{
+  "summary": "One concise paragraph with the overall insight. Do not repeat every pattern here.",
+  "commonTriggers": [
+    {
+      "title": "One short trigger label.",
+      "explanation": "Grounded explanation using only supplied rows."
+    }
+  ],
+  "observedPatterns": [
+    {
+      "title": "Short evidence label, not a recommendation.",
+      "evidence": "Concrete observation tied to count, session, place, mood, time, activity, reason, or note.",
+      "linkedTrigger": "Optional title from commonTriggers.",
+      "contextTags": ["Optional short tags from rows"]
+    }
+  ],
+  "parentReflectionPrompt": "One gentle non-diagnostic question for the parent.",
+  "ethicalNote": "A short privacy and non-diagnosis reminder."
+}
+```
+
+Prompt budget:
+
+- Limit events per generation.
+- Prefer up to 24 events for primary prompt.
+- Retry with smaller prompt, around 10 events, if generation fails.
+- Keep output token budget modest.
+- Do not request long prose from the model.
+- LiteRT-LM must return compact JSON and use `AnalyticsInsightParser`.
+- Apple Foundation Models must use `@Generable` typed output and must not be routed through the LiteRT JSON parser.
+
+## Parent Recommendation Rules
+
+The model must not freely invent science-based parenting recommendations.
+
+Correct design:
+
+- LLM identifies:
+  - `summary`
+  - `commonTriggers`
+  - `observedPatterns`
+  - `parentReflectionPrompt`
+  - `ethicalNote`
+- App selects `ParentRecommendation` from a curated in-app catalog.
+- Recommendation matching is based primarily on common triggers, then observed patterns, then summary.
+- `ParentRecommendationCatalog` must match deterministically in this order: trigger title, trigger explanation, linked pattern context tags, linked pattern text, then summary.
+- `TriggerDetail` keeps its title, explanation, and evidence from the published `AnalyticsInsight`; recommended activities, what may help, and source labels come only from the catalog.
+- Opening an existing trigger detail must reuse the published insight and must never start another generation request.
+- If no catalog keyword matches, use a general curated fallback instead of model-authored advice.
+
+Allowed source labels:
+
+- CDC
+- AAP
+- Harvard
+
+Recommendation cards should show:
+
+- title
+- action
+- source labels
+- based-on trigger/evidence
+- tap or long-press explanation popup
+
+Recommendations are not diagnosis, therapy, or medical advice.
+
+## SwiftData Rules
+
+Use SwiftData for:
+
+- ChildProfile
+- StoryEntry
+- AnalyticsInsight if persisted
+- LocalModelInstallation metadata
+
+Do not store large model binaries inside SwiftData.
+
+Rules:
+
+- Define persistent entities with `@Model`.
+- Keep model relationships simple.
+- Use repositories to isolate `ModelContext`.
+- Seed dummy data only once unless user explicitly resets data.
+- Provide reset seed action for development/debugging.
+
+Minimum dummy data (if needed):
+
+- At least 7 days.
+- Build seed timestamps relative to an injected reference date, with the newest seeded day equal to that reference day. Development may pass the current day; tests must pass a fixed date.
+- Do not hard-code the seed to a named Monday-through-Sunday week because it will fall out of the rolling Dashboard ranges as time advances.
+- Seed only once. Do not silently move or recreate stored seed entries on every launch; use the explicit development reset/reseed action when fresh relative dates are needed.
+- Each day should include 5-10 events.
+- Each day should include `morning`, `afternoon`, `evening`, and `night` sessions.
+- Include built-in places: `house`, `outdoor`, `school`, and `publicPlace`.
+- Include built-in activities: `play`, `sleep`, `study`, `eat`, `getReady`, and `wakeUp`.
+- Include moods: `angry`, `disgust`, `fear`, `happy`, `sad`, and `surprise`.
+- Custom activity and place examples may be included through the existing `CustomActivity` and `CustomPlace` models.
+- Parent notes should mostly be nil or empty.
+
+## Analytics Rules
+
+Dashboard must work from structured data only.
+
+Parent note can improve insight if available, but must not be required.
+
+Rule-based analytics must remain available as a deterministic fallback for charts and baseline summaries. Local LLM enhances generated insight, but base dashboard analytics should still render without downloading the model.
+
+Analytics to implement (not concrete can and will be changed):
+
+- Mood distribution.
+- Mood by session.
+- Mood by place.
+- Mood by activity.
+- Weekly mood trend.
+- Repeated negative mood moments.
+- Common trigger candidates based on repeated session/place/activity + mood patterns.
+- Observed patterns with concrete evidence.
+- Parent recommendations selected from curated catalog.
+
+Mood scoring is not final. If implemented, it must cover only the current `Moods` cases (`angry`, `disgust`, `fear`, `happy`, `sad`, and `surprise`) unless the user explicitly approves a domain vocabulary change. Define and test the score mapping as a separate analytics policy rather than adding enum cases to fit a previous scoring example.
+
+Do not present mood score as a clinical metric. Use it only internally for trend charts.
+
+Good insight wording:
+
+```text
+Leo was often angry during the evening session when the activity was play and the place was outdoor. This may suggest that late-day transitions are worth observing more closely.
+```
+
+Bad insight wording:
+
+```text
+Leo has behavior problems in the evening.
+```
+
+#
+
+## Output Style for Coding Agents
+
+These rules apply to Codex and any other coding LLM agent working on this project.
+
+When generating or editing code:
+
+- Include complete files, not fragments, unless asked.
+- Mention where each file should be placed.
+- Keep names consistent with this `.agents` file.
+- Prefer compiling code over theoretical code.
+- When uncertain about a framework API, isolate it behind a service and mark the uncertain part clearly as TODO.
+- Do not invent third-party APIs.
+- Do not add package dependencies unless explicitly requested.
+- For LiteRT-LM, use vendored `CLiteRTLM.xcframework` and local Swift wrapper sources.
+- For Apple Foundation Models, use `FoundationModels`, `SystemLanguageModel.default.availability`, and `@Generable` typed output; do not invent its APIs or use a JSON-only path.
+- Preserve privacy and non-diagnostic wording.
+
+## Clean Code Rules
+
+Code should be understandable, maintainable, and split by responsibility.
+
+File structure and separation:
+
+- Do not put many unrelated features into one large file.
+- Split code by feature and responsibility: Views, ViewModels, Services, Repositories, Models, and Utilities.
+- Keep SwiftUI Views focused on rendering and user interaction.
+- Keep business logic in Services.
+- Keep persistence logic in Repositories.
+- Keep reusable UI in Shared Components.
+- Extract subviews when a View becomes hard to scan.
+- Extract service methods when a function is doing more than one job.
+
+Naming:
+
+- Use clear, descriptive names for types, functions, variables, and parameters.
+- Prefer names that explain intent, not implementation detail.
+- Avoid vague names such as `data`, `item`, `thing`, `manager`, `helper`, or `temp` unless the scope is truly generic and obvious.
+- Boolean names should read naturally, such as `isGenerating`, `hasInstalledModel`, or `shouldShowDownloadAlert`.
+- Function names should describe the action and result, such as `fetchEvents(for:)`, `buildAnalyticsPrompt(from:)`, or `saveCustomLocationImage(_:)`.
+
+Comments:
+
+- Add comments only where they clarify intent, constraints, or non-obvious behavior.
+- Keep comments short and plain.
+- Do not write comments that repeat the code line by line.
+- Use comments to explain why something exists, not what every simple statement does.
+- Mark temporary uncertainty with a specific TODO that names the missing decision or API.
+
+Constants and magic values:
+
+- Do not scatter magic numbers or hardcoded strings through implementation code.
+- Put repeated numeric values, limits, filenames, UserDefaults keys, and storage paths in named constants.
+- Give constants meaningful names, such as `maximumPrimaryPromptEvents`, `gemma4E2BFileName`, or `downloadProgressUpdateInterval`.
+- Keep user-facing copy in a consistent location when it is reused.
+
+Reuse and abstraction:
+
+- Avoid single-use abstractions that make code harder to read.
+- Avoid copy-pasting repeated logic.
+- Extract helpers when the same logic is used more than once or when extraction makes a complex flow easier to understand.
+- Prefer small, concrete services over large generic managers.
+- Do not over-engineer protocols for code that has only one simple implementation unless tests or future swapping genuinely need it.
+
+State and errors:
+
+- Keep UI state in ViewModels, not deep inside Views.
+- Keep async tasks cancellable where the user can navigate away or retry.
+- Use typed errors for important domain failures.
+- Convert technical errors into user-friendly messages at the ViewModel/UI boundary.
+- Never hide errors silently unless there is a deliberate fallback.
+
+Testing and verification:
+
+- Add focused tests for parsing, matching, persistence, download state, and analytics logic.
+- Prefer deterministic fixtures over random test data.
+- Test edge cases: empty events, missing child profile, missing model, partial model download, malformed LLM JSON, and missing after-activity notes.
+- Run the smallest useful test/build command after meaningful implementation changes when feasible.
