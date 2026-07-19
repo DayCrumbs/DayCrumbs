@@ -155,6 +155,7 @@ struct DashboardView: View {
             Text("On this \(viewModel.selectedTimeRange.rawValue.lowercased()),")
                 .font(.system(.largeTitle, design: .rounded).weight(.bold))
                 .foregroundStyle(AppColour.txtCoklat)
+                .accessibilityAddTraits(.isHeader)
 
             insightContent
                 .font(.system(.title2, design: .rounded))
@@ -314,10 +315,13 @@ struct DashboardView: View {
                 ProgressView()
                 Text(phase.message)
             }
+            .accessibilityElement(children: .combine)
 
         case .loaded:
             VStack(alignment: .leading, spacing: 8) {
                 Text(viewModel.summaryText)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(insightAccessibilityLabel)
 
                 if let fallbackLabel = viewModel.englishFallbackLabel {
                     HStack(spacing: 10) {
@@ -330,6 +334,9 @@ struct DashboardView: View {
                             }
                         }
                         .buttonStyle(.bordered)
+                        .accessibilityHint(
+                            "Translates the existing English insight without generating a new insight."
+                        )
                     }
                 }
             }
@@ -348,8 +355,20 @@ struct DashboardView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(AppColour.btnKuning)
+                .accessibilityHint(
+                    "Generates a new insight for the selected range."
+                )
             }
         }
+    }
+
+    /// Adds the child and selected range without duplicating them visually.
+    private var insightAccessibilityLabel: String {
+        let childName = viewModel.childName.isEmpty
+            ? "Your child"
+            : viewModel.childName
+
+        return "\(viewModel.selectedTimeRange.rawValue) insight for \(childName). \(viewModel.summaryText)"
     }
 
     private func postAccessibilityAnnouncement(

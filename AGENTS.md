@@ -124,6 +124,15 @@ that compact and wide layouts expose the same VoiceOver behavior.
   cancellation caused by changing ranges.
 - Announcing a completed result must not programmatically move VoiceOver focus
   away from the element the parent is currently exploring.
+- Treat the shared "On this day/week/month" label as a heading. Present the
+  selected range, child name, and generated summary as one complete summary
+  accessibility element.
+- Combine the progress indicator and its loading copy into one status element.
+  Keep an English fallback label and its translation retry button as separate
+  elements.
+- Give generation retry and translation-only retry distinct accessibility hints;
+  translation retry must clearly state that it reuses the existing English
+  insight instead of generating again.
 
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 
