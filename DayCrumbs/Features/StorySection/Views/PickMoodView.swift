@@ -3,6 +3,7 @@ import SwiftUI
 struct PickMoodView: View {
     @Environment(\.dismiss) private var dismiss
 
+    let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
     let selectedActivity: Activity.BuiltInActivity
     @State private var selectedMood: Moods?
@@ -24,7 +25,7 @@ struct PickMoodView: View {
                 BlurredStorySelectionBackground(
                     imageNames: [
                         StorySelectionAsset.imageName(for: selectedPlace),
-                        StorySelectionAsset.imageName(for: selectedActivity)
+                        StorySelectionAsset.backgroundImageName(for: selectedActivity)
                     ]
                 )
                     .ignoresSafeArea()
@@ -84,6 +85,7 @@ struct PickMoodView: View {
         .navigationDestination(isPresented: $navigateToReason) {
             if let selectedMood {
                 ReasonView(
+                    selectedSession: selectedSession,
                     selectedPlace: selectedPlace,
                     selectedActivity: selectedActivity,
                     selectedMood: selectedMood
@@ -168,5 +170,9 @@ private struct MoodExpressionButton: View {
 }
 
 #Preview {
-    PickMoodView(selectedPlace: .house, selectedActivity: .study)
+    PickMoodView(
+        selectedSession: .morning,
+        selectedPlace: .house,
+        selectedActivity: .study
+    )
 }
