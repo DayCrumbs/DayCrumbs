@@ -9,6 +9,9 @@ struct IllustratedView: View {
     let selectedMood: Moods
 
     @State private var isShowingContinuationCard = false
+    @State private var navigateToAnotherActivity = false
+    @State private var navigateToAnotherSession = false
+    @State private var navigateToReflection = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -53,6 +56,15 @@ struct IllustratedView: View {
             .animation(.easeInOut(duration: 0.22), value: isShowingContinuationCard)
         }
         .navigationBarBackButtonHidden(true)
+        .navigationDestination(isPresented: $navigateToAnotherActivity) {
+            PickPlaceView(selectedSession: selectedSession)
+        }
+        .navigationDestination(isPresented: $navigateToAnotherSession) {
+            SessionOptionView()
+        }
+        .navigationDestination(isPresented: $navigateToReflection) {
+            ReflectionView()
+        }
     }
 
     private var illustratedBackgroundImageNames: [String] {
@@ -93,13 +105,17 @@ struct IllustratedView: View {
                 .multilineTextAlignment(.center)
 
             VStack(spacing: 14) {
-                continuationActionButton(title: "Add Another Activity")
-
-                if let nextSession {
-                    continuationActionButton(title: "Continue to \(nextSession.title)")
+                continuationActionButton(title: "Add Another Activity") {
+                    navigateToAnotherActivity = true
                 }
 
-                continuationActionButton(title: "Finish Session")
+                continuationActionButton(title: "Continue to Another Session") {
+                    navigateToAnotherSession = true
+                }
+
+                continuationActionButton(title: "Finish Session") {
+                    navigateToReflection = true
+                }
             }
         }
         .padding(48)
@@ -107,19 +123,11 @@ struct IllustratedView: View {
         .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
     }
 
-    private var nextSession: Sessions? {
-        switch selectedSession {
-        case .morning: return .afternoon
-        case .afternoon: return .evening
-        case .evening: return .night
-        case .night: return nil
-        }
-    }
-
-    private func continuationActionButton(title: String) -> some View {
-        Button {
-            // The next story-session actions will be connected in the Story flow work.
-        } label: {
+    private func continuationActionButton(
+        title: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
             Text(title)
                 .font(.system(.headline, design: .rounded).weight(.semibold))
                 .foregroundStyle(AppColour.txtCoklat)
