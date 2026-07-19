@@ -5,6 +5,7 @@ struct QuestionCharacterBubble: View {
     let characterHeightRatio: CGFloat
     let title: Text
     let subtitle: String
+    let accessibilityLabel: String
 
     var body: some View {
         GeometryReader { proxy in
@@ -51,6 +52,8 @@ struct QuestionCharacterBubble: View {
             .padding(.horizontal, horizontalPadding)
             .padding(.top, max(34, proxy.size.height * 0.10))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityLabel)
         }
     }
 }

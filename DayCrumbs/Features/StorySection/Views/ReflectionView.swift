@@ -3,20 +3,40 @@ import SwiftUI
 struct ReflectionView: View {
     @Environment(\.dismiss) private var dismiss
     
+    let selectedSession: Sessions
+    let selectedPlace: Place.BuiltInPlace
+    let selectedActivity: Activity.BuiltInActivity
+    let selectedMood: Moods
     let onSaveEndOfDayReflection: (String) -> Void
     
     @State private var reflectionText = ""
-    @State private var navigateToOnboarding = false
+    @State private var navigationRoute: StoryFlowRoute?
     
-    init(onSaveEndOfDayReflection: @escaping (String) -> Void = { _ in }) {
+    init(
+        selectedSession: Sessions,
+        selectedPlace: Place.BuiltInPlace,
+        selectedActivity: Activity.BuiltInActivity,
+        selectedMood: Moods,
+        onSaveEndOfDayReflection: @escaping (String) -> Void = { _ in }
+    ) {
+        self.selectedSession = selectedSession
+        self.selectedPlace = selectedPlace
+        self.selectedActivity = selectedActivity
+        self.selectedMood = selectedMood
         self.onSaveEndOfDayReflection = onSaveEndOfDayReflection
     }
     
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                AppColour.bgPutih
+                BlurredStorySelectionBackground(
+                    imageNames: [
+                        StorySelectionAsset.imageName(for: selectedPlace),
+                        StorySelectionAsset.backgroundImageName(for: selectedActivity)
+                    ]
+                )
                     .ignoresSafeArea()
+                    .accessibilityHidden(true)
                 
                 if proxy.size.width >= 760 {
                     wideContent(in: proxy.size)
@@ -26,17 +46,14 @@ struct ReflectionView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .navigationDestination(isPresented: $navigateToOnboarding) {
-            OnboardingView()
-        }
+        .storyFlowNavigationDestination(route: $navigationRoute)
     }
     
     private func wideContent(in size: CGSize) -> some View {
         VStack(spacing: -84) {
-            Image("ParentsReflection_Girl")
-                .resizable()
-                .scaledToFit()
+            OutlinedParentReflectionIllustration()
                 .frame(width: min(286, size.width * 0.34))
+                .offset(y: -24)
                 .zIndex(1)
             
             reflectionCard
@@ -49,10 +66,9 @@ struct ReflectionView: View {
     private func compactContent(in size: CGSize) -> some View {
         ScrollView {
             VStack(spacing: -54) {
-                Image("ParentsReflection_Girl")
-                    .resizable()
-                    .scaledToFit()
+                OutlinedParentReflectionIllustration()
                     .frame(width: min(250, size.width * 0.64))
+                    .offset(y: -20)
                     .zIndex(1)
                 
                 reflectionCard
@@ -70,6 +86,7 @@ struct ReflectionView: View {
                 Text("Write Discussion")
                     .font(.system(.title3, design: .rounded).weight(.bold))
                     .foregroundStyle(AppColour.txtCoklat)
+                    .accessibilityAddTraits(.isHeader)
                 
                 Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
                     .font(.system(.body, design: .rounded))
@@ -122,6 +139,8 @@ struct ReflectionView: View {
                 .padding(.horizontal, 8)
                 .padding(.top, 6)
                 .padding(.bottom, 32)
+                .accessibilityLabel("End-of-day reflection")
+                .accessibilityHint("Required. Describe the day before finishing the session.")
             
             Button {
                 // Voice-to-text will be added after the MVP.
@@ -157,6 +176,11 @@ struct ReflectionView: View {
         .buttonStyle(.plain)
         .disabled(!isReflectionReady)
         .accessibilityLabel("Finish reflection")
+        .accessibilityValue(
+            isReflectionReady
+                ? "Ready to finish"
+                : "Disabled until an end-of-day reflection is entered"
+        )
         .accessibilityHint(
             isReflectionReady
             ? "Saves the reflection and returns to onboarding."
@@ -170,12 +194,51 @@ struct ReflectionView: View {
     
     private func saveReflectionAndFinish() {
         onSaveEndOfDayReflection(reflectionText)
-        navigateToOnboarding = true
+        navigationRoute = .onboarding
+    }
+}
+
+private struct OutlinedParentReflectionIllustration: View {
+    private let outlineOffsets: [CGSize] = [
+        CGSize(width: -5, height: -5),
+        CGSize(width: 0, height: -7),
+        CGSize(width: 5, height: -5),
+        CGSize(width: -7, height: 0),
+        CGSize(width: 7, height: 0),
+        CGSize(width: -5, height: 5),
+        CGSize(width: 0, height: 7),
+        CGSize(width: 5, height: 5)
+    ]
+
+    var body: some View {
+        ZStack {
+            ForEach(outlineOffsets.indices, id: \.self) { index in
+                Image("ParentsReflection_Girl")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(AppColour.btnKuning)
+                    .offset(
+                        x: outlineOffsets[index].width,
+                        y: outlineOffsets[index].height
+                    )
+            }
+
+            Image("ParentsReflection_Girl")
+                .resizable()
+                .scaledToFit()
+        }
+        .accessibilityHidden(true)
     }
 }
 
 #Preview {
     NavigationStack {
-        ReflectionView()
+        ReflectionView(
+            selectedSession: .night,
+            selectedPlace: .house,
+            selectedActivity: .sleep,
+            selectedMood: .happy
+        )
     }
 }

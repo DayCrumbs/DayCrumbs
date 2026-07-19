@@ -6,9 +6,8 @@ struct PickMoodView: View {
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
     let selectedActivity: Activity.BuiltInActivity
-    @State private var selectedMood: Moods?
     @State private var moodAlert: Moods?
-    @State private var navigateToReason = false
+    @State private var navigationRoute: StoryFlowRoute?
 
     private let moodOptions: [Moods] = [
         .disgust,
@@ -29,13 +28,15 @@ struct PickMoodView: View {
                     ]
                 )
                     .ignoresSafeArea()
+                    .accessibilityHidden(true)
 
                 VStack(spacing: 0) {
                     QuestionCharacterBubble(
                         characterImageName: "PickMood_Girl",
                         characterHeightRatio: 1084.0 / 655.0,
                         title: moodQuestionTitle,
-                        subtitle: "Pick a face that looks like how you felt."
+                        subtitle: "Pick a face that looks like how you felt.",
+                        accessibilityLabel: "How did you feel when you \(activityPastTense(selectedActivity))? Pick a face that looks like how you felt."
                     )
                     .frame(height: proxy.size.height * 0.60)
 
@@ -66,8 +67,14 @@ struct PickMoodView: View {
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
+                .accessibilityHidden(moodAlert != nil)
 
                 if let moodAlert {
+                    Color.black.opacity(0.18)
+                        .ignoresSafeArea()
+                        .accessibilityHidden(true)
+                        .transition(.opacity)
+
                     MoodAlertView(mood: moodAlert) {
                         self.moodAlert = nil
                     }
@@ -82,16 +89,7 @@ struct PickMoodView: View {
             .animation(.easeInOut(duration: 0.2), value: moodAlert)
         }
         .navigationBarBackButtonHidden(true)
-        .navigationDestination(isPresented: $navigateToReason) {
-            if let selectedMood {
-                ReasonView(
-                    selectedSession: selectedSession,
-                    selectedPlace: selectedPlace,
-                    selectedActivity: selectedActivity,
-                    selectedMood: selectedMood
-                )
-            }
-        }
+        .storyFlowNavigationDestination(route: $navigationRoute)
     }
 
     private var moodGrid: some View {
@@ -107,8 +105,12 @@ struct PickMoodView: View {
                 MoodExpressionButton(
                     mood: mood,
                     selectMood: {
-                        selectedMood = mood
-                        navigateToReason = true
+                        navigationRoute = .reason(
+                            selectedSession,
+                            selectedPlace,
+                            selectedActivity,
+                            mood
+                        )
                     },
                     showMoodAlert: { moodAlert = mood }
                 )
@@ -162,9 +164,12 @@ private struct MoodExpressionButton: View {
         )
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(mood.accessibilityLabel)
-        .accessibilityHint("Double tap to select. Hold to learn more.")
+        .accessibilityHint("Activate to choose this mood. Hold for half a second to learn more.")
         .accessibilityAction {
             selectMood()
+        }
+        .accessibilityAction(named: "Learn more") {
+            showMoodAlert()
         }
     }
 }

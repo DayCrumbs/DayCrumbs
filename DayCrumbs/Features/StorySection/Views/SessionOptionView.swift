@@ -3,8 +3,7 @@ import SwiftUI
 struct SessionOptionView: View {
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedSession: Sessions?
-    @State private var navigateToPlace = false
+    @State private var navigationRoute: StoryFlowRoute?
 
     var body: some View {
         GeometryReader { proxy in
@@ -26,11 +25,7 @@ struct SessionOptionView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .navigationDestination(isPresented: $navigateToPlace) {
-            if let selectedSession {
-                PickPlaceView(selectedSession: selectedSession)
-            }
-        }
+        .storyFlowNavigationDestination(route: $navigationRoute)
     }
 
     private func wideContent(in size: CGSize) -> some View {
@@ -119,8 +114,7 @@ struct SessionOptionView: View {
 
     private func sessionCard(for session: Sessions) -> some View {
         SessionSelectionCard(session: session) {
-            selectedSession = session
-            navigateToPlace = true
+            navigationRoute = .pickPlace(session)
         }
     }
 }
@@ -167,6 +161,7 @@ private struct SessionSelectionCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Choose \(session.title) session")
+        .accessibilityHint("Starts a story for the \(session.title.lowercased()) session.")
     }
 }
 

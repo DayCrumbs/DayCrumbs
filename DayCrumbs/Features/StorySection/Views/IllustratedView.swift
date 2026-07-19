@@ -9,19 +9,19 @@ struct IllustratedView: View {
     let selectedMood: Moods
 
     @State private var isShowingContinuationCard = false
-    @State private var navigateToAnotherActivity = false
-    @State private var navigateToAnotherSession = false
-    @State private var navigateToReflection = false
+    @State private var navigationRoute: StoryFlowRoute?
 
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 StorySelectionBackground(imageNames: illustratedBackgroundImageNames)
                     .ignoresSafeArea()
+                    .accessibilityHidden(true)
 
                 if isShowingContinuationCard {
                     BlurredStorySelectionBackground(imageNames: illustratedBackgroundImageNames)
                         .ignoresSafeArea()
+                        .accessibilityHidden(true)
                         .transition(.opacity)
 
                     continuationCard
@@ -56,15 +56,7 @@ struct IllustratedView: View {
             .animation(.easeInOut(duration: 0.22), value: isShowingContinuationCard)
         }
         .navigationBarBackButtonHidden(true)
-        .navigationDestination(isPresented: $navigateToAnotherActivity) {
-            PickPlaceView(selectedSession: selectedSession)
-        }
-        .navigationDestination(isPresented: $navigateToAnotherSession) {
-            SessionOptionView()
-        }
-        .navigationDestination(isPresented: $navigateToReflection) {
-            ReflectionView()
-        }
+        .storyFlowNavigationDestination(route: $navigationRoute)
     }
 
     private var illustratedBackgroundImageNames: [String] {
@@ -81,6 +73,7 @@ struct IllustratedView: View {
             HStack(spacing: 8) {
                 Text("Continue")
                 Image(systemName: "chevron.right")
+                    .accessibilityHidden(true)
             }
             .font(.system(.headline, design: .rounded).weight(.semibold))
             .foregroundStyle(AppColour.txtCoklat)
@@ -90,6 +83,8 @@ struct IllustratedView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Continue story")
+        .accessibilityHint("Shows options for another activity, another session, or finishing the session.")
     }
 
     private var continuationCard: some View {
@@ -106,21 +101,28 @@ struct IllustratedView: View {
 
             VStack(spacing: 14) {
                 continuationActionButton(title: "Add Another Activity") {
-                    navigateToAnotherActivity = true
+                    navigationRoute = .pickPlace(selectedSession)
                 }
 
                 continuationActionButton(title: "Continue to Another Session") {
-                    navigateToAnotherSession = true
+                    navigationRoute = .sessionOption
                 }
 
                 continuationActionButton(title: "Finish Session") {
-                    navigateToReflection = true
+                    navigationRoute = .reflection(
+                        selectedSession,
+                        selectedPlace,
+                        selectedActivity,
+                        selectedMood
+                    )
                 }
             }
         }
         .padding(48)
         .background(AppColour.cardKuning)
         .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
     }
 
     private func continuationActionButton(
@@ -136,6 +138,19 @@ struct IllustratedView: View {
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityHint(continuationAccessibilityHint(for: title))
+    }
+
+    private func continuationAccessibilityHint(for title: String) -> String {
+        switch title {
+        case "Add Another Activity":
+            return "Starts another activity in the current session."
+        case "Continue to Another Session":
+            return "Returns to the session selection screen."
+        default:
+            return "Opens the end-of-day reflection."
+        }
     }
 }
 

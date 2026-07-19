@@ -12,7 +12,7 @@ struct ChildProfileSetupView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel = ChildProfileSetupViewModel()
-    @State private var navigateToSession: Bool = false
+    @State private var navigationRoute: StoryFlowRoute?
     @State private var childAgeText: String = ""
     
     var body: some View {
@@ -110,7 +110,7 @@ struct ChildProfileSetupView: View {
                             viewModel.saveProfile(using: repository)
                             
                             if viewModel.isFormValid && viewModel.errorMessage == nil {
-                                navigateToSession = true
+                                navigationRoute = .sessionOption
                             }
                             
                         }) {
@@ -143,9 +143,7 @@ struct ChildProfileSetupView: View {
             .padding(.horizontal, 40)
         }
         .navigationBarBackButtonHidden(true)
-        .navigationDestination(isPresented: $navigateToSession) {
-            SessionOptionView()
-        }
+        .storyFlowNavigationDestination(route: $navigationRoute)
     }
     
     // MARK: - Komponen Bantuan

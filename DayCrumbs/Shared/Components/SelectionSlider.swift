@@ -14,6 +14,7 @@ struct SelectionSlider<T: Hashable>: View {
             Text(title)
                 .font(.system(size: 22, design: .rounded))
                 .foregroundColor(AppColour.txtCoklat)
+                .accessibilityAddTraits(.isHeader)
 
             GeometryReader { proxy in
                 // Navigation transitions can briefly propose invalid or zero geometry.
@@ -52,9 +53,12 @@ struct SelectionSlider<T: Hashable>: View {
                             .frame(width: cardWidth)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Add custom option")
+                        .accessibilityHint("Creates a custom option for this selection.")
                     }
                     .padding(.horizontal, horizontalPadding)
                 }
+                .accessibilityElement(children: .contain)
             }
             .frame(maxHeight: .infinity)
         }
@@ -87,6 +91,7 @@ struct SelectionSlider<T: Hashable>: View {
                             .scaledToFill()
                             .frame(width: width, height: height)
                             .clipped()
+                            .accessibilityHidden(true)
                     }
 
                     RoundedRectangle(cornerRadius: 2)
@@ -106,6 +111,8 @@ struct SelectionSlider<T: Hashable>: View {
             .frame(width: width)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(formatEnumText(itemName(item)))
+        .accessibilityHint("Select this option.")
     }
 
     private func formatEnumText(_ text: String) -> String {
