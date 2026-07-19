@@ -103,6 +103,103 @@ a production `Generate Insight` button.
 - Output-translation retry must reuse the preserved English result and must never regenerate the insight.
 - Chart data and statistical aggregation remain independent of this generation pipeline.
 
+## Dashboard Accessibility Rules
+
+Dashboard accessibility must remain part of the shared Dashboard view hierarchy so
+that compact and wide layouts expose the same VoiceOver behavior.
+
+- Keep programmatic VoiceOver focus as `@AccessibilityFocusState` UI state in
+  `DashboardView`; never move it into `DashboardViewModel`, a repository, or a
+  generation/translation service.
+- Use a typed focus destination contract for the insight, range selector, trigger
+  chips, trigger dialog title, empty state, and error state.
+- Move VoiceOver focus only for meaningful user or presentation transitions. A
+  normal SwiftUI re-render must never move focus.
+- Place accessibility semantics on shared Dashboard sections and components, not
+  only on `wideDashboard`, `compactDashboard`, or layout containers.
+- Post `AccessibilityNotification.Announcement` from the stable Dashboard root
+  only when `DashboardPresentationState` makes a meaningful transition.
+- Announce insight generation, completion, empty ranges, user-friendly failures,
+  and English fallback availability. Do not announce technical errors or a
+  cancellation caused by changing ranges.
+- Announcing a completed result must not programmatically move VoiceOver focus
+  away from the element the parent is currently exploring.
+- Treat the shared "On this day/week/month" label as a heading. Present the
+  selected range, child name, and generated summary as one complete summary
+  accessibility element.
+- Combine the progress indicator and its loading copy into one status element.
+  Keep an English fallback label and its translation retry button as separate
+  elements.
+- Give generation retry and translation-only retry distinct accessibility hints;
+  translation retry must clearly state that it reuses the existing English
+  insight instead of generating again.
+- Keep Day, Week, and Month as native buttons labeled "Day range", "Week range",
+  and "Month range". Apply `.isSelected` only to the active range and describe
+  each rolling period in its accessibility hint.
+- Make the range picker's outer layout container non-readable with
+  `.accessibilityElement(children: .contain)`. Never apply
+  `.accessibilityHidden(true)` to that parent because it also hides the range
+  buttons.
+- Never express an inactive Dashboard range with a "Not selected" accessibility
+  value. Selecting the active range must remain a no-op and must not post another
+  generation announcement.
+- Describe the shared mood chart with `accessibilityChartDescriptor`. Its title
+  must name the active Day, Week, or Month range; its x-axis must describe the
+  session/day/week categories; and its y-axis must speak canonical `Moods` labels.
+- Keep mood score values internal. VoiceOver must hear labels such as "Surprise
+  mood", never the numeric 1–6 score or an image asset filename.
+- Hide decorative mood images used as chart axis labels from VoiceOver. A mood
+  image used as standalone content must instead have a label such as "Happy mood".
+- Chart accessibility is a semantic representation of existing data only. It must
+  not change chart calculation, score mapping, or the current mood vocabulary.
+- Mark the shared "Common Triggers" title as a heading. Keep every trigger chip a
+  native button labeled "[title], common trigger" with a hint that it opens the
+  explanation, evidence, and recommended activities.
+- Store the trigger that opens detail as a view-owned VoiceOver focus-return
+  target. Selecting a trigger must only reveal its published detail and must never
+  start another generation request.
+- Expose an empty common-trigger message as one static-text element, and hide
+  decorative capsule borders from the accessibility tree.
+- Make the Common Triggers card's outer layout container non-readable with
+  `.accessibilityElement(children: .contain)`. Never hide the parent container,
+  because its heading, empty message, and trigger buttons must remain accessible.
+- Treat trigger detail as a VoiceOver modal: hide the Dashboard and decorative
+  dimming layer from the accessibility tree, apply the modal trait to a container
+  that preserves its readable children, and move focus to the trigger title.
+- Keep Evidence, Recommended Activities, What May Help, and Curated Sources as
+  separate headings in the trigger detail reading order. Do not combine the full
+  scrollable detail into one accessibility element.
+- Keep Done as the clear VoiceOver dismissal control. After dismissal, restore
+  focus to the originating trigger chip; if that trigger is no longer available,
+  restore focus to the Common Triggers heading.
+- Label the shared circular navigation control "Back" and preserve its native
+  button trait at every call site. Hide its chevron because the button supplies
+  the accessible name.
+- Label the Dashboard story action "Add story" and hide its decorative plus icon.
+  Keep loading progress combined with its status message.
+- Hide decorative backgrounds, borders, dimming layers, and section symbols from
+  the accessibility tree. Read curated source badges by their source names only.
+- Keep accessibility labels, traits, focus bindings, chart descriptors, and modal
+  behavior on shared Dashboard sections and controls. Compact and wide functions
+  may arrange or size those sections but must not define different semantics.
+- Prefer the natural accessibility order produced by shared content. Add explicit
+  sort priorities only after manual VoiceOver testing proves the natural order is
+  incorrect.
+- Verify Dashboard accessibility in both a compact iPhone layout and a wide iPad
+  layout. Runtime accessibility snapshots may confirm names, roles, reachability,
+  and range transitions, but they do not replace a VoiceOver walkthrough for
+  announcement timing, spoken chart output, modal focus, or focus restoration.
+- Keep pure accessibility policies covered by unit tests, including announcement
+  messages, stale-range publication guards, chart descriptors, active-range
+  no-ops, and translation-only retry behavior.
+- Run accessibility audits for loaded, empty, failed, and trigger-detail states
+  when an existing UI-test target supports them. If the project has no UI-test
+  target, report that coverage gap; do not edit `project.pbxproj` merely to add
+  one without the user's explicit approval.
+- Before merging Dashboard accessibility changes, run the full `DayCrumbs` scheme
+  test suite on an iOS Simulator and record any manual VoiceOver checks that still
+  require a person to confirm audio or focus behavior.
+
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 
 Use language such as:

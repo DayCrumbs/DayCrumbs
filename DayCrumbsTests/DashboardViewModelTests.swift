@@ -242,7 +242,7 @@ struct DashboardViewModelTests {
         #expect(generator.retryCallCount == 1)
     }
 
-    @Test("Trigger selection uses the published localized recommendation")
+    @Test("Trigger selection reuses the published localized recommendation")
     func selectsLocalizedRecommendation() async throws {
         let insight = makeDashboardTestInsight(
             summary: "Ringkasan terbatas.",
@@ -308,6 +308,7 @@ struct DashboardViewModelTests {
                 == "Aktivitas yang disarankan"
         )
         #expect(selectedDetail.sourceLabels == [.cdc])
+        #expect(generator.generatedEntries.count == 1)
     }
 }
 
