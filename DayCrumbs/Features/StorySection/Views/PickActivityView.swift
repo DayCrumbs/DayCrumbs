@@ -13,7 +13,7 @@ struct PickActivityView: View {
   let selectedSession: Sessions
   let selectedPlace: Place.BuiltInPlace
   @State private var selectedActivity: Activity.BuiltInActivity?
-  @State private var navigateToMood = false
+  @State private var navigationRoute: StoryFlowRoute?
   
   private let activityOptions: [Activity.BuiltInActivity] = [
       .play,
@@ -52,15 +52,12 @@ struct PickActivityView: View {
                   .frame(height: proxy.size.height * 0.26)
               }
               .frame(width: proxy.size.width, height: proxy.size.height)
-              .onChange(of: selectedActivity) {_, newValue in
-                  navigateToMood = newValue != nil
-              }
-              .navigationDestination(isPresented: $navigateToMood) {
-                  if let selectedActivity {
-                      PickMoodView(
-                          selectedSession: selectedSession,
-                          selectedPlace: selectedPlace,
-                          selectedActivity: selectedActivity
+              .onChange(of: selectedActivity) { _, newValue in
+                  if let newValue {
+                      navigationRoute = .pickMood(
+                          selectedSession,
+                          selectedPlace,
+                          newValue
                       )
                   }
               }
@@ -73,6 +70,7 @@ struct PickActivityView: View {
           }
       }
       .navigationBarBackButtonHidden(true)
+      .storyFlowNavigationDestination(route: $navigationRoute)
   }
   
   private func activityImageName(for activity: Activity.BuiltInActivity) -> String {

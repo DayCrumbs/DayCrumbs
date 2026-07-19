@@ -13,7 +13,7 @@ struct ReasonView: View {
     let onContinueToIllustrated: () -> Void
 
     @State private var discussionText = ""
-    @State private var navigateToIllustrated = false
+    @State private var navigationRoute: StoryFlowRoute?
 
     init(
         selectedSession: Sessions,
@@ -41,6 +41,7 @@ struct ReasonView: View {
                     ]
                 )
                 .ignoresSafeArea()
+                .accessibilityHidden(true)
 
                 if proxy.size.width >= 760 {
                     wideContent(in: proxy.size)
@@ -56,14 +57,7 @@ struct ReasonView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .navigationDestination(isPresented: $navigateToIllustrated) {
-            IllustratedView(
-                selectedSession: selectedSession,
-                selectedPlace: selectedPlace,
-                selectedActivity: selectedActivity,
-                selectedMood: selectedMood
-            )
-        }
+        .storyFlowNavigationDestination(route: $navigationRoute)
     }
 
     private func wideContent(in size: CGSize) -> some View {
@@ -72,7 +66,8 @@ struct ReasonView: View {
                 characterImageName: "Reason_Girl",
                 characterHeightRatio: 1084.0 / 655.0,
                 title: reasonQuestionTitle,
-                subtitle: "Share your story with your parent so we can better understand what happened."
+                subtitle: "Share your story with your parent so we can better understand what happened.",
+                accessibilityLabel: reasonQuestionAccessibilityLabel
             )
             .frame(width: size.width, height: size.height * 0.60, alignment: .topLeading)
 
@@ -94,7 +89,8 @@ struct ReasonView: View {
                     characterImageName: "Reason_Girl",
                     characterHeightRatio: 1084.0 / 655.0,
                     title: reasonQuestionTitle,
-                    subtitle: "Share your story with your parent so we can better understand what happened."
+                    subtitle: "Share your story with your parent so we can better understand what happened.",
+                    accessibilityLabel: reasonQuestionAccessibilityLabel
                 )
                 .frame(height: min(520, size.height * 0.58))
 
@@ -115,6 +111,7 @@ struct ReasonView: View {
             Text("Write Discussion")
                 .font(.system(.title3, design: .rounded).weight(.bold))
                 .foregroundStyle(AppColour.txtCoklat)
+                .accessibilityAddTraits(.isHeader)
 
             Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
                 .font(.system(.body, design: .rounded))
@@ -133,6 +130,8 @@ struct ReasonView: View {
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Save discussion")
+            .accessibilityHint("Saves the optional discussion and continues to the illustration.")
         }
         .padding(24)
         .background(AppColour.cardKuning)
@@ -166,6 +165,12 @@ struct ReasonView: View {
                         discussionText = String(newValue.prefix(Self.discussionCharacterLimit))
                     }
                 }
+                .accessibilityLabel(
+                    "Write discussion, \(discussionText.count) of \(Self.discussionCharacterLimit) characters"
+                )
+                .accessibilityHint(
+                    "Optional discussion. Enter up to \(Self.discussionCharacterLimit) characters."
+                )
 
             HStack(spacing: 12) {
                 Spacer()
@@ -173,6 +178,9 @@ struct ReasonView: View {
                 Text("\(discussionText.count)/\(Self.discussionCharacterLimit)")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppColour.txtCoklat)
+                    .accessibilityLabel(
+                        "\(discussionText.count) of \(Self.discussionCharacterLimit) characters"
+                    )
 
                 Button {
                     // Voice-to-text will be added after the MVP.
@@ -203,10 +211,16 @@ struct ReasonView: View {
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Skip discussion")
+        .accessibilityHint("Continues to the illustration without saving a discussion.")
     }
 
     private var reasonQuestionTitle: Text {
         Text("Can you tell us why you felt \(Text(selectedMood.rawValue).underline())?")
+    }
+
+    private var reasonQuestionAccessibilityLabel: String {
+        "Can you tell us why you felt \(selectedMood.rawValue)? Share your story with your parent so we can better understand what happened."
     }
 
     private func saveDiscussionAndContinue() {
@@ -216,7 +230,12 @@ struct ReasonView: View {
 
     private func continueToIllustrated() {
         onContinueToIllustrated()
-        navigateToIllustrated = true
+        navigationRoute = .illustrated(
+            selectedSession,
+            selectedPlace,
+            selectedActivity,
+            selectedMood
+        )
     }
 }
 

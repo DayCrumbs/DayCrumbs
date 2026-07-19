@@ -6,7 +6,7 @@ struct PickPlaceView: View {
     let selectedSession: Sessions
 
     @State private var selectedPlace: Place.BuiltInPlace?
-    @State private var navigateToActivity = false
+    @State private var navigationRoute: StoryFlowRoute?
     
     // The order follows the current illustration reference.
     private let placeOptions: [Place.BuiltInPlace] = [
@@ -49,19 +49,14 @@ struct PickPlaceView: View {
                 .padding(.top, 24)
                 .padding(.leading, 32)
             }
-            .onChange(of: selectedPlace) {_, newValue in
-                navigateToActivity = newValue != nil
-            }
-            .navigationDestination(isPresented: $navigateToActivity) {
-                if let selectedPlace {
-                    PickActivityView(
-                        selectedSession: selectedSession,
-                        selectedPlace: selectedPlace
-                    )
+            .onChange(of: selectedPlace) { _, newValue in
+                if let newValue {
+                    navigationRoute = .pickActivity(selectedSession, newValue)
                 }
             }
         }
         .navigationBarBackButtonHidden(true)
+        .storyFlowNavigationDestination(route: $navigationRoute)
     }
 
     private func sessionBackground(in size: CGSize) -> some View {

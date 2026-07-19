@@ -44,6 +44,8 @@ struct CharacterBubble: View {
             .padding(.horizontal, horizontalPadding)
             .padding(.top, max(34, proxy.size.height * 0.10))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(text)
         }
     }
 }

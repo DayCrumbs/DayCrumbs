@@ -32,6 +32,8 @@ struct MoodAlertView: View {
             }
             .buttonStyle(.plain)
             .padding(.top, 8)
+            .accessibilityLabel("Done")
+            .accessibilityHint("Closes the mood information.")
         }
         .padding(42)
         .frame(maxWidth: 620, alignment: .leading)
@@ -41,6 +43,7 @@ struct MoodAlertView: View {
         .padding(24)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("About feeling \(mood.rawValue)")
+        .accessibilityAddTraits(.isModal)
     }
 }
 
