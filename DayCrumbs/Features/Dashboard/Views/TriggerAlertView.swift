@@ -56,16 +56,20 @@ struct TriggerAlertView: View {
                         .font(.system(.headline, design: .rounded).bold())
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(AppColour.btnKuning)
+                        .background(
+                            AppColour.btnKuning
+                                .accessibilityHidden(true)
+                        )
                         .foregroundColor(AppColour.txtCoklat)
                         .clipShape(Capsule())
                 }
                 .padding(.top, 8)
+                .accessibilityLabel("Done")
                 .accessibilityHint("Closes trigger details.")
             }
             .padding(24)
         }
-        .background(AppColour.bgPutih)
+        .background(AppColour.bgPutih.accessibilityHidden(true))
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .frame(maxWidth: 440, maxHeight: 680)
         .accessibilityElement(children: .contain)
@@ -139,8 +143,13 @@ struct TriggerAlertView: View {
                         .font(.system(.caption, design: .rounded).bold())
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(AppColour.btnKuning.opacity(0.25))
+                        .background(
+                            AppColour.btnKuning
+                                .opacity(0.25)
+                                .accessibilityHidden(true)
+                        )
                         .clipShape(Capsule())
+                        .accessibilityLabel(source.rawValue)
                 }
             }
             .foregroundColor(AppColour.txtCoklat)
@@ -148,7 +157,12 @@ struct TriggerAlertView: View {
     }
 
     private func sectionHeader(title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: systemImage)
+                .accessibilityHidden(true)
+        }
             .font(.system(.headline, design: .rounded).bold())
             .foregroundColor(AppColour.txtCoklat)
             .accessibilityLabel(title)

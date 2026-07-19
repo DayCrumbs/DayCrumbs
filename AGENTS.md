@@ -165,6 +165,13 @@ that compact and wide layouts expose the same VoiceOver behavior.
 - Keep Done as the clear VoiceOver dismissal control. After dismissal, restore
   focus to the originating trigger chip; if that trigger is no longer available,
   restore focus to the Common Triggers heading.
+- Label the shared circular navigation control "Back" and preserve its native
+  button trait at every call site. Hide its chevron because the button supplies
+  the accessible name.
+- Label the Dashboard story action "Add story" and hide its decorative plus icon.
+  Keep loading progress combined with its status message.
+- Hide decorative backgrounds, borders, dimming layers, and section symbols from
+  the accessibility tree. Read curated source badges by their source names only.
 
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 

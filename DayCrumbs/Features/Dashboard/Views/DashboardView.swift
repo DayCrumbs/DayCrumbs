@@ -30,7 +30,11 @@ struct DashboardView: View {
                 .frame(width: geometry.size.width, height: geometry.size.height)
                 .accessibilityHidden(viewModel.selectedTriggerDetail != nil)
         }
-        .background(AppColour.bgPutih.ignoresSafeArea())
+        .background(
+            AppColour.bgPutih
+                .ignoresSafeArea()
+                .accessibilityHidden(true)
+        )
         .toolbar(.hidden, for: .navigationBar)
         .appleTranslationTaskHost(translationTaskHost)
         .onChange(of: viewModel.state) { _, newState in
@@ -195,6 +199,7 @@ struct DashboardView: View {
                             if viewModel.selectedTimeRange == range {
                                 Capsule()
                                     .fill(AppColour.btnKuning)
+                                    .accessibilityHidden(true)
                             }
                         }
                 }
@@ -207,7 +212,11 @@ struct DashboardView: View {
             }
         }
         .padding(2)
-        .background(Capsule().fill(AppColour.btnKuning.opacity(0.18)))
+        .background {
+            Capsule()
+                .fill(AppColour.btnKuning.opacity(0.18))
+                .accessibilityHidden(true)
+        }
     }
 
     /// Explains each rolling range without exposing its date calculations.
@@ -337,7 +346,11 @@ struct DashboardView: View {
         .padding(34)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .frame(height: height, alignment: .topLeading)
-        .background(AppColour.btnKuning.opacity(0.16))
+        .background(
+            AppColour.btnKuning
+                .opacity(0.16)
+                .accessibilityHidden(true)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
     }
 
@@ -385,14 +398,19 @@ struct DashboardView: View {
             HStack(spacing: 8) {
                 Text("Add Story!")
                 Image(systemName: "plus")
+                    .accessibilityHidden(true)
             }
                 .font(.system(.headline, design: .rounded).weight(.bold))
                 .foregroundStyle(AppColour.txtCoklat)
                 .frame(maxWidth: .infinity, minHeight: 51)
-                .background(AppColour.btnKuning)
+                .background(
+                    AppColour.btnKuning
+                        .accessibilityHidden(true)
+                )
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Add story")
     }
 
     @ViewBuilder
