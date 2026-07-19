@@ -159,7 +159,7 @@ private struct MoodExpressionButton: View {
                 })
         )
         .accessibilityAddTraits(.isButton)
-        .accessibilityLabel(mood.rawValue.capitalized)
+        .accessibilityLabel(mood.accessibilityLabel)
         .accessibilityHint("Double tap to select. Hold to learn more.")
         .accessibilityAction {
             selectMood()

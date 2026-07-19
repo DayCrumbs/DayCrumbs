@@ -139,6 +139,15 @@ that compact and wide layouts expose the same VoiceOver behavior.
 - Never express an inactive Dashboard range with a "Not selected" accessibility
   value. Selecting the active range must remain a no-op and must not post another
   generation announcement.
+- Describe the shared mood chart with `accessibilityChartDescriptor`. Its title
+  must name the active Day, Week, or Month range; its x-axis must describe the
+  session/day/week categories; and its y-axis must speak canonical `Moods` labels.
+- Keep mood score values internal. VoiceOver must hear labels such as "Surprise
+  mood", never the numeric 1–6 score or an image asset filename.
+- Hide decorative mood images used as chart axis labels from VoiceOver. A mood
+  image used as standalone content must instead have a label such as "Happy mood".
+- Chart accessibility is a semantic representation of existing data only. It must
+  not change chart calculation, score mapping, or the current mood vocabulary.
 
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 

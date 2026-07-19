@@ -240,6 +240,7 @@ struct DashboardView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 48, height: 48)
+                            .accessibilityHidden(true)
                     }
                 }
             }
@@ -253,6 +254,12 @@ struct DashboardView: View {
             transaction.animation = nil
         }
         .frame(height: height)
+        .accessibilityChartDescriptor(
+            DashboardMoodChartDescriptor(
+                timeRange: viewModel.selectedTimeRange,
+                dataPoints: viewModel.currentChartData
+            )
+        )
     }
 
     private func commonTriggersCard(height: CGFloat) -> some View {
