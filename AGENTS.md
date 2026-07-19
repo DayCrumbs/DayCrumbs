@@ -148,6 +148,14 @@ that compact and wide layouts expose the same VoiceOver behavior.
   image used as standalone content must instead have a label such as "Happy mood".
 - Chart accessibility is a semantic representation of existing data only. It must
   not change chart calculation, score mapping, or the current mood vocabulary.
+- Mark the shared "Common Triggers" title as a heading. Keep every trigger chip a
+  native button labeled "[title], common trigger" with a hint that it opens the
+  explanation, evidence, and recommended activities.
+- Store the trigger that opens detail as a view-owned VoiceOver focus-return
+  target. Selecting a trigger must only reveal its published detail and must never
+  start another generation request.
+- Expose an empty common-trigger message as one static-text element, and hide
+  decorative capsule borders from the accessibility tree.
 
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 

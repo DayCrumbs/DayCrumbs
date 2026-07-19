@@ -10,6 +10,10 @@ struct DashboardView: View {
     @State private var translationTaskHost: AppleTranslationTaskHost
     @State private var navigateToSession = false
 
+    /// Remembers which trigger opened the detail so modal dismissal can restore
+    /// VoiceOver to the originating chip in the next presentation step.
+    @State private var triggerFocusReturnTarget: String?
+
     init() {
         let translationTaskHost = AppleTranslationTaskHost()
         _translationTaskHost = State(initialValue: translationTaskHost)
@@ -267,16 +271,20 @@ struct DashboardView: View {
             Text("Common Triggers")
                 .font(.system(.title3, design: .rounded).weight(.bold))
                 .foregroundStyle(AppColour.txtCoklat)
+                .accessibilityAddTraits(.isHeader)
 
             if viewModel.commonTriggers.isEmpty {
                 Text("No repeated triggers yet.")
                     .font(.system(.body, design: .rounded))
                     .foregroundStyle(AppColour.txtCoklat.opacity(0.75))
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("No repeated triggers yet.")
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 14) {
                         ForEach(viewModel.commonTriggers, id: \.self) { trigger in
                             Button {
+                                triggerFocusReturnTarget = trigger
                                 viewModel.selectTrigger(trigger)
                             } label: {
                                 Text(trigger)
@@ -288,9 +296,18 @@ struct DashboardView: View {
                                     .overlay {
                                         Capsule()
                                             .stroke(AppColour.btnKuning, lineWidth: 1.5)
+                                            .accessibilityHidden(true)
                                     }
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel("\(trigger), common trigger")
+                            .accessibilityHint(
+                                "Shows explanation, evidence, and recommended activities."
+                            )
+                            .accessibilityFocused(
+                                $accessibilityFocus,
+                                equals: .trigger(trigger)
+                            )
                         }
                     }
                 }
