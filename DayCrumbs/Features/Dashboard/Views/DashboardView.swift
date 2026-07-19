@@ -26,9 +26,7 @@ struct DashboardView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            dashboardContent(in: geometry.size)
-                .frame(width: geometry.size.width, height: geometry.size.height)
-                .accessibilityHidden(viewModel.selectedTriggerDetail != nil)
+            sharedDashboardSurface(in: geometry.size)
         }
         .background(
             AppColour.bgPutih
@@ -69,14 +67,6 @@ struct DashboardView: View {
         .navigationDestination(isPresented: $navigateToSession) {
             SessionOptionView()
         }
-        .overlay(alignment: .topLeading) {
-            CircularBackButton(style: .yellowBtn) {
-                dismiss()
-            }
-            .padding(.top, 24)
-            .padding(.leading, 32)
-            .accessibilityHidden(viewModel.selectedTriggerDetail != nil)
-        }
         .overlay {
             if let detail = viewModel.selectedTriggerDetail {
                 ZStack {
@@ -100,6 +90,22 @@ struct DashboardView: View {
         }
     }
 
+    /// Keeps global Dashboard controls and modal exclusion independent of the
+    /// compact or wide visual composition selected below.
+    private func sharedDashboardSurface(in size: CGSize) -> some View {
+        dashboardContent(in: size)
+            .frame(width: size.width, height: size.height)
+            .overlay(alignment: .topLeading) {
+                CircularBackButton(style: .yellowBtn) {
+                    dismiss()
+                }
+                .padding(.top, 24)
+                .padding(.leading, 32)
+            }
+            .accessibilityHidden(viewModel.selectedTriggerDetail != nil)
+    }
+
+    /// Selects visual layout only; shared sections own all accessibility behavior.
     @ViewBuilder
     private func dashboardContent(in size: CGSize) -> some View {
         Group {

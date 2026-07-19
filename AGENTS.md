@@ -172,6 +172,12 @@ that compact and wide layouts expose the same VoiceOver behavior.
   Keep loading progress combined with its status message.
 - Hide decorative backgrounds, borders, dimming layers, and section symbols from
   the accessibility tree. Read curated source badges by their source names only.
+- Keep accessibility labels, traits, focus bindings, chart descriptors, and modal
+  behavior on shared Dashboard sections and controls. Compact and wide functions
+  may arrange or size those sections but must not define different semantics.
+- Prefer the natural accessibility order produced by shared content. Add explicit
+  sort priorities only after manual VoiceOver testing proves the natural order is
+  incorrect.
 
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 
