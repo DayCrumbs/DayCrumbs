@@ -117,6 +117,13 @@ that compact and wide layouts expose the same VoiceOver behavior.
   normal SwiftUI re-render must never move focus.
 - Place accessibility semantics on shared Dashboard sections and components, not
   only on `wideDashboard`, `compactDashboard`, or layout containers.
+- Post `AccessibilityNotification.Announcement` from the stable Dashboard root
+  only when `DashboardPresentationState` makes a meaningful transition.
+- Announce insight generation, completion, empty ranges, user-friendly failures,
+  and English fallback availability. Do not announce technical errors or a
+  cancellation caused by changing ranges.
+- Announcing a completed result must not programmatically move VoiceOver focus
+  away from the element the parent is currently exploring.
 
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 

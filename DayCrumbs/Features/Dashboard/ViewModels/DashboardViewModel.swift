@@ -11,7 +11,7 @@ nonisolated struct MoodDataPoint: Identifiable {
 /// UI-ready lifecycle state for one selected Dashboard range.
 nonisolated enum DashboardPresentationState: Equatable {
     case idle
-    case loading(message: String)
+    case loading(DashboardLoadingPhase)
     case loaded
     case empty
     case failed(message: String)
@@ -153,7 +153,7 @@ final class DashboardViewModel {
         let range = selectedTimeRange
         let requestID = UUID()
         activeRequestID = requestID
-        state = .loading(message: "Retrying on-device translation…")
+        state = .loading(.outputTranslation)
 
         let task = Task { @MainActor [weak self] in
             guard let self else {
@@ -222,7 +222,7 @@ final class DashboardViewModel {
     }
 
     private func reloadEntriesAndGenerate() async {
-        state = .loading(message: "Loading stories…")
+        state = .loading(.stories)
         clearPublishedInsight(keepingState: true)
         hasLoadedEntries = false
 
@@ -276,7 +276,7 @@ final class DashboardViewModel {
 
         let requestID = UUID()
         activeRequestID = requestID
-        state = .loading(message: "Generating a private on-device insight…")
+        state = .loading(.insight)
 
         let task = Task { @MainActor [weak self] in
             guard let self else {

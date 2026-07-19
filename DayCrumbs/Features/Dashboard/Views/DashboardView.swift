@@ -28,6 +28,9 @@ struct DashboardView: View {
         .background(AppColour.bgPutih.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .appleTranslationTaskHost(translationTaskHost)
+        .onChange(of: viewModel.state) { _, newState in
+            postAccessibilityAnnouncement(for: newState)
+        }
         .task {
             await viewModel.start()
         }
@@ -306,10 +309,10 @@ struct DashboardView: View {
         case .idle:
             Text("Preparing your private insight…")
 
-        case .loading(let message):
+        case .loading(let phase):
             HStack(spacing: 10) {
                 ProgressView()
-                Text(message)
+                Text(phase.message)
             }
 
         case .loaded:
@@ -347,6 +350,22 @@ struct DashboardView: View {
                 .tint(AppColour.btnKuning)
             }
         }
+    }
+
+    private func postAccessibilityAnnouncement(
+        for state: DashboardPresentationState
+    ) {
+        guard let announcement = DashboardAccessibilityAnnouncement(
+            state: state,
+            selectedTimeRange: viewModel.selectedTimeRange,
+            hasEnglishFallback: viewModel.englishFallback != nil
+        ) else {
+            return
+        }
+
+        // State is Equatable, so onChange posts only for a real lifecycle
+        // transition and never for a normal SwiftUI re-render.
+        AccessibilityNotification.Announcement(announcement.message).post()
     }
 
 }
