@@ -5,6 +5,7 @@ struct ReasonView: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
     let selectedActivity: Activity.BuiltInActivity
     let selectedMood: Moods
@@ -12,14 +13,17 @@ struct ReasonView: View {
     let onContinueToIllustrated: () -> Void
 
     @State private var discussionText = ""
+    @State private var navigateToIllustrated = false
 
     init(
+        selectedSession: Sessions,
         selectedPlace: Place.BuiltInPlace,
         selectedActivity: Activity.BuiltInActivity,
         selectedMood: Moods,
         onSaveDiscussion: @escaping (String) -> Void = { _ in },
         onContinueToIllustrated: @escaping () -> Void = {}
     ) {
+        self.selectedSession = selectedSession
         self.selectedPlace = selectedPlace
         self.selectedActivity = selectedActivity
         self.selectedMood = selectedMood
@@ -33,7 +37,7 @@ struct ReasonView: View {
                 BlurredStorySelectionBackground(
                     imageNames: [
                         StorySelectionAsset.imageName(for: selectedPlace),
-                        StorySelectionAsset.imageName(for: selectedActivity)
+                        StorySelectionAsset.backgroundImageName(for: selectedActivity)
                     ]
                 )
                 .ignoresSafeArea()
@@ -52,6 +56,14 @@ struct ReasonView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .navigationDestination(isPresented: $navigateToIllustrated) {
+            IllustratedView(
+                selectedSession: selectedSession,
+                selectedPlace: selectedPlace,
+                selectedActivity: selectedActivity,
+                selectedMood: selectedMood
+            )
+        }
     }
 
     private func wideContent(in size: CGSize) -> some View {
@@ -182,7 +194,7 @@ struct ReasonView: View {
     }
 
     private var skipButton: some View {
-        Button(action: onContinueToIllustrated) {
+        Button(action: continueToIllustrated) {
             Text("Skip")
                 .font(.system(.headline, design: .rounded).weight(.semibold))
                 .foregroundStyle(AppColour.txtCoklat)
@@ -199,13 +211,19 @@ struct ReasonView: View {
 
     private func saveDiscussionAndContinue() {
         onSaveDiscussion(discussionText)
+        continueToIllustrated()
+    }
+
+    private func continueToIllustrated() {
         onContinueToIllustrated()
+        navigateToIllustrated = true
     }
 }
 
 #Preview {
     NavigationStack {
         ReasonView(
+            selectedSession: .morning,
             selectedPlace: .school,
             selectedActivity: .study,
             selectedMood: .happy

@@ -54,7 +54,10 @@ struct PickPlaceView: View {
             }
             .navigationDestination(isPresented: $navigateToActivity) {
                 if let selectedPlace {
-                    PickActivityView(selectedPlace: selectedPlace)
+                    PickActivityView(
+                        selectedSession: selectedSession,
+                        selectedPlace: selectedPlace
+                    )
                 }
             }
         }

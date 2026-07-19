@@ -1,6 +1,3 @@
-
-
-
 //
 //  PickActivityView.swift
 //  DayCrumbs
@@ -13,6 +10,7 @@ import SwiftUI
 struct PickActivityView: View {
   @Environment(\.dismiss) private var dismiss
 
+  let selectedSession: Sessions
   let selectedPlace: Place.BuiltInPlace
   @State private var selectedActivity: Activity.BuiltInActivity?
   @State private var navigateToMood = false
@@ -60,6 +58,7 @@ struct PickActivityView: View {
               .navigationDestination(isPresented: $navigateToMood) {
                   if let selectedActivity {
                       PickMoodView(
+                          selectedSession: selectedSession,
                           selectedPlace: selectedPlace,
                           selectedActivity: selectedActivity
                       )
@@ -77,10 +76,10 @@ struct PickActivityView: View {
   }
   
   private func activityImageName(for activity: Activity.BuiltInActivity) -> String {
-      StorySelectionAsset.imageName(for: activity)
+      StorySelectionAsset.sliderImageName(for: activity)
   }
 }
 
 #Preview {
-  PickActivityView(selectedPlace: .house)
+  PickActivityView(selectedSession: .morning, selectedPlace: .house)
 }
