@@ -7,6 +7,7 @@ import Foundation
 enum DashboardAccessibilityFocus: Hashable {
     case insight
     case range
+    case commonTriggersHeading
     case trigger(String)
     case triggerDialogTitle
     case emptyState

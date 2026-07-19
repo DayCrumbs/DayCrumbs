@@ -11,12 +11,32 @@ struct TriggerAlertView: View {
     let detail: TriggerDetail
     let onDismiss: () -> Void
 
+    @AccessibilityFocusState.Binding private var accessibilityFocus:
+        DashboardAccessibilityFocus?
+
+    init(
+        detail: TriggerDetail,
+        accessibilityFocus: AccessibilityFocusState<
+            DashboardAccessibilityFocus?
+        >.Binding,
+        onDismiss: @escaping () -> Void
+    ) {
+        self.detail = detail
+        self._accessibilityFocus = accessibilityFocus
+        self.onDismiss = onDismiss
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 Text(detail.title)
                     .font(.system(.title2, design: .rounded).bold())
                     .foregroundColor(AppColour.txtCoklat)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused(
+                        $accessibilityFocus,
+                        equals: .triggerDialogTitle
+                    )
 
                 Text(detail.explanation)
                     .font(.system(.body, design: .rounded))
@@ -41,12 +61,15 @@ struct TriggerAlertView: View {
                         .clipShape(Capsule())
                 }
                 .padding(.top, 8)
+                .accessibilityHint("Closes trigger details.")
             }
             .padding(24)
         }
         .background(AppColour.bgPutih)
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .frame(maxWidth: 440, maxHeight: 680)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
     }
 
     private var evidenceSection: some View {
@@ -108,6 +131,7 @@ struct TriggerAlertView: View {
             Text(detail.sectionLabels.curatedSources)
                 .font(.system(.caption, design: .rounded).bold())
                 .foregroundColor(AppColour.txtCoklat.opacity(0.7))
+                .accessibilityAddTraits(.isHeader)
 
             HStack(spacing: 8) {
                 ForEach(detail.sourceLabels, id: \.self) { source in
@@ -127,6 +151,8 @@ struct TriggerAlertView: View {
         Label(title, systemImage: systemImage)
             .font(.system(.headline, design: .rounded).bold())
             .foregroundColor(AppColour.txtCoklat)
+            .accessibilityLabel(title)
+            .accessibilityAddTraits(.isHeader)
     }
 
     private func bullet(_ text: String) -> some View {

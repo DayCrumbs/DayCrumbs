@@ -156,6 +156,15 @@ that compact and wide layouts expose the same VoiceOver behavior.
   start another generation request.
 - Expose an empty common-trigger message as one static-text element, and hide
   decorative capsule borders from the accessibility tree.
+- Treat trigger detail as a VoiceOver modal: hide the Dashboard and decorative
+  dimming layer from the accessibility tree, apply the modal trait to a container
+  that preserves its readable children, and move focus to the trigger title.
+- Keep Evidence, Recommended Activities, What May Help, and Curated Sources as
+  separate headings in the trigger detail reading order. Do not combine the full
+  scrollable detail into one accessibility element.
+- Keep Done as the clear VoiceOver dismissal control. After dismissal, restore
+  focus to the originating trigger chip; if that trigger is no longer available,
+  restore focus to the Common Triggers heading.
 
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 

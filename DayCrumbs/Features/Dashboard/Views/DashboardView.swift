@@ -28,12 +28,19 @@ struct DashboardView: View {
         GeometryReader { geometry in
             dashboardContent(in: geometry.size)
                 .frame(width: geometry.size.width, height: geometry.size.height)
+                .accessibilityHidden(viewModel.selectedTriggerDetail != nil)
         }
         .background(AppColour.bgPutih.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .appleTranslationTaskHost(translationTaskHost)
         .onChange(of: viewModel.state) { _, newState in
             postAccessibilityAnnouncement(for: newState)
+        }
+        .onChange(of: viewModel.selectedTriggerDetail) { previousDetail, detail in
+            updateTriggerDetailAccessibilityFocus(
+                from: previousDetail,
+                to: detail
+            )
         }
         .task {
             await viewModel.start()
@@ -64,17 +71,22 @@ struct DashboardView: View {
             }
             .padding(.top, 24)
             .padding(.leading, 32)
+            .accessibilityHidden(viewModel.selectedTriggerDetail != nil)
         }
         .overlay {
             if let detail = viewModel.selectedTriggerDetail {
                 ZStack {
                     Color.black.opacity(0.4)
                         .ignoresSafeArea()
+                        .accessibilityHidden(true)
                         .onTapGesture {
                             viewModel.dismissTrigger()
                         }
 
-                    TriggerAlertView(detail: detail) {
+                    TriggerAlertView(
+                        detail: detail,
+                        accessibilityFocus: $accessibilityFocus
+                    ) {
                         viewModel.dismissTrigger()
                     }
                 }
@@ -272,6 +284,10 @@ struct DashboardView: View {
                 .font(.system(.title3, design: .rounded).weight(.bold))
                 .foregroundStyle(AppColour.txtCoklat)
                 .accessibilityAddTraits(.isHeader)
+                .accessibilityFocused(
+                    $accessibilityFocus,
+                    equals: .commonTriggersHeading
+                )
 
             if viewModel.commonTriggers.isEmpty {
                 Text("No repeated triggers yet.")
@@ -323,6 +339,43 @@ struct DashboardView: View {
         .frame(height: height, alignment: .topLeading)
         .background(AppColour.btnKuning.opacity(0.16))
         .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
+    }
+
+    /// Moves VoiceOver only when trigger detail is presented or dismissed.
+    private func updateTriggerDetailAccessibilityFocus(
+        from previousDetail: TriggerDetail?,
+        to detail: TriggerDetail?
+    ) {
+        switch (previousDetail, detail) {
+        case (nil, .some):
+            Task { @MainActor in
+                // Let SwiftUI insert the modal title before requesting focus.
+                await Task.yield()
+                guard viewModel.selectedTriggerDetail != nil else { return }
+                accessibilityFocus = .triggerDialogTitle
+            }
+
+        case (.some, nil):
+            let returnTarget = triggerFocusReturnTarget
+
+            Task { @MainActor in
+                // Let the Dashboard re-enter the accessibility tree first.
+                await Task.yield()
+                guard viewModel.selectedTriggerDetail == nil else { return }
+
+                if let returnTarget,
+                   viewModel.commonTriggers.contains(returnTarget) {
+                    accessibilityFocus = .trigger(returnTarget)
+                } else {
+                    accessibilityFocus = .commonTriggersHeading
+                }
+
+                triggerFocusReturnTarget = nil
+            }
+
+        default:
+            break
+        }
     }
 
     private var addStoryButton: some View {
