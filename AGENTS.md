@@ -103,6 +103,21 @@ a production `Generate Insight` button.
 - Output-translation retry must reuse the preserved English result and must never regenerate the insight.
 - Chart data and statistical aggregation remain independent of this generation pipeline.
 
+## Dashboard Accessibility Rules
+
+Dashboard accessibility must remain part of the shared Dashboard view hierarchy so
+that compact and wide layouts expose the same VoiceOver behavior.
+
+- Keep programmatic VoiceOver focus as `@AccessibilityFocusState` UI state in
+  `DashboardView`; never move it into `DashboardViewModel`, a repository, or a
+  generation/translation service.
+- Use a typed focus destination contract for the insight, range selector, trigger
+  chips, trigger dialog title, empty state, and error state.
+- Move VoiceOver focus only for meaningful user or presentation transitions. A
+  normal SwiftUI re-render must never move focus.
+- Place accessibility semantics on shared Dashboard sections and components, not
+  only on `wideDashboard`, `compactDashboard`, or layout containers.
+
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 
 Use language such as:

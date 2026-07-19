@@ -5,6 +5,7 @@ struct DashboardView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
+    @AccessibilityFocusState private var accessibilityFocus: DashboardAccessibilityFocus?
     @State private var viewModel: DashboardViewModel
     @State private var translationTaskHost: AppleTranslationTaskHost
     @State private var navigateToSession = false
