@@ -11,12 +11,32 @@ struct TriggerAlertView: View {
     let detail: TriggerDetail
     let onDismiss: () -> Void
 
+    @AccessibilityFocusState.Binding private var accessibilityFocus:
+        DashboardAccessibilityFocus?
+
+    init(
+        detail: TriggerDetail,
+        accessibilityFocus: AccessibilityFocusState<
+            DashboardAccessibilityFocus?
+        >.Binding,
+        onDismiss: @escaping () -> Void
+    ) {
+        self.detail = detail
+        self._accessibilityFocus = accessibilityFocus
+        self.onDismiss = onDismiss
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 Text(detail.title)
                     .font(.system(.title2, design: .rounded).bold())
                     .foregroundColor(AppColour.txtCoklat)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused(
+                        $accessibilityFocus,
+                        equals: .triggerDialogTitle
+                    )
 
                 Text(detail.explanation)
                     .font(.system(.body, design: .rounded))
@@ -36,17 +56,24 @@ struct TriggerAlertView: View {
                         .font(.system(.headline, design: .rounded).bold())
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(AppColour.btnKuning)
+                        .background(
+                            AppColour.btnKuning
+                                .accessibilityHidden(true)
+                        )
                         .foregroundColor(AppColour.txtCoklat)
                         .clipShape(Capsule())
                 }
                 .padding(.top, 8)
+                .accessibilityLabel("Done")
+                .accessibilityHint("Closes trigger details.")
             }
             .padding(24)
         }
-        .background(AppColour.bgPutih)
+        .background(AppColour.bgPutih.accessibilityHidden(true))
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .frame(maxWidth: 440, maxHeight: 680)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
     }
 
     private var evidenceSection: some View {
@@ -108,6 +135,7 @@ struct TriggerAlertView: View {
             Text(detail.sectionLabels.curatedSources)
                 .font(.system(.caption, design: .rounded).bold())
                 .foregroundColor(AppColour.txtCoklat.opacity(0.7))
+                .accessibilityAddTraits(.isHeader)
 
             HStack(spacing: 8) {
                 ForEach(detail.sourceLabels, id: \.self) { source in
@@ -115,8 +143,13 @@ struct TriggerAlertView: View {
                         .font(.system(.caption, design: .rounded).bold())
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(AppColour.btnKuning.opacity(0.25))
+                        .background(
+                            AppColour.btnKuning
+                                .opacity(0.25)
+                                .accessibilityHidden(true)
+                        )
                         .clipShape(Capsule())
+                        .accessibilityLabel(source.rawValue)
                 }
             }
             .foregroundColor(AppColour.txtCoklat)
@@ -124,9 +157,16 @@ struct TriggerAlertView: View {
     }
 
     private func sectionHeader(title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: systemImage)
+                .accessibilityHidden(true)
+        }
             .font(.system(.headline, design: .rounded).bold())
             .foregroundColor(AppColour.txtCoklat)
+            .accessibilityLabel(title)
+            .accessibilityAddTraits(.isHeader)
     }
 
     private func bullet(_ text: String) -> some View {

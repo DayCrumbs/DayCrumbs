@@ -1,6 +1,10 @@
 import Foundation
 
 extension Moods {
+    nonisolated var accessibilityLabel: String {
+        "\(rawValue.capitalized) mood"
+    }
+
     var expressionImageName: String {
         switch self {
         case .angry: return "ExpressionAngryFace_Girl"
@@ -12,18 +16,29 @@ extension Moods {
         }
     }
 
-    static func expressionImageName(forDashboardMoodScore score: Int) -> String {
-        let mood: Moods
-
+    /// Maps the chart's internal visual score to the existing mood vocabulary.
+    nonisolated static func dashboardMood(forScore score: Int) -> Moods {
         switch score {
-        case 6: mood = .happy
-        case 5: mood = .sad
-        case 4: mood = .surprise
-        case 3: mood = .fear
-        case 2: mood = .disgust
-        default: mood = .angry
+        case 6: .happy
+        case 5: .sad
+        case 4: .surprise
+        case 3: .fear
+        case 2: .disgust
+        default: .angry
         }
+    }
 
-        return mood.expressionImageName
+    /// Converts the chart's internal score into a VoiceOver-safe mood label.
+    nonisolated static func dashboardAccessibilityLabel(forScore value: Double) -> String {
+        // Accessibility may probe the formatter with a non-finite sentinel while
+        // validating the descriptor, so guard before converting to an integer.
+        guard value.isFinite else { return "Mood" }
+
+        let boundedScore = min(max(value.rounded(), 1), 6)
+        return dashboardMood(forScore: Int(boundedScore)).accessibilityLabel
+    }
+
+    static func expressionImageName(forDashboardMoodScore score: Int) -> String {
+        dashboardMood(forScore: score).expressionImageName
     }
 }

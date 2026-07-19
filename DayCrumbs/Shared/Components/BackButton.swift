@@ -16,8 +16,8 @@ struct CircularBackButton: View {
     var style: ButtonStyle = .yellowBtn
     var action: () -> Void
     
-    // 3. Computed property untuk warna button
-    private var btnColour: Color {
+    /// Keeps the shared button fill consistent across its visual styles.
+    private var buttonColor: Color {
         switch style {
         case .yellowBtn:
             return AppColour.btnKuning
@@ -26,7 +26,7 @@ struct CircularBackButton: View {
         }
     }
     
-    // 4. Computed property untuk warna chevron (ikon)
+    /// Keeps the decorative chevron legible against the selected fill.
     private var chevronColor: Color {
         switch style {
         case .yellowBtn:
@@ -44,10 +44,12 @@ struct CircularBackButton: View {
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(chevronColor)
                 .frame(width: 44, height: 44)
-                .background(btnColour)
+                .background(buttonColor)
                 .clipShape(Circle())
                 .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                .accessibilityHidden(true)
         }
+        .accessibilityLabel("Back")
     }
 }
 

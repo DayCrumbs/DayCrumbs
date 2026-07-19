@@ -5,9 +5,14 @@ struct DashboardView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
+    @AccessibilityFocusState private var accessibilityFocus: DashboardAccessibilityFocus?
     @State private var viewModel: DashboardViewModel
     @State private var translationTaskHost: AppleTranslationTaskHost
     @State private var navigateToSession = false
+
+    /// Remembers which trigger opened the detail so modal dismissal can restore
+    /// VoiceOver to the originating chip in the next presentation step.
+    @State private var triggerFocusReturnTarget: String?
 
     init() {
         let translationTaskHost = AppleTranslationTaskHost()
@@ -21,12 +26,24 @@ struct DashboardView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            dashboardContent(in: geometry.size)
-                .frame(width: geometry.size.width, height: geometry.size.height)
+            sharedDashboardSurface(in: geometry.size)
         }
-        .background(AppColour.bgPutih.ignoresSafeArea())
+        .background(
+            AppColour.bgPutih
+                .ignoresSafeArea()
+                .accessibilityHidden(true)
+        )
         .toolbar(.hidden, for: .navigationBar)
         .appleTranslationTaskHost(translationTaskHost)
+        .onChange(of: viewModel.state) { _, newState in
+            postAccessibilityAnnouncement(for: newState)
+        }
+        .onChange(of: viewModel.selectedTriggerDetail) { previousDetail, detail in
+            updateTriggerDetailAccessibilityFocus(
+                from: previousDetail,
+                to: detail
+            )
+        }
         .task {
             await viewModel.start()
         }
@@ -50,23 +67,20 @@ struct DashboardView: View {
         .navigationDestination(isPresented: $navigateToSession) {
             SessionOptionView()
         }
-        .overlay(alignment: .topLeading) {
-            CircularBackButton(style: .yellowBtn) {
-                dismiss()
-            }
-            .padding(.top, 24)
-            .padding(.leading, 32)
-        }
         .overlay {
             if let detail = viewModel.selectedTriggerDetail {
                 ZStack {
                     Color.black.opacity(0.4)
                         .ignoresSafeArea()
+                        .accessibilityHidden(true)
                         .onTapGesture {
                             viewModel.dismissTrigger()
                         }
 
-                    TriggerAlertView(detail: detail) {
+                    TriggerAlertView(
+                        detail: detail,
+                        accessibilityFocus: $accessibilityFocus
+                    ) {
                         viewModel.dismissTrigger()
                     }
                 }
@@ -76,6 +90,22 @@ struct DashboardView: View {
         }
     }
 
+    /// Keeps global Dashboard controls and modal exclusion independent of the
+    /// compact or wide visual composition selected below.
+    private func sharedDashboardSurface(in size: CGSize) -> some View {
+        dashboardContent(in: size)
+            .frame(width: size.width, height: size.height)
+            .overlay(alignment: .topLeading) {
+                CircularBackButton(style: .yellowBtn) {
+                    dismiss()
+                }
+                .padding(.top, 24)
+                .padding(.leading, 32)
+            }
+            .accessibilityHidden(viewModel.selectedTriggerDetail != nil)
+    }
+
+    /// Selects visual layout only; shared sections own all accessibility behavior.
     @ViewBuilder
     private func dashboardContent(in size: CGSize) -> some View {
         Group {
@@ -151,6 +181,7 @@ struct DashboardView: View {
             Text("On this \(viewModel.selectedTimeRange.rawValue.lowercased()),")
                 .font(.system(.largeTitle, design: .rounded).weight(.bold))
                 .foregroundStyle(AppColour.txtCoklat)
+                .accessibilityAddTraits(.isHeader)
 
             insightContent
                 .font(.system(.title2, design: .rounded))
@@ -174,17 +205,39 @@ struct DashboardView: View {
                             if viewModel.selectedTimeRange == range {
                                 Capsule()
                                     .fill(AppColour.btnKuning)
+                                    .accessibilityHidden(true)
                             }
                         }
                 }
                 .buttonStyle(.plain)
-                .accessibilityValue(
-                    viewModel.selectedTimeRange == range ? "Selected" : "Not selected"
+                .accessibilityLabel("\(range.rawValue) range")
+                .accessibilityAddTraits(
+                    viewModel.selectedTimeRange == range ? .isSelected : []
                 )
+                .accessibilityHint(timeRangeAccessibilityHint(for: range))
             }
         }
         .padding(2)
-        .background(Capsule().fill(AppColour.btnKuning.opacity(0.18)))
+        .background {
+            Capsule()
+                .fill(AppColour.btnKuning.opacity(0.18))
+                .accessibilityHidden(true)
+        }
+        // Keep the layout container out of linear VoiceOver navigation while
+        // preserving each range button as an independent accessible child.
+        .accessibilityElement(children: .contain)
+    }
+
+    /// Explains each rolling range without exposing its date calculations.
+    private func timeRangeAccessibilityHint(for range: TimeRange) -> String {
+        switch range {
+        case .day:
+            "Generates insight for today."
+        case .week:
+            "Generates insight for the last 7 days."
+        case .month:
+            "Generates insight for the last 30 days."
+        }
     }
 
     private func moodChart(height: CGFloat) -> some View {
@@ -221,6 +274,7 @@ struct DashboardView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 48, height: 48)
+                            .accessibilityHidden(true)
                     }
                 }
             }
@@ -234,6 +288,12 @@ struct DashboardView: View {
             transaction.animation = nil
         }
         .frame(height: height)
+        .accessibilityChartDescriptor(
+            DashboardMoodChartDescriptor(
+                timeRange: viewModel.selectedTimeRange,
+                dataPoints: viewModel.currentChartData
+            )
+        )
     }
 
     private func commonTriggersCard(height: CGFloat) -> some View {
@@ -241,16 +301,24 @@ struct DashboardView: View {
             Text("Common Triggers")
                 .font(.system(.title3, design: .rounded).weight(.bold))
                 .foregroundStyle(AppColour.txtCoklat)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityFocused(
+                    $accessibilityFocus,
+                    equals: .commonTriggersHeading
+                )
 
             if viewModel.commonTriggers.isEmpty {
                 Text("No repeated triggers yet.")
                     .font(.system(.body, design: .rounded))
                     .foregroundStyle(AppColour.txtCoklat.opacity(0.75))
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("No repeated triggers yet.")
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 14) {
                         ForEach(viewModel.commonTriggers, id: \.self) { trigger in
                             Button {
+                                triggerFocusReturnTarget = trigger
                                 viewModel.selectTrigger(trigger)
                             } label: {
                                 Text(trigger)
@@ -262,9 +330,18 @@ struct DashboardView: View {
                                     .overlay {
                                         Capsule()
                                             .stroke(AppColour.btnKuning, lineWidth: 1.5)
+                                            .accessibilityHidden(true)
                                     }
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel("\(trigger), common trigger")
+                            .accessibilityHint(
+                                "Shows explanation, evidence, and recommended activities."
+                            )
+                            .accessibilityFocused(
+                                $accessibilityFocus,
+                                equals: .trigger(trigger)
+                            )
                         }
                     }
                 }
@@ -278,8 +355,52 @@ struct DashboardView: View {
         .padding(34)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .frame(height: height, alignment: .topLeading)
-        .background(AppColour.btnKuning.opacity(0.16))
+        .background(
+            AppColour.btnKuning
+                .opacity(0.16)
+                .accessibilityHidden(true)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
+        // Exclude the card wrapper as a readable leaf without hiding its
+        // heading, empty message, or trigger buttons from VoiceOver.
+        .accessibilityElement(children: .contain)
+    }
+
+    /// Moves VoiceOver only when trigger detail is presented or dismissed.
+    private func updateTriggerDetailAccessibilityFocus(
+        from previousDetail: TriggerDetail?,
+        to detail: TriggerDetail?
+    ) {
+        switch (previousDetail, detail) {
+        case (nil, .some):
+            Task { @MainActor in
+                // Let SwiftUI insert the modal title before requesting focus.
+                await Task.yield()
+                guard viewModel.selectedTriggerDetail != nil else { return }
+                accessibilityFocus = .triggerDialogTitle
+            }
+
+        case (.some, nil):
+            let returnTarget = triggerFocusReturnTarget
+
+            Task { @MainActor in
+                // Let the Dashboard re-enter the accessibility tree first.
+                await Task.yield()
+                guard viewModel.selectedTriggerDetail == nil else { return }
+
+                if let returnTarget,
+                   viewModel.commonTriggers.contains(returnTarget) {
+                    accessibilityFocus = .trigger(returnTarget)
+                } else {
+                    accessibilityFocus = .commonTriggersHeading
+                }
+
+                triggerFocusReturnTarget = nil
+            }
+
+        default:
+            break
+        }
     }
 
     private var addStoryButton: some View {
@@ -289,14 +410,19 @@ struct DashboardView: View {
             HStack(spacing: 8) {
                 Text("Add Story!")
                 Image(systemName: "plus")
+                    .accessibilityHidden(true)
             }
                 .font(.system(.headline, design: .rounded).weight(.bold))
                 .foregroundStyle(AppColour.txtCoklat)
                 .frame(maxWidth: .infinity, minHeight: 51)
-                .background(AppColour.btnKuning)
+                .background(
+                    AppColour.btnKuning
+                        .accessibilityHidden(true)
+                )
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Add story")
     }
 
     @ViewBuilder
@@ -305,15 +431,18 @@ struct DashboardView: View {
         case .idle:
             Text("Preparing your private insight…")
 
-        case .loading(let message):
+        case .loading(let phase):
             HStack(spacing: 10) {
                 ProgressView()
-                Text(message)
+                Text(phase.message)
             }
+            .accessibilityElement(children: .combine)
 
         case .loaded:
             VStack(alignment: .leading, spacing: 8) {
                 Text(viewModel.summaryText)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(insightAccessibilityLabel)
 
                 if let fallbackLabel = viewModel.englishFallbackLabel {
                     HStack(spacing: 10) {
@@ -326,6 +455,9 @@ struct DashboardView: View {
                             }
                         }
                         .buttonStyle(.bordered)
+                        .accessibilityHint(
+                            "Translates the existing English insight without generating a new insight."
+                        )
                     }
                 }
             }
@@ -344,8 +476,36 @@ struct DashboardView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(AppColour.btnKuning)
+                .accessibilityHint(
+                    "Generates a new insight for the selected range."
+                )
             }
         }
+    }
+
+    /// Adds the child and selected range without duplicating them visually.
+    private var insightAccessibilityLabel: String {
+        let childName = viewModel.childName.isEmpty
+            ? "Your child"
+            : viewModel.childName
+
+        return "\(viewModel.selectedTimeRange.rawValue) insight for \(childName). \(viewModel.summaryText)"
+    }
+
+    private func postAccessibilityAnnouncement(
+        for state: DashboardPresentationState
+    ) {
+        guard let announcement = DashboardAccessibilityAnnouncement(
+            state: state,
+            selectedTimeRange: viewModel.selectedTimeRange,
+            hasEnglishFallback: viewModel.englishFallback != nil
+        ) else {
+            return
+        }
+
+        // State is Equatable, so onChange posts only for a real lifecycle
+        // transition and never for a normal SwiftUI re-render.
+        AccessibilityNotification.Announcement(announcement.message).post()
     }
 
 }
