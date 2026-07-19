@@ -223,6 +223,9 @@ struct DashboardView: View {
                 .fill(AppColour.btnKuning.opacity(0.18))
                 .accessibilityHidden(true)
         }
+        // Keep the layout container out of linear VoiceOver navigation while
+        // preserving each range button as an independent accessible child.
+        .accessibilityElement(children: .contain)
     }
 
     /// Explains each rolling range without exposing its date calculations.
@@ -358,6 +361,9 @@ struct DashboardView: View {
                 .accessibilityHidden(true)
         )
         .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
+        // Exclude the card wrapper as a readable leaf without hiding its
+        // heading, empty message, or trigger buttons from VoiceOver.
+        .accessibilityElement(children: .contain)
     }
 
     /// Moves VoiceOver only when trigger detail is presented or dismissed.

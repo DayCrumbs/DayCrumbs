@@ -136,6 +136,10 @@ that compact and wide layouts expose the same VoiceOver behavior.
 - Keep Day, Week, and Month as native buttons labeled "Day range", "Week range",
   and "Month range". Apply `.isSelected` only to the active range and describe
   each rolling period in its accessibility hint.
+- Make the range picker's outer layout container non-readable with
+  `.accessibilityElement(children: .contain)`. Never apply
+  `.accessibilityHidden(true)` to that parent because it also hides the range
+  buttons.
 - Never express an inactive Dashboard range with a "Not selected" accessibility
   value. Selecting the active range must remain a no-op and must not post another
   generation announcement.
@@ -156,6 +160,9 @@ that compact and wide layouts expose the same VoiceOver behavior.
   start another generation request.
 - Expose an empty common-trigger message as one static-text element, and hide
   decorative capsule borders from the accessibility tree.
+- Make the Common Triggers card's outer layout container non-readable with
+  `.accessibilityElement(children: .contain)`. Never hide the parent container,
+  because its heading, empty message, and trigger buttons must remain accessible.
 - Treat trigger detail as a VoiceOver modal: hide the Dashboard and decorative
   dimming layer from the accessibility tree, apply the modal trait to a container
   that preserves its readable children, and move focus to the trigger title.
@@ -178,6 +185,20 @@ that compact and wide layouts expose the same VoiceOver behavior.
 - Prefer the natural accessibility order produced by shared content. Add explicit
   sort priorities only after manual VoiceOver testing proves the natural order is
   incorrect.
+- Verify Dashboard accessibility in both a compact iPhone layout and a wide iPad
+  layout. Runtime accessibility snapshots may confirm names, roles, reachability,
+  and range transitions, but they do not replace a VoiceOver walkthrough for
+  announcement timing, spoken chart output, modal focus, or focus restoration.
+- Keep pure accessibility policies covered by unit tests, including announcement
+  messages, stale-range publication guards, chart descriptors, active-range
+  no-ops, and translation-only retry behavior.
+- Run accessibility audits for loaded, empty, failed, and trigger-detail states
+  when an existing UI-test target supports them. If the project has no UI-test
+  target, report that coverage gap; do not edit `project.pbxproj` merely to add
+  one without the user's explicit approval.
+- Before merging Dashboard accessibility changes, run the full `DayCrumbs` scheme
+  test suite on an iOS Simulator and record any manual VoiceOver checks that still
+  require a person to confirm audio or focus behavior.
 
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 
