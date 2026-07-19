@@ -183,13 +183,27 @@ struct DashboardView: View {
                         }
                 }
                 .buttonStyle(.plain)
-                .accessibilityValue(
-                    viewModel.selectedTimeRange == range ? "Selected" : "Not selected"
+                .accessibilityLabel("\(range.rawValue) range")
+                .accessibilityAddTraits(
+                    viewModel.selectedTimeRange == range ? .isSelected : []
                 )
+                .accessibilityHint(timeRangeAccessibilityHint(for: range))
             }
         }
         .padding(2)
         .background(Capsule().fill(AppColour.btnKuning.opacity(0.18)))
+    }
+
+    /// Explains each rolling range without exposing its date calculations.
+    private func timeRangeAccessibilityHint(for range: TimeRange) -> String {
+        switch range {
+        case .day:
+            "Generates insight for today."
+        case .week:
+            "Generates insight for the last 7 days."
+        case .month:
+            "Generates insight for the last 30 days."
+        }
     }
 
     private func moodChart(height: CGFloat) -> some View {

@@ -133,6 +133,12 @@ that compact and wide layouts expose the same VoiceOver behavior.
 - Give generation retry and translation-only retry distinct accessibility hints;
   translation retry must clearly state that it reuses the existing English
   insight instead of generating again.
+- Keep Day, Week, and Month as native buttons labeled "Day range", "Week range",
+  and "Month range". Apply `.isSelected` only to the active range and describe
+  each rolling period in its accessibility hint.
+- Never express an inactive Dashboard range with a "Not selected" accessibility
+  value. Selecting the active range must remain a no-op and must not post another
+  generation announcement.
 
 The app must never diagnose the child. Insights must be phrased as observations or possibilities.
 
