@@ -5,16 +5,7 @@ struct PickPlaceView: View {
 
     let selectedSession: Sessions
 
-    @State private var selectedPlace: Place.BuiltInPlace?
-    @State private var navigationRoute: StoryFlowRoute?
-    
-    // The order follows the current illustration reference.
-    private let placeOptions: [Place.BuiltInPlace] = [
-        .house,
-        .outdoor,
-        .publicPlace,
-        .school
-    ]
+    @State private var viewModel = PickPlaceViewModel()
     
     var body: some View {
         GeometryReader { proxy in
@@ -31,13 +22,13 @@ struct PickPlaceView: View {
                     
                     SelectionSlider(
                         title: "Choose the place where it happened",
-                        items: placeOptions,
-                        selectedItem: $selectedPlace,
+                        items: viewModel.placeOptions,
+                        selectedItem: $viewModel.selectedPlace,
                         itemName: { $0.rawValue },
                         onAddCustom: {
                             // Custom place creation will be added in a later flow.
                         },
-                        itemImageName: placeImageName(for:)
+                        itemImageName: viewModel.placeImageName(for:)
                     )
                     .frame(height: proxy.size.height * 0.26)
                 }
@@ -49,14 +40,14 @@ struct PickPlaceView: View {
                 .padding(.top, 24)
                 .padding(.leading, 32)
             }
-            .onChange(of: selectedPlace) { _, newValue in
+            .onChange(of: viewModel.selectedPlace) { _, newValue in
                 if let newValue {
-                    navigationRoute = .pickActivity(selectedSession, newValue)
+                    viewModel.handlePlaceSelection(newValue, in: selectedSession)
                 }
             }
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $navigationRoute)
+        .storyFlowNavigationDestination(route: $viewModel.navigationRoute)
     }
 
     private func sessionBackground(in size: CGSize) -> some View {
@@ -67,15 +58,6 @@ struct PickPlaceView: View {
             .frame(width: size.width, height: size.height)
             .clipped()
             .blur(radius: 12)
-    }
-
-    private func placeImageName(for place: Place.BuiltInPlace) -> String {
-        switch place {
-        case .house: return "Place_House"
-        case .outdoor: return "Place_Outdoor"
-        case .school: return "Place_School"
-        case .publicPlace: return "Place_PublicArea"
-        }
     }
 }
 

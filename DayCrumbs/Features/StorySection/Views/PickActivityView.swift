@@ -12,17 +12,7 @@ struct PickActivityView: View {
 
   let selectedSession: Sessions
   let selectedPlace: Place.BuiltInPlace
-  @State private var selectedActivity: Activity.BuiltInActivity?
-  @State private var navigationRoute: StoryFlowRoute?
-  
-  private let activityOptions: [Activity.BuiltInActivity] = [
-      .play,
-      .sleep,
-      .study,
-      .eat,
-      .getReady,
-      .wakeUp
-  ]
+  @State private var viewModel = PickActivityViewModel()
   
   var body: some View {
       GeometryReader { proxy in
@@ -41,23 +31,23 @@ struct PickActivityView: View {
                   
                   SelectionSlider(
                       title: "Choose the activity where it happened",
-                      items: activityOptions,
-                      selectedItem: $selectedActivity,
+                      items: viewModel.activityOptions,
+                      selectedItem: $viewModel.selectedActivity,
                       itemName: { $0.rawValue },
                       onAddCustom: {
                           // Custom activity creation will be added in a later flow.
                       },
-                      itemImageName: activityImageName(for:)
+                      itemImageName: viewModel.activityImageName(for:)
                   )
                   .frame(height: proxy.size.height * 0.26)
               }
               .frame(width: proxy.size.width, height: proxy.size.height)
-              .onChange(of: selectedActivity) { _, newValue in
+              .onChange(of: viewModel.selectedActivity) { _, newValue in
                   if let newValue {
-                      navigationRoute = .pickMood(
-                          selectedSession,
-                          selectedPlace,
-                          newValue
+                      viewModel.handleActivitySelection(
+                          newValue,
+                          session: selectedSession,
+                          place: selectedPlace
                       )
                   }
               }
@@ -70,11 +60,7 @@ struct PickActivityView: View {
           }
       }
       .navigationBarBackButtonHidden(true)
-      .storyFlowNavigationDestination(route: $navigationRoute)
-  }
-  
-  private func activityImageName(for activity: Activity.BuiltInActivity) -> String {
-      StorySelectionAsset.sliderImageName(for: activity)
+      .storyFlowNavigationDestination(route: $viewModel.navigationRoute)
   }
 }
 

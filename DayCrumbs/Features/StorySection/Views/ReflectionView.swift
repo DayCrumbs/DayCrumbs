@@ -8,9 +8,7 @@ struct ReflectionView: View {
     let selectedActivity: Activity.BuiltInActivity
     let selectedMood: Moods
     let onSaveEndOfDayReflection: (String) -> Void
-    
-    @State private var reflectionText = ""
-    @State private var navigationRoute: StoryFlowRoute?
+    @State private var viewModel = ReflectionViewModel()
     
     init(
         selectedSession: Sessions,
@@ -46,7 +44,7 @@ struct ReflectionView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $navigationRoute)
+        .storyFlowNavigationDestination(route: $viewModel.navigationRoute)
     }
     
     private func wideContent(in size: CGSize) -> some View {
@@ -122,7 +120,7 @@ struct ReflectionView: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(AppColour.bgPutih.opacity(0.24))
             
-            if reflectionText.isEmpty {
+            if viewModel.reflectionText.isEmpty {
                 Text("e.g. Today, she was mostly happy because she got to spend time with her dad who's usually busy at work. But, she had difficulty doing a part of her homework in the evening. Her dad came to help and her mood eventually returned to normal.")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppColour.txtCoklat.opacity(0.45))
@@ -131,7 +129,7 @@ struct ReflectionView: View {
                     .allowsHitTesting(false)
             }
             
-            TextEditor(text: $reflectionText)
+            TextEditor(text: $viewModel.reflectionText)
                 .font(.system(.body, design: .rounded))
                 .foregroundStyle(AppColour.txtCoklat)
                 .scrollContentBackground(.hidden)
@@ -164,37 +162,32 @@ struct ReflectionView: View {
         Button(action: saveReflectionAndFinish) {
             Image(systemName: "checkmark")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(isReflectionReady ? AppColour.txtCoklat : AppColour.txtCoklat.opacity(0.35))
+                .foregroundStyle(viewModel.isReflectionReady ? AppColour.txtCoklat : AppColour.txtCoklat.opacity(0.35))
                 .frame(width: 34, height: 34)
                 .background(AppColour.bgPutih)
                 .clipShape(Circle())
                 .overlay {
                     Circle()
-                        .stroke(AppColour.txtCoklat.opacity(isReflectionReady ? 0.8 : 0.3), lineWidth: 2)
+                    .stroke(AppColour.txtCoklat.opacity(viewModel.isReflectionReady ? 0.8 : 0.3), lineWidth: 2)
                 }
         }
         .buttonStyle(.plain)
-        .disabled(!isReflectionReady)
+        .disabled(!viewModel.isReflectionReady)
         .accessibilityLabel("Finish reflection")
         .accessibilityValue(
-            isReflectionReady
+            viewModel.isReflectionReady
                 ? "Ready to finish"
                 : "Disabled until an end-of-day reflection is entered"
         )
         .accessibilityHint(
-            isReflectionReady
+            viewModel.isReflectionReady
             ? "Saves the reflection and returns to onboarding."
             : "Write an end-of-day reflection before continuing."
         )
     }
     
-    private var isReflectionReady: Bool {
-        !reflectionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-    
     private func saveReflectionAndFinish() {
-        onSaveEndOfDayReflection(reflectionText)
-        navigationRoute = .onboarding
+        viewModel.saveReflectionAndFinish(onSave: onSaveEndOfDayReflection)
     }
 }
 

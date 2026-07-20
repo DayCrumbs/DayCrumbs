@@ -9,12 +9,18 @@ import SwiftUI
 import Foundation
 
 @Observable
-class ChildProfileSetupViewModel {
+final class ChildProfileSetupViewModel {
     // MARK: - Properties
     var childName: String = ""
     var childAge: Int = 0
+    var childAgeText: String = "" {
+        didSet {
+            childAge = Int(childAgeText) ?? 0
+        }
+    }
     var selectedGender: ChildGender? = .boy
     var errorMessage: String? = nil
+    var navigationRoute: StoryFlowRoute?
     
     // MARK: - Computed Properties
     var isFormValid: Bool {
@@ -23,6 +29,11 @@ class ChildProfileSetupViewModel {
         selectedGender != nil
     }
     
+    @MainActor
+    func selectGender(_ gender: ChildGender) {
+        selectedGender = gender
+    }
+
     @MainActor
     func saveProfile(using repository: ChildProfileRepository) {
         guard isFormValid, let gender = selectedGender else { return }
@@ -36,6 +47,7 @@ class ChildProfileSetupViewModel {
         do {
             try repository.saveProfile(newProfile)
             self.errorMessage = nil
+            navigationRoute = .sessionOption
             print("Profil \(childName) berhasil disimpan!")
         } catch {
             self.errorMessage = "Gagal menyimpan profil: \(error.localizedDescription)"

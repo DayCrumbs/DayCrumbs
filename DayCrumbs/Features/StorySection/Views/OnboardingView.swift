@@ -8,10 +8,7 @@
 import SwiftUI
 
 struct OnboardingView: View {
-    
-    @State private var navigateToProfile: Bool = false
-    @State private var navigateToDashboard: Bool = false
-    @State private var navigateToModel: Bool = false
+    @State private var viewModel = OnboardingViewModel()
         
     var body: some View {
         ZStack {
@@ -39,8 +36,7 @@ struct OnboardingView: View {
                     .padding(.horizontal, 40)
                                 
                 Button(action: {
-                    navigateToProfile = true
-                    print("Tombol Start ditekan") //buat ngecek
+                    viewModel.startStory()
                 }) {
                     Text("Start The Story")
                         .font(.system(.title2, design: .rounded).weight(.bold))
@@ -55,8 +51,7 @@ struct OnboardingView: View {
                 .padding(.bottom, 20)
                 
                 Button(action: {
-                    navigateToModel = true
-                    print("Tombol Start ditekan") //buat ngecek
+                    viewModel.openModels()
                 }) {
                     Text("Models")
                         .font(.system(.title2, design: .rounded).weight(.bold))
@@ -70,8 +65,7 @@ struct OnboardingView: View {
                 .padding(.bottom, 20)
                 
                 Button(action: {
-                    navigateToDashboard = true
-                    print("Tombol Start ditekan") //buat ngecek
+                    viewModel.openDashboard()
                 }) {
                     Text("Dashboard")
                         .font(.system(.title2, design: .rounded).weight(.bold))
@@ -87,14 +81,14 @@ struct OnboardingView: View {
             }
         }
         
-        .navigationDestination(isPresented: $navigateToModel) {
+        .navigationDestination(isPresented: $viewModel.navigateToModel) {
             ModelsView()
         }
         
-        .navigationDestination(isPresented: $navigateToDashboard) {
+        .navigationDestination(isPresented: $viewModel.navigateToDashboard) {
             DashboardView()
         }
-        .navigationDestination(isPresented: $navigateToProfile) {
+        .navigationDestination(isPresented: $viewModel.navigateToProfile) {
             ChildProfileSetupView()
         }
         .navigationBarBackButtonHidden(true)

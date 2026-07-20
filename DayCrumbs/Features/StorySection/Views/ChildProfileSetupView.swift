@@ -12,8 +12,6 @@ struct ChildProfileSetupView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel = ChildProfileSetupViewModel()
-    @State private var navigationRoute: StoryFlowRoute?
-    @State private var childAgeText: String = ""
     
     var body: some View {
         ZStack {
@@ -73,11 +71,8 @@ struct ChildProfileSetupView: View {
                                 .foregroundColor(AppColour.txtCoklat)
                                 .frame(width: 80, alignment: .leading)
                             
-                            TextField("How old are you", text: $childAgeText)
+                            TextField("How old are you", text: $viewModel.childAgeText)
                                 .keyboardType(.numberPad)
-                                .onChange(of: childAgeText) { _, ageText in
-                                    viewModel.childAge = Int(ageText) ?? 0
-                                }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
                                 .background(Color.white.opacity(0.3))
@@ -108,11 +103,6 @@ struct ChildProfileSetupView: View {
                             // Inisialisasi repositori menggunakan modelContext
                             let repository = ChildProfileRepository(modelContext: modelContext)
                             viewModel.saveProfile(using: repository)
-                            
-                            if viewModel.isFormValid && viewModel.errorMessage == nil {
-                                navigationRoute = .sessionOption
-                            }
-                            
                         }) {
                             Text("Save Profile")
                                 .font(.system(.title3, design: .rounded).weight(.bold))
@@ -143,7 +133,7 @@ struct ChildProfileSetupView: View {
             .padding(.horizontal, 40)
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $navigationRoute)
+        .storyFlowNavigationDestination(route: $viewModel.navigationRoute)
     }
     
     // MARK: - Komponen Bantuan
@@ -152,7 +142,7 @@ struct ChildProfileSetupView: View {
         let isSelected = viewModel.selectedGender == gender
         
         Button(action: {
-            viewModel.selectedGender = gender
+            viewModel.selectGender(gender)
         }) {
             Text(gender.rawValue.capitalized)
                 .font(.system(.body, design: .rounded).weight(.medium))
