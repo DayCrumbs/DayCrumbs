@@ -12,7 +12,7 @@ struct AppleGeneratedAnalyticsInsight {
 
     @Guide(
         description: "Possible trigger candidates grounded in supplied rows. Use an empty array when one observation cannot support a trigger.",
-        .maximumCount(3)
+        .maximumCount(5)
     )
     var commonTriggers: [AppleGeneratedCommonTrigger]
 
