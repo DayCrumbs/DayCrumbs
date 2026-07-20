@@ -97,6 +97,7 @@ struct OnboardingView: View {
         .navigationDestination(isPresented: $navigateToProfile) {
             ChildProfileSetupView()
         }
+        .navigationBarBackButtonHidden(true)
     }
 }
 
