@@ -6,17 +6,7 @@ struct PickMoodView: View {
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
     let selectedActivity: Activity.BuiltInActivity
-    @State private var moodAlert: Moods?
-    @State private var navigationRoute: StoryFlowRoute?
-
-    private let moodOptions: [Moods] = [
-        .disgust,
-        .sad,
-        .angry,
-        .surprise,
-        .fear,
-        .happy
-    ]
+    @State private var viewModel = PickMoodViewModel()
 
     var body: some View {
         GeometryReader { proxy in
@@ -36,7 +26,7 @@ struct PickMoodView: View {
                         characterHeightRatio: 1084.0 / 655.0,
                         title: moodQuestionTitle,
                         subtitle: "Pick a face that looks like how you felt.",
-                        accessibilityLabel: "How did you feel when you \(activityPastTense(selectedActivity))? Pick a face that looks like how you felt."
+                        accessibilityLabel: "How did you feel when you \(viewModel.activityPastTense(selectedActivity))? Pick a face that looks like how you felt."
                     )
                     .frame(height: proxy.size.height * 0.60)
 
@@ -71,16 +61,16 @@ struct PickMoodView: View {
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
-                .accessibilityHidden(moodAlert != nil)
+                .accessibilityHidden(viewModel.moodAlert != nil)
 
-                if let moodAlert {
+                if let moodAlert = viewModel.moodAlert {
                     Color.black.opacity(0.18)
                         .ignoresSafeArea()
                         .accessibilityHidden(true)
                         .transition(.opacity)
 
                     MoodAlertView(mood: moodAlert) {
-                        self.moodAlert = nil
+                        viewModel.dismissMoodAlert()
                     }
                     .frame(
                         width: proxy.size.width,
@@ -90,10 +80,10 @@ struct PickMoodView: View {
                     .transition(.scale.combined(with: .opacity))
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: moodAlert)
+            .animation(.easeInOut(duration: 0.2), value: viewModel.moodAlert)
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $navigationRoute)
+        .storyFlowNavigationDestination(route: $viewModel.navigationRoute)
     }
 
     private var moodGrid: some View {
@@ -105,37 +95,26 @@ struct PickMoodView: View {
             ],
             spacing: 22
         ) {
-            ForEach(moodOptions, id: \.self) { mood in
+            ForEach(viewModel.moodOptions, id: \.self) { mood in
                 MoodExpressionButton(
                     mood: mood,
                     selectMood: {
-                        navigationRoute = .reason(
-                            selectedSession,
-                            selectedPlace,
-                            selectedActivity,
-                            mood
+                        viewModel.selectMood(
+                            mood,
+                            session: selectedSession,
+                            place: selectedPlace,
+                            activity: selectedActivity
                         )
                     },
-                    showMoodAlert: { moodAlert = mood }
+                    showMoodAlert: { viewModel.showMoodAlert(for: mood) }
                 )
             }
         }
         .padding(.horizontal, 8)
     }
 
-    private func activityPastTense(_ activity: Activity.BuiltInActivity) -> String {
-        switch activity {
-        case .play: return "played"
-        case .sleep: return "slept"
-        case .study: return "studied"
-        case .eat: return "ate"
-        case .getReady: return "got ready"
-        case .wakeUp: return "woke up"
-        }
-    }
-
     private var moodQuestionTitle: Text {
-        Text("How did you feel when you \(Text(activityPastTense(selectedActivity)).underline())?")
+        Text("How did you feel when you \(Text(viewModel.activityPastTense(selectedActivity)).underline())?")
     }
 }
 

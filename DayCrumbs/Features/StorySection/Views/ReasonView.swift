@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct ReasonView: View {
-    private static let discussionCharacterLimit = 1_000
-
     @Environment(\.dismiss) private var dismiss
 
     let selectedSession: Sessions
@@ -12,8 +10,7 @@ struct ReasonView: View {
     let onSaveDiscussion: (String) -> Void
     let onContinueToIllustrated: () -> Void
 
-    @State private var discussionText = ""
-    @State private var navigationRoute: StoryFlowRoute?
+    @State private var viewModel = ReasonViewModel()
 
     init(
         selectedSession: Sessions,
@@ -57,7 +54,7 @@ struct ReasonView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $navigationRoute)
+        .storyFlowNavigationDestination(route: $viewModel.navigationRoute)
     }
 
     private func wideContent(in size: CGSize) -> some View {
@@ -121,7 +118,16 @@ struct ReasonView: View {
 
             discussionEditor
 
-            Button(action: saveDiscussionAndContinue) {
+            Button {
+                viewModel.saveDiscussion(
+                    onSave: onSaveDiscussion,
+                    onContinue: onContinueToIllustrated,
+                    session: selectedSession,
+                    place: selectedPlace,
+                    activity: selectedActivity,
+                    mood: selectedMood
+                )
+            } label: {
                 Text("Save Discussion")
                     .font(.system(.headline, design: .rounded).weight(.semibold))
                     .foregroundStyle(AppColour.txtCoklat)
@@ -143,8 +149,8 @@ struct ReasonView: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(AppColour.bgPutih.opacity(0.24))
 
-            if discussionText.isEmpty {
-                Text("e.g. They felt \(selectedMood.rawValue) because they played hide and seek with friends at school")
+            if viewModel.discussionText.isEmpty {
+                Text(viewModel.discussionPlaceholder(for: selectedMood))
                     .font(.system(.body, design: .rounded))
                     .foregroundStyle(AppColour.txtCoklat.opacity(0.45))
                     .padding(.horizontal, 16)
@@ -152,7 +158,7 @@ struct ReasonView: View {
                     .allowsHitTesting(false)
             }
 
-            TextEditor(text: $discussionText)
+            TextEditor(text: $viewModel.discussionText)
                 .font(.system(.body, design: .rounded))
                 .foregroundStyle(AppColour.txtCoklat)
                 .scrollContentBackground(.hidden)
@@ -160,26 +166,21 @@ struct ReasonView: View {
                 .padding(.horizontal, 10)
                 .padding(.top, 8)
                 .padding(.bottom, 38)
-                .onChange(of: discussionText) { _, newValue in
-                    if newValue.count > Self.discussionCharacterLimit {
-                        discussionText = String(newValue.prefix(Self.discussionCharacterLimit))
-                    }
-                }
                 .accessibilityLabel(
-                    "Write discussion, \(discussionText.count) of \(Self.discussionCharacterLimit) characters"
+                    "Write discussion, \(viewModel.discussionCharacterCount) of \(viewModel.discussionCharacterLimit) characters"
                 )
                 .accessibilityHint(
-                    "Optional discussion. Enter up to \(Self.discussionCharacterLimit) characters."
+                    "Optional discussion. Enter up to \(viewModel.discussionCharacterLimit) characters."
                 )
 
             HStack(spacing: 12) {
                 Spacer()
 
-                Text("\(discussionText.count)/\(Self.discussionCharacterLimit)")
+                Text("\(viewModel.discussionCharacterCount)/\(viewModel.discussionCharacterLimit)")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppColour.txtCoklat)
                     .accessibilityLabel(
-                        "\(discussionText.count) of \(Self.discussionCharacterLimit) characters"
+                        "\(viewModel.discussionCharacterCount) of \(viewModel.discussionCharacterLimit) characters"
                     )
 
                 Button {
@@ -202,7 +203,15 @@ struct ReasonView: View {
     }
 
     private var skipButton: some View {
-        Button(action: continueToIllustrated) {
+        Button {
+            viewModel.continueToIllustrated(
+                onContinue: onContinueToIllustrated,
+                session: selectedSession,
+                place: selectedPlace,
+                activity: selectedActivity,
+                mood: selectedMood
+            )
+        } label: {
             Text("Skip")
                 .font(.system(.headline, design: .rounded).weight(.semibold))
                 .foregroundStyle(AppColour.txtCoklat)
@@ -220,22 +229,7 @@ struct ReasonView: View {
     }
 
     private var reasonQuestionAccessibilityLabel: String {
-        "Can you tell us why you felt \(selectedMood.rawValue)? Share your story with your parent so we can better understand what happened."
-    }
-
-    private func saveDiscussionAndContinue() {
-        onSaveDiscussion(discussionText)
-        continueToIllustrated()
-    }
-
-    private func continueToIllustrated() {
-        onContinueToIllustrated()
-        navigationRoute = .illustrated(
-            selectedSession,
-            selectedPlace,
-            selectedActivity,
-            selectedMood
-        )
+        viewModel.reasonQuestionAccessibilityLabel(for: selectedMood)
     }
 }
 

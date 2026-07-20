@@ -2,8 +2,7 @@ import SwiftUI
 
 struct SessionOptionView: View {
     @Environment(\.dismiss) private var dismiss
-
-    @State private var navigationRoute: StoryFlowRoute?
+    @State private var viewModel = SessionOptionViewModel()
 
     var body: some View {
         GeometryReader { proxy in
@@ -25,7 +24,7 @@ struct SessionOptionView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $navigationRoute)
+        .storyFlowNavigationDestination(route: $viewModel.navigationRoute)
     }
 
     private func wideContent(in size: CGSize) -> some View {
@@ -114,7 +113,7 @@ struct SessionOptionView: View {
 
     private func sessionCard(for session: Sessions) -> some View {
         SessionSelectionCard(session: session) {
-            navigationRoute = .pickPlace(session)
+            viewModel.selectSession(session)
         }
     }
 }
