@@ -52,6 +52,10 @@ struct PickMoodView: View {
                             Text("Hold any emotion to learn more about it")
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(AppColour.txtCoklat.opacity(0.9))
+                                .padding(.horizontal, 28)
+                                .padding(.vertical, 12)
+                                .background(AppColour.bgPutih)
+                                .clipShape(Capsule())
                                 .padding(.top, 20)
                         }
                         .frame(width: proxy.size.width * 0.47)
@@ -150,6 +154,10 @@ private struct MoodExpressionButton: View {
             Text(mood.rawValue.capitalized)
                 .font(.system(.headline, design: .rounded).weight(.semibold))
                 .foregroundStyle(AppColour.txtCoklat)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(AppColour.btnKuning)
+                .clipShape(Capsule())
         }
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
