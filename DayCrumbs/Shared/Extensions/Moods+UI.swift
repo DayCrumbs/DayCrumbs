@@ -6,13 +6,23 @@ extension Moods {
     }
 
     var expressionImageName: String {
-        switch self {
-        case .angry: return "ExpressionAngryFace_Girl"
-        case .disgust: return "ExpressionDisgustFace_Girl"
-        case .fear: return "ExpressionFearFace_Girl"
-        case .happy: return "ExpressionHappyFace_Girl"
-        case .sad: return "ExpressionSadFace_Girl"
-        case .surprise: return "ExpressionSurpriseFace_Girl"
+        expressionImageName(for: .girl)
+    }
+
+    func expressionImageName(for gender: ChildGender) -> String {
+        switch (self, gender) {
+        case (.angry, .girl): return "ExpressionAngryFace_Girl"
+        case (.disgust, .girl): return "ExpressionDisgustFace_Girl"
+        case (.fear, .girl): return "ExpressionFearFace_Girl"
+        case (.happy, .girl): return "ExpressionHappyFace_Girl"
+        case (.sad, .girl): return "ExpressionSadFace_Girl"
+        case (.surprise, .girl): return "ExpressionSurpriseFace_Girl"
+        case (.angry, .boy): return "ExpressionAngryFace_Boy"
+        case (.disgust, .boy): return "ExpressionDisgustFace_Boy"
+        case (.fear, .boy): return "ExrpessionFearFace_Boy"
+        case (.happy, .boy): return "ExpressionHappyFace_Boy"
+        case (.sad, .boy): return "ExrpessionSadFace_Boy"
+        case (.surprise, .boy): return "ExpressionSurpriseFace_Boy"
         }
     }
 
@@ -38,7 +48,10 @@ extension Moods {
         return dashboardMood(forScore: Int(boundedScore)).accessibilityLabel
     }
 
-    static func expressionImageName(forDashboardMoodScore score: Int) -> String {
-        dashboardMood(forScore: score).expressionImageName
+    static func expressionImageName(
+        forDashboardMoodScore score: Int,
+        gender: ChildGender = .girl
+    ) -> String {
+        dashboardMood(forScore: score).expressionImageName(for: gender)
     }
 }

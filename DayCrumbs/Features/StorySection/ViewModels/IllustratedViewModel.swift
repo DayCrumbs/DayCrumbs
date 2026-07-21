@@ -15,11 +15,12 @@ final class IllustratedViewModel {
 
     func backgroundImageNames(
         place: Place.BuiltInPlace,
-        activity: Activity.BuiltInActivity
+        activity: Activity.BuiltInActivity,
+        gender: ChildGender = .girl
     ) -> [String] {
         [
             StorySelectionAsset.imageName(for: place),
-            StorySelectionAsset.backgroundImageName(for: activity)
+            StorySelectionAsset.backgroundImageName(for: activity, gender: gender)
         ]
     }
 

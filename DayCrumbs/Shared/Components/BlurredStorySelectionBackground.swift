@@ -59,25 +59,58 @@ enum StorySelectionAsset {
         }
     }
 
-    static func sliderImageName(for activity: Activity.BuiltInActivity) -> String {
-        switch activity {
-        case .play: return "Activity_Girl_Play"
-        case .sleep: return "Activity_Girl_Sleep"
-        case .study: return "Activity_Girl_Study"
-        case .eat: return "Activity_Girl_Eat"
-        case .getReady: return "Activity_Girl_GetReady"
-        case .wakeUp: return "Activity_Girl_WakeUp"
+    static func sliderImageName(
+        for activity: Activity.BuiltInActivity,
+        gender: ChildGender
+    ) -> String {
+        "Activity_\(gender == .girl ? "Girl" : "Boy")_\(activity.assetSuffix)"
+    }
+
+    static func backgroundImageName(
+        for activity: Activity.BuiltInActivity,
+        gender: ChildGender
+    ) -> String {
+        "Background_Activity_\(gender == .girl ? "Girl" : "Boy")_\(activity.assetSuffix)"
+    }
+}
+
+enum StoryCharacterAsset {
+    static func imageName(for screen: Screen, gender: ChildGender) -> String {
+        switch (screen, gender) {
+        case (.session, .girl): return "PickSession_Girl"
+        case (.session, .boy): return "PickSession_Boy"
+        case (.place, .girl): return "PickPlace_Girl"
+        case (.place, .boy): return "PickPlaceBoy"
+        case (.activity, .girl): return "PickActivity_Girl"
+        case (.activity, .boy): return "PickActivity_Boy"
+        case (.mood, .girl): return "PickMood_Girl"
+        case (.mood, .boy): return "PickMood_Boy"
+        case (.reason, .girl): return "Reason_Girl"
+        case (.reason, .boy): return "Reason_Boy"
+        case (.reflection, .girl): return "ParentsReflection_Girl"
+        case (.reflection, .boy): return "ParentsReflection_Boy"
         }
     }
 
-    static func backgroundImageName(for activity: Activity.BuiltInActivity) -> String {
-        switch activity {
-        case .play: return "Background_Activity_Girl_Play"
-        case .sleep: return "Background_Activity_Girl_Sleep"
-        case .study: return "Background_Activity_Girl_Study"
-        case .eat: return "Background_Activity_Girl_Eat"
-        case .getReady: return "Background_Activity_Girl_GetReady"
-        case .wakeUp: return "Background_Activity_Girl_WakeUp"
+    enum Screen {
+        case session
+        case place
+        case activity
+        case mood
+        case reason
+        case reflection
+    }
+}
+
+private extension Activity.BuiltInActivity {
+    var assetSuffix: String {
+        switch self {
+        case .play: return "Play"
+        case .sleep: return "Sleep"
+        case .study: return "Study"
+        case .eat: return "Eat"
+        case .getReady: return "GetReady"
+        case .wakeUp: return "WakeUp"
         }
     }
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct PickPlaceView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(StoryFlowCoordinator.self) private var storyFlow
 
     let selectedSession: Sessions
 
@@ -15,7 +15,10 @@ struct PickPlaceView: View {
                 
                 VStack(spacing: 0) {
                     CharacterBubble(
-                        characterImageName: "PickPlace_Girl",
+                        characterImageName: StoryCharacterAsset.imageName(
+                            for: .place,
+                            gender: storyFlow.childGender
+                        ),
                         text: "Let's tell today's story together!\nWhere did your activity happen?"
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -29,7 +32,7 @@ struct PickPlaceView: View {
                             // Custom place creation will be added in a later flow.
                         },
                         onSelectItem: { place in
-                            viewModel.handlePlaceSelection(place, in: selectedSession)
+                            storyFlow.selectPlace(place, in: selectedSession)
                         },
                         itemImageName: viewModel.placeImageName(for:)
                     )
@@ -38,14 +41,13 @@ struct PickPlaceView: View {
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 
                 CircularBackButton() {
-                    dismiss()
+                    storyFlow.goBack()
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
             }
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $viewModel.navigationRoute)
     }
 
     private func sessionBackground(in size: CGSize) -> some View {
@@ -60,5 +62,8 @@ struct PickPlaceView: View {
 }
 
 #Preview {
-    PickPlaceView(selectedSession: .morning)
+    NavigationStack {
+        PickPlaceView(selectedSession: .morning)
+    }
+    .environment(StoryFlowCoordinator())
 }

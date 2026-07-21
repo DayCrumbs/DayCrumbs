@@ -2,13 +2,12 @@ import Charts
 import SwiftUI
 
 struct DashboardView: View {
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(StoryFlowCoordinator.self) private var storyFlow
 
     @AccessibilityFocusState private var accessibilityFocus: DashboardAccessibilityFocus?
     @State private var viewModel: DashboardViewModel
     @State private var translationTaskHost: AppleTranslationTaskHost
-    @State private var navigateToSession = false
 
     /// Remembers which trigger opened the detail so modal dismissal can restore
     /// VoiceOver to the originating chip in the next presentation step.
@@ -64,9 +63,6 @@ struct DashboardView: View {
                 break
             }
         }
-        .navigationDestination(isPresented: $navigateToSession) {
-            SessionOptionView()
-        }
         .overlay {
             if let detail = viewModel.selectedTriggerDetail {
                 ZStack {
@@ -95,13 +91,6 @@ struct DashboardView: View {
     private func sharedDashboardSurface(in size: CGSize) -> some View {
         dashboardContent(in: size)
             .frame(width: size.width, height: size.height)
-            .overlay(alignment: .topLeading) {
-                CircularBackButton(style: .yellowBtn) {
-                    dismiss()
-                }
-                .padding(.top, 24)
-                .padding(.leading, 32)
-            }
             .accessibilityHidden(viewModel.selectedTriggerDetail != nil)
     }
 
@@ -269,7 +258,12 @@ struct DashboardView: View {
                 AxisTick(stroke: StrokeStyle(lineWidth: 0))
                 AxisValueLabel(anchor: .trailing) {
                     if let moodScore = value.as(Int.self) {
-                        Image(Moods.expressionImageName(forDashboardMoodScore: moodScore))
+                        Image(
+                            Moods.expressionImageName(
+                                forDashboardMoodScore: moodScore,
+                                gender: storyFlow.childGender
+                            )
+                        )
                             .resizable()
                             .scaledToFit()
                             .frame(width: 48, height: 48)
@@ -404,7 +398,7 @@ struct DashboardView: View {
 
     private var addStoryButton: some View {
         Button {
-            navigateToSession = true
+            storyFlow.startStoryFromDashboard()
         } label: {
             HStack(spacing: 8) {
                 Text("Add Story!")
@@ -513,4 +507,5 @@ struct DashboardView: View {
     NavigationStack {
         DashboardView()
     }
+    .environment(StoryFlowCoordinator())
 }

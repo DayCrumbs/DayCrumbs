@@ -25,9 +25,48 @@ final class ChildProfileSetupViewModel {
     
     // MARK: - Computed Properties
     var isFormValid: Bool {
-        !childName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        childAge > 0 &&
+        nameValidationMessage == nil &&
+        ageValidationMessage == nil &&
         selectedGender != nil
+    }
+
+    var nameValidationMessage: String? {
+        let trimmedName = childName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedName.isEmpty else {
+            return "Name is required."
+        }
+
+        if trimmedName.rangeOfCharacter(from: .decimalDigits) != nil {
+            return "Name cannot contain numbers."
+        }
+
+        let allowedCharacters = CharacterSet.letters
+            .union(.whitespaces)
+            .union(CharacterSet(charactersIn: "-'"))
+        if trimmedName.unicodeScalars.contains(where: { !allowedCharacters.contains($0) }) {
+            return "Use letters, spaces, hyphens, or apostrophes only."
+        }
+
+        return nil
+    }
+
+    var ageValidationMessage: String? {
+        let trimmedAge = childAgeText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedAge.isEmpty else {
+            return "Age is required."
+        }
+
+        guard trimmedAge.rangeOfCharacter(from: .decimalDigits.inverted) == nil else {
+            return "Age can only contain numbers."
+        }
+
+        guard let age = Int(trimmedAge), (1...18).contains(age) else {
+            return "Age must be between 1 and 18."
+        }
+
+        return nil
     }
     
     @MainActor
@@ -54,8 +93,9 @@ final class ChildProfileSetupViewModel {
     }
 
     @MainActor
-    func saveProfile(using repository: ChildProfileRepository) {
-        guard isFormValid, let gender = selectedGender else { return }
+    @discardableResult
+    func saveProfile(using repository: ChildProfileRepository) -> Bool {
+        guard isFormValid, let gender = selectedGender else { return false }
 
         do {
             try repository.updateProfile(
@@ -67,9 +107,11 @@ final class ChildProfileSetupViewModel {
             hasLoadedExistingProfile = true
             navigationRoute = .sessionOption
             print("Profil \(childName) berhasil disimpan!")
+            return true
         } catch {
             self.errorMessage = "Gagal menyimpan profil: \(error.localizedDescription)"
             print("Error: \(error)")
+            return false
         }
     }
 }

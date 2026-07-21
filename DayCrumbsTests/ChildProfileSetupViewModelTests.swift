@@ -10,7 +10,7 @@ struct ChildProfileSetupViewModelTests {
     func completeProfileIsValid() {
         let viewModel = ChildProfileSetupViewModel()
         viewModel.childName = "Mika"
-        viewModel.childAge = 4
+        viewModel.childAgeText = "4"
         viewModel.selectedGender = .girl
 
         #expect(viewModel.isFormValid)
@@ -20,7 +20,7 @@ struct ChildProfileSetupViewModelTests {
     func zeroAgeIsInvalid() {
         let viewModel = ChildProfileSetupViewModel()
         viewModel.childName = "Mika"
-        viewModel.childAge = 0
+        viewModel.childAgeText = "0"
         viewModel.selectedGender = .girl
 
         #expect(!viewModel.isFormValid)
@@ -39,6 +39,18 @@ struct ChildProfileSetupViewModelTests {
         viewModel.childAgeText = ""
 
         #expect(viewModel.childAge == 0)
+        #expect(!viewModel.isFormValid)
+    }
+
+    @Test("Name and age expose validation messages for invalid input")
+    func invalidProfileInputHasValidationMessages() {
+        let viewModel = ChildProfileSetupViewModel()
+
+        viewModel.childName = "Mika2"
+        viewModel.childAgeText = "four"
+
+        #expect(viewModel.nameValidationMessage == "Name cannot contain numbers.")
+        #expect(viewModel.ageValidationMessage == "Age can only contain numbers.")
         #expect(!viewModel.isFormValid)
     }
 
