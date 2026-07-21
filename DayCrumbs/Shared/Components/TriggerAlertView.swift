@@ -27,54 +27,67 @@ struct TriggerAlertView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Text(detail.title)
-                    .font(.system(.title2, design: .rounded).bold())
-                    .foregroundColor(AppColour.txtCoklat)
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityFocused(
-                        $accessibilityFocus,
-                        equals: .triggerDialogTitle
-                    )
+            // VStack utama pembungkus keseluruhan alert
+            VStack(spacing: 0) {
+                
+                // 1. Bagian konten yang bisa di-scroll
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text(detail.title)
+                            .font(.system(.title2, design: .rounded).bold())
+                            .foregroundColor(AppColour.txtCoklat)
+                            .accessibilityAddTraits(.isHeader)
+                            .accessibilityFocused(
+                                $accessibilityFocus,
+                                equals: .triggerDialogTitle
+                            )
 
-                Text(detail.explanation)
-                    .font(.system(.body, design: .rounded))
-                    .foregroundColor(AppColour.txtCoklat)
-                    .multilineTextAlignment(.leading)
+                        Text(detail.explanation)
+                            .font(.system(.body, design: .rounded))
+                            .foregroundColor(AppColour.txtCoklat)
+                            .multilineTextAlignment(.leading)
 
-                if !detail.evidence.isEmpty {
-                    evidenceSection
+                        if !detail.evidence.isEmpty {
+                            evidenceSection
+                        }
+
+                        recommendationSection
+                        whatMayHelpSection
+                        sourceSection
+                    }
+                    .padding(24) // Padding untuk konten teks
                 }
 
-                recommendationSection
-                whatMayHelpSection
-                sourceSection
-
-                Button(action: onDismiss) {
-                    Text("Done")
-                        .font(.system(.headline, design: .rounded).bold())
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            AppColour.btnKuning
-                                .accessibilityHidden(true)
-                        )
-                        .foregroundColor(AppColour.txtCoklat)
-                        .clipShape(Capsule())
+                // 2. Tombol Done di luar ScrollView agar sticky di bawah
+                VStack {
+                    Button(action: onDismiss) {
+                        Text("Done")
+                            .font(.system(.headline, design: .rounded).bold())
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                AppColour.btnKuning
+                                    .accessibilityHidden(true)
+                            )
+                            .foregroundColor(AppColour.txtCoklat)
+                            .clipShape(Capsule())
+                    }
+                    .accessibilityLabel("Done")
+                    .accessibilityHint("Closes trigger details.")
                 }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
                 .padding(.top, 8)
-                .accessibilityLabel("Done")
-                .accessibilityHint("Closes trigger details.")
+                // Latar belakang area tombol dibuat sama dengan background modal
+                .background(AppColour.bgPutih)
             }
-            .padding(24)
+            // Modifier untuk bentuk modal dipindah ke VStack terluar
+            .background(AppColour.bgPutih.accessibilityHidden(true))
+            .clipShape(RoundedRectangle(cornerRadius: 24))
+            .frame(maxWidth: 440, maxHeight: 680)
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isModal)
         }
-        .background(AppColour.bgPutih.accessibilityHidden(true))
-        .clipShape(RoundedRectangle(cornerRadius: 24))
-        .frame(maxWidth: 440, maxHeight: 680)
-        .accessibilityElement(children: .contain)
-        .accessibilityAddTraits(.isModal)
-    }
 
     private var evidenceSection: some View {
         VStack(alignment: .leading, spacing: 10) {

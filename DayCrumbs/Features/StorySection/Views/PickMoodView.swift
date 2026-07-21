@@ -123,12 +123,16 @@ private struct MoodExpressionButton: View {
     let selectMood: () -> Void
     let showMoodAlert: () -> Void
 
+    // Ubah dari @GestureState menjadi @State biasa
+    @State private var isPressed = false
+
     var body: some View {
         VStack(spacing: 10) {
             Image(mood.expressionImageName)
                 .resizable()
                 .scaledToFit()
                 .frame(height: 132)
+                .accessibilityHidden(true)
 
             Text(mood.rawValue.capitalized)
                 .font(.system(.headline, design: .rounded).weight(.semibold))
@@ -140,15 +144,32 @@ private struct MoodExpressionButton: View {
         }
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
-        .gesture(
-            LongPressGesture(minimumDuration: 0.5)
-                .onEnded { _ in
-                    showMoodAlert()
-                }
-                .exclusively(before: TapGesture().onEnded { _ in
-                    selectMood()
-                })
+        
+        // 1. Terapkan efek visual berdasarkan state
+        .opacity(isPressed ? 0.6 : 1.0)
+        .scaleEffect(isPressed ? 0.95 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: isPressed)
+        
+        // 2. Gesture Tap untuk klik biasa (Navigasi)
+        .onTapGesture {
+            selectMood()
+        }
+        
+        // 3. Gesture Hold dengan deteksi jari menempel (Efek Visual + Alert)
+        .onLongPressGesture(
+            minimumDuration: 0.5,
+            perform: {
+                // Dieksekusi jika ditahan selama 0.5 detik
+                showMoodAlert()
+            },
+            onPressingChanged: { pressing in
+                // Secara otomatis menjadi 'true' saat disentuh,
+                // dan 'false' saat dilepas atau durasi habis
+                isPressed = pressing
+            }
         )
+        
+        .accessibilityElement(children: .ignore)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(mood.accessibilityLabel)
         .accessibilityHint("Activate to choose this mood. Hold for half a second to learn more.")

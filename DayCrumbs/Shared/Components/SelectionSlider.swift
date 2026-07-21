@@ -7,6 +7,7 @@ struct SelectionSlider<T: Hashable>: View {
 
     let itemName: (T) -> String
     let onAddCustom: () -> Void
+    var onSelectItem: ((T) -> Void)? = nil
     var itemImageName: ((T) -> String?)? = nil
 
     var body: some View {
@@ -34,27 +35,28 @@ struct SelectionSlider<T: Hashable>: View {
                             optionCard(for: item, width: cardWidth, height: cardHeight)
                         }
 
-                        Button(action: onAddCustom) {
-                            VStack(spacing: 6) {
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(AppColour.cardKuning)
-                                    .frame(width: cardWidth, height: cardHeight)
-                                    .overlay {
-                                        Image(systemName: "plus")
-                                            .font(.system(size: cardHeight * 0.28, weight: .bold))
-                                            .foregroundColor(AppColour.txtCoklat)
-                                    }
-
-                                Text("Add Custom")
-                                    .font(.system(.headline, design: .rounded).weight(.semibold))
-                                    .foregroundColor(AppColour.txtCoklat)
-                                    .lineLimit(1)
-                            }
-                            .frame(width: cardWidth)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Add custom option")
-                        .accessibilityHint("Creates a custom option for this selection.")
+//                        DI COMMENT DULU SAJA SOALNYA BARU BAKAL DIBUAT AFTER MVP
+//                        Button(action: onAddCustom) {
+//                            VStack(spacing: 6) {
+//                                RoundedRectangle(cornerRadius: 2)
+//                                    .fill(AppColour.cardKuning)
+//                                    .frame(width: cardWidth, height: cardHeight)
+//                                    .overlay {
+//                                        Image(systemName: "plus")
+//                                            .font(.system(size: cardHeight * 0.28, weight: .bold))
+//                                            .foregroundColor(AppColour.txtCoklat)
+//                                    }
+//
+//                                Text("Add Custom")
+//                                    .font(.system(.headline, design: .rounded).weight(.semibold))
+//                                    .foregroundColor(AppColour.txtCoklat)
+//                                    .lineLimit(1)
+//                            }
+//                            .frame(width: cardWidth)
+//                        }
+//                        .buttonStyle(.plain)
+//                        .accessibilityLabel("Add custom option")
+//                        .accessibilityHint("Creates a custom option for this selection.")
                     }
                     .padding(.horizontal, horizontalPadding)
                 }
@@ -79,6 +81,7 @@ struct SelectionSlider<T: Hashable>: View {
     private func optionCard(for item: T, width: CGFloat, height: CGFloat) -> some View {
         Button(action: {
             selectedItem = item
+            onSelectItem?(item)
         }) {
             VStack(spacing: 6) {
                 ZStack {

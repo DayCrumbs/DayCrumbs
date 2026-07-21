@@ -190,43 +190,42 @@ struct DashboardView: View {
     }
 
     private var timeRangePicker: some View {
-        HStack(spacing: 0) {
-            ForEach(TimeRange.allCases, id: \.self) { range in
-                Button {
-                    Task {
-                        await viewModel.selectTimeRange(range)
-                    }
-                } label: {
-                    Text(range.rawValue)
-                        .font(.system(.headline, design: .rounded).weight(.semibold))
-                        .foregroundStyle(AppColour.txtCoklat)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background {
-                            if viewModel.selectedTimeRange == range {
-                                Capsule()
-                                    .fill(AppColour.btnKuning)
-                                    .accessibilityHidden(true)
-                            }
+            HStack(spacing: 0) {
+                ForEach(TimeRange.allCases, id: \.self) { range in
+                    Button {
+                        Task {
+                            await viewModel.selectTimeRange(range)
                         }
+                    } label: {
+                        Text(range.rawValue)
+                            .font(.system(.headline, design: .rounded).weight(.semibold))
+                            .foregroundStyle(AppColour.txtCoklat)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .contentShape(Rectangle()) // <--- TAMBAHKAN BARIS INI
+                            .background {
+                                if viewModel.selectedTimeRange == range {
+                                    Capsule()
+                                        .fill(AppColour.btnKuning)
+                                        .accessibilityHidden(true)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(range.rawValue) range")
+                    .accessibilityAddTraits(
+                        viewModel.selectedTimeRange == range ? .isSelected : []
+                    )
+                    .accessibilityHint(timeRangeAccessibilityHint(for: range))
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(range.rawValue) range")
-                .accessibilityAddTraits(
-                    viewModel.selectedTimeRange == range ? .isSelected : []
-                )
-                .accessibilityHint(timeRangeAccessibilityHint(for: range))
             }
+            .padding(2)
+            .background {
+                Capsule()
+                    .fill(AppColour.btnKuning.opacity(0.18))
+                    .accessibilityHidden(true)
+            }
+            .accessibilityElement(children: .contain)
         }
-        .padding(2)
-        .background {
-            Capsule()
-                .fill(AppColour.btnKuning.opacity(0.18))
-                .accessibilityHidden(true)
-        }
-        // Keep the layout container out of linear VoiceOver navigation while
-        // preserving each range button as an independent accessible child.
-        .accessibilityElement(children: .contain)
-    }
 
     /// Explains each rolling range without exposing its date calculations.
     private func timeRangeAccessibilityHint(for range: TimeRange) -> String {

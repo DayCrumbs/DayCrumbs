@@ -117,8 +117,8 @@ struct ChildProfileSetupView: View {
                         .disabled(!viewModel.isFormValid)
                         .accessibilityHint(
                             viewModel.isFormValid
-                                ? "Menyimpan profil anak"
-                                : "Masukkan nama dan umur anak yang valid untuk menyimpan profil"
+                            ? "Menyimpan profil anak"
+                            : "Masukkan nama dan umur anak yang valid untuk menyimpan profil"
                         )
                         .padding(.top, 8)
                         
@@ -134,21 +134,25 @@ struct ChildProfileSetupView: View {
         }
         .navigationBarBackButtonHidden(true)
         .storyFlowNavigationDestination(route: $viewModel.navigationRoute)
+        .task {
+            let repository = ChildProfileRepository(modelContext: modelContext)
+            viewModel.loadExistingProfile(using: repository)
+        }
     }
     
-    // MARK: - Komponen Bantuan
     @ViewBuilder
     private func genderSegment(for gender: ChildGender) -> some View {
         let isSelected = viewModel.selectedGender == gender
         
-        Button(action: {
+        Button {
             viewModel.selectGender(gender)
-        }) {
+        } label: {
             Text(gender.rawValue.capitalized)
                 .font(.system(.body, design: .rounded).weight(.medium))
                 .foregroundColor(AppColour.txtCoklat)
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 44)
+                .contentShape(Rectangle()) // <--- TAMBAHKAN BARIS INI
                 .background(isSelected ? AppColour.btnPutih : Color.clear)
                 .clipShape(Capsule())
         }

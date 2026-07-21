@@ -23,6 +23,14 @@ struct IllustratedView: View {
                         .accessibilityHidden(true)
                         .transition(.opacity)
 
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .ignoresSafeArea()
+                        .accessibilityHidden(true)
+                        .onTapGesture {
+                            viewModel.dismissContinuationCard()
+                        }
+
                     continuationCard
                         .frame(
                             width: min(proxy.size.width * 0.58, 620),
@@ -119,6 +127,7 @@ struct IllustratedView: View {
         .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
+        .onTapGesture { }
     }
 
     private func continuationActionButton(

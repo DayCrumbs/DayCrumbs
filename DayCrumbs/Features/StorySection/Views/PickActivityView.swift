@@ -37,20 +37,18 @@ struct PickActivityView: View {
                       onAddCustom: {
                           // Custom activity creation will be added in a later flow.
                       },
+                      onSelectItem: { activity in
+                          viewModel.handleActivitySelection(
+                              activity,
+                              session: selectedSession,
+                              place: selectedPlace
+                          )
+                      },
                       itemImageName: viewModel.activityImageName(for:)
                   )
                   .frame(height: proxy.size.height * 0.26)
               }
               .frame(width: proxy.size.width, height: proxy.size.height)
-              .onChange(of: viewModel.selectedActivity) { _, newValue in
-                  if let newValue {
-                      viewModel.handleActivitySelection(
-                          newValue,
-                          session: selectedSession,
-                          place: selectedPlace
-                      )
-                  }
-              }
               
               CircularBackButton() {
                   dismiss()

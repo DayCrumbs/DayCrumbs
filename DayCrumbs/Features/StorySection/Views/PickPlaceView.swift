@@ -28,6 +28,9 @@ struct PickPlaceView: View {
                         onAddCustom: {
                             // Custom place creation will be added in a later flow.
                         },
+                        onSelectItem: { place in
+                            viewModel.handlePlaceSelection(place, in: selectedSession)
+                        },
                         itemImageName: viewModel.placeImageName(for:)
                     )
                     .frame(height: proxy.size.height * 0.26)
@@ -39,11 +42,6 @@ struct PickPlaceView: View {
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
-            }
-            .onChange(of: viewModel.selectedPlace) { _, newValue in
-                if let newValue {
-                    viewModel.handlePlaceSelection(newValue, in: selectedSession)
-                }
             }
         }
         .navigationBarBackButtonHidden(true)

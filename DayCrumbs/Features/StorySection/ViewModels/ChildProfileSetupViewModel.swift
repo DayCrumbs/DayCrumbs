@@ -21,10 +21,11 @@ final class ChildProfileSetupViewModel {
     var selectedGender: ChildGender? = .boy
     var errorMessage: String? = nil
     var navigationRoute: StoryFlowRoute?
+    private var hasLoadedExistingProfile = false
     
     // MARK: - Computed Properties
     var isFormValid: Bool {
-        !childName.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !childName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         childAge > 0 &&
         selectedGender != nil
     }
@@ -35,18 +36,35 @@ final class ChildProfileSetupViewModel {
     }
 
     @MainActor
+    func loadExistingProfile(using repository: ChildProfileRepository) {
+        guard !hasLoadedExistingProfile else { return }
+
+        do {
+            if let profile = try repository.fetchActiveProfile() {
+                childName = profile.name
+                childAge = profile.age
+                childAgeText = String(profile.age)
+                selectedGender = profile.gender
+            }
+            errorMessage = nil
+            hasLoadedExistingProfile = true
+        } catch {
+            errorMessage = "Gagal memuat profil: \(error.localizedDescription)"
+        }
+    }
+
+    @MainActor
     func saveProfile(using repository: ChildProfileRepository) {
         guard isFormValid, let gender = selectedGender else { return }
-        
-        let newProfile = ChildProfile(
-            name: childName,
-            age: childAge,
-            gender: gender
-        )
-        
+
         do {
-            try repository.saveProfile(newProfile)
+            try repository.updateProfile(
+                name: childName,
+                age: childAge,
+                gender: gender
+            )
             self.errorMessage = nil
+            hasLoadedExistingProfile = true
             navigationRoute = .sessionOption
             print("Profil \(childName) berhasil disimpan!")
         } catch {

@@ -136,8 +136,18 @@ struct ReasonView: View {
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
+            .disabled(!viewModel.isDiscussionReady)
             .accessibilityLabel("Save discussion")
-            .accessibilityHint("Saves the optional discussion and continues to the illustration.")
+            .accessibilityValue(
+                viewModel.isDiscussionReady
+                    ? "Ready to save"
+                    : "Disabled until a discussion is entered"
+            )
+            .accessibilityHint(
+                viewModel.isDiscussionReady
+                    ? "Saves the discussion and continues to the illustration."
+                    : "Write a discussion before saving. You can also skip this step."
+            )
         }
         .padding(24)
         .background(AppColour.cardKuning)

@@ -8,6 +8,17 @@
 import Foundation
 import SwiftData
 
+enum ChildProfileRepositoryError: LocalizedError, Equatable {
+    case multipleProfilesFound
+
+    var errorDescription: String? {
+        switch self {
+        case .multipleProfilesFound:
+            "More than one child profile was found. Please resolve the local data before continuing."
+        }
+    }
+}
+
 @MainActor
 protocol ChildProfileRepositoryProtocol {
     func fetchActiveProfile() throws -> ChildProfile?
@@ -24,20 +35,27 @@ final class ChildProfileRepository: ChildProfileRepositoryProtocol {
         self.modelContext = modelContext
     }
 
-    /// Mengambil profil anak yang saat ini aktif (mengembalikan profil pertama yang ditemukan).
+    /// The app supports exactly one child profile. Multiple records are a data-integrity error.
     func fetchActiveProfile() throws -> ChildProfile? {
         let descriptor = FetchDescriptor<ChildProfile>()
         let profiles = try modelContext.fetch(descriptor)
+
+        guard profiles.count <= 1 else {
+            throw ChildProfileRepositoryError.multipleProfilesFound
+        }
+
         return profiles.first
     }
 
-    /// Menyimpan profil anak baru ke database lokal.
-    /// Skenario anak pertama: Jika sudah ada profil lama, profil tersebut akan dihapus terlebih dahulu untuk mencegah duplikasi.
+    /// Creates a profile only when none exists; otherwise, updates the existing profile.
     func saveProfile(_ profile: ChildProfile) throws {
         if let existing = try fetchActiveProfile() {
-            modelContext.delete(existing)
+            existing.name = profile.name
+            existing.age = profile.age
+            existing.gender = profile.gender
+        } else {
+            modelContext.insert(profile)
         }
-        modelContext.insert(profile)
         try modelContext.save()
     }
 

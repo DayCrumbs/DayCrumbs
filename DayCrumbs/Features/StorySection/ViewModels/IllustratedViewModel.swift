@@ -9,6 +9,10 @@ final class IllustratedViewModel {
         isShowingContinuationCard = true
     }
 
+    func dismissContinuationCard() {
+        isShowingContinuationCard = false
+    }
+
     func backgroundImageNames(
         place: Place.BuiltInPlace,
         activity: Activity.BuiltInActivity

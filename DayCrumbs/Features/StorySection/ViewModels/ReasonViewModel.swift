@@ -18,6 +18,10 @@ final class ReasonViewModel {
         discussionText.count
     }
 
+    var isDiscussionReady: Bool {
+        !discussionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     func reasonQuestionAccessibilityLabel(for mood: Moods) -> String {
         "Can you tell us why you felt \(mood.rawValue)? Share your story with your parent so we can better understand what happened."
     }
