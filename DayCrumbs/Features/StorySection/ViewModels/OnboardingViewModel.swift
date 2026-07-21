@@ -16,8 +16,16 @@ final class OnboardingViewModel {
         print("Tombol Start ditekan")
     }
 
-    func openDashboard() {
+    /// Accepts only one Dashboard navigation intent until SwiftUI resets the
+    /// presentation binding after the destination is dismissed.
+    @discardableResult
+    func openDashboard() -> Bool {
+        guard !navigateToDashboard else {
+            return false
+        }
+
         navigateToDashboard = true
         print("Tombol Start ditekan")
+        return true
     }
 }

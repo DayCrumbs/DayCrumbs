@@ -54,6 +54,55 @@ struct AppleInsightTranslationFlowServiceTests {
         #expect(executor.batches.map(\.pair) == [indonesianToEnglish])
     }
 
+    @Test("A transient unsupported readiness recovers before blocking generation")
+    func transientUnsupportedReadinessRecovers() async throws {
+        let executor = BatchExecutorFake(
+            behaviors: [
+                .translate(["Catatan dalam bahasa Indonesia": "An Indonesian note"]),
+            ]
+        )
+        let flow = makeFlow(
+            statuses: [.unsupported, .installed],
+            readinessRetryDelays: [.zero]
+        )
+
+        let result = await flow.prepareInputContext(
+            makeContext(note: "Catatan dalam bahasa Indonesia"),
+            using: executor.handler
+        )
+
+        let translation = try #require(readyTranslation(from: result))
+        #expect(
+            translation.englishContext.events[0].afterActivityNote
+                == "An Indonesian note"
+        )
+        #expect(executor.modes == [.translateInstalled])
+        #expect(executor.batches.count == 1)
+    }
+
+    @Test("Cancelling a readiness recheck stops before translation execution")
+    func readinessRecheckHonorsCancellation() async throws {
+        let executor = BatchExecutorFake(behaviors: [])
+        let flow = makeFlow(
+            status: .unsupported,
+            readinessRetryDelays: [.seconds(5)]
+        )
+
+        let preparation = Task { @MainActor in
+            await flow.prepareInputContext(
+                makeContext(note: "Catatan dalam bahasa Indonesia"),
+                using: executor.handler
+            )
+        }
+        await Task.yield()
+        preparation.cancel()
+
+        let result = await preparation.value
+        let failure = try #require(blockingFailure(from: result))
+        #expect(failure.reason == .cancelled)
+        #expect(executor.batches.isEmpty)
+    }
+
     @Test("Preparation and transient failures retry once after assets become installed")
     func transientPreparationFailuresRetryAfterInstallation() async throws {
         let retryableErrors: [NativeTranslationBatchExecutionError] = [
@@ -266,7 +315,8 @@ struct AppleInsightTranslationFlowServiceTests {
 
     private func makeFlow(
         status: LanguageAvailability.Status,
-        detector: any LanguageDetectionService = IndonesianLanguageDetectionService()
+        detector: any LanguageDetectionService = IndonesianLanguageDetectionService(),
+        readinessRetryDelays: [Duration] = []
     ) -> AppleInsightTranslationFlowService {
         let nativeTranslationService = AppleNativeTranslationService { _ in status }
         let coordinator = AnalyticsTranslationCoordinator(
@@ -275,13 +325,15 @@ struct AppleInsightTranslationFlowServiceTests {
         )
         return AppleInsightTranslationFlowService(
             translationCoordinator: coordinator,
-            nativeTranslationService: nativeTranslationService
+            nativeTranslationService: nativeTranslationService,
+            unsupportedReadinessRetryDelays: readinessRetryDelays
         )
     }
 
     private func makeFlow(
         statuses: [LanguageAvailability.Status],
-        detector: any LanguageDetectionService = IndonesianLanguageDetectionService()
+        detector: any LanguageDetectionService = IndonesianLanguageDetectionService(),
+        readinessRetryDelays: [Duration] = []
     ) -> AppleInsightTranslationFlowService {
         let availability = LanguageAvailabilitySequence(statuses: statuses)
         let nativeTranslationService = AppleNativeTranslationService { _ in
@@ -293,7 +345,8 @@ struct AppleInsightTranslationFlowServiceTests {
         )
         return AppleInsightTranslationFlowService(
             translationCoordinator: coordinator,
-            nativeTranslationService: nativeTranslationService
+            nativeTranslationService: nativeTranslationService,
+            unsupportedReadinessRetryDelays: readinessRetryDelays
         )
     }
 

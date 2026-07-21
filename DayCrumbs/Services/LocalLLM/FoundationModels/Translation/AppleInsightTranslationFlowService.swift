@@ -41,6 +41,7 @@ struct AppleInsightTranslationFlowService: AppleInsightTranslationFlow {
 
     private let translationCoordinator: any AnalyticsTranslationCoordinating
     private let nativeTranslationService: any NativeTranslationService
+    private let unsupportedReadinessRetryDelays: [Duration]
 
     init() {
         let nativeTranslationService = AppleNativeTranslationService()
@@ -49,14 +50,23 @@ struct AppleInsightTranslationFlowService: AppleInsightTranslationFlow {
             languageDetectionService: NaturalLanguageDetectionService(),
             nativeTranslationService: nativeTranslationService
         )
+        unsupportedReadinessRetryDelays = [
+            .milliseconds(250),
+            .milliseconds(750),
+        ]
     }
 
     init(
         translationCoordinator: any AnalyticsTranslationCoordinating,
-        nativeTranslationService: any NativeTranslationService
+        nativeTranslationService: any NativeTranslationService,
+        unsupportedReadinessRetryDelays: [Duration] = [
+            .milliseconds(250),
+            .milliseconds(750),
+        ]
     ) {
         self.translationCoordinator = translationCoordinator
         self.nativeTranslationService = nativeTranslationService
+        self.unsupportedReadinessRetryDelays = unsupportedReadinessRetryDelays
     }
 
     func prepareInputContext(
@@ -126,7 +136,10 @@ struct AppleInsightTranslationFlowService: AppleInsightTranslationFlow {
         stage: AppleInsightTranslationFailure.Stage,
         using executeBatch: PreparedNativeTranslationBatchHandler
     ) async throws -> [NativeTranslatedText] {
-        let readiness = await nativeTranslationService.readiness(for: batch.pair)
+        let readiness = try await stabilizedReadiness(
+            for: batch.pair,
+            stage: stage
+        )
         let executionMode: NativeTranslationBatchExecutionMode
 
         Self.logger.debug(
@@ -176,6 +189,34 @@ struct AppleInsightTranslationFlowService: AppleInsightTranslationFlow {
                 throw flowFailure(from: error, pair: batch.pair)
             }
         }
+    }
+
+    /// Translation's XPC service can briefly report an installed pair as
+    /// unsupported while it restarts. Rechecking is bounded so a genuinely
+    /// unsupported language still becomes a blocking result without looping.
+    private func stabilizedReadiness(
+        for pair: TranslationLanguagePair,
+        stage: AppleInsightTranslationFailure.Stage
+    ) async throws -> NativeTranslationReadiness {
+        try Task.checkCancellation()
+        var readiness = await nativeTranslationService.readiness(for: pair)
+
+        for (index, delay) in unsupportedReadinessRetryDelays.enumerated() {
+            guard readiness.availability == .unsupported else {
+                break
+            }
+
+            try Task.checkCancellation()
+            Self.logger.notice(
+                "Translation readiness returned unsupported; scheduling bounded recheck stage=\(stageLabel(stage), privacy: .public) pair=\(pair.source.rawValue, privacy: .public)->\(pair.target.rawValue, privacy: .public) attempt=\(index + 1, privacy: .public)"
+            )
+            try await Task.sleep(for: delay)
+            try Task.checkCancellation()
+            readiness = await nativeTranslationService.readiness(for: pair)
+        }
+
+        try Task.checkCancellation()
+        return readiness
     }
 
     private func shouldRecheckReadiness(
