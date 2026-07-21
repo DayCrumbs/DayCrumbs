@@ -7,6 +7,40 @@ import Testing
 @Suite("SwiftData model persistence")
 @MainActor
 struct SwiftDataPersistenceTests {
+    @Test("Production storage prepares Application Support before SwiftData opens")
+    func productionStorageDirectoryIsPrepared() throws {
+        let fileManager = FileManager.default
+        let testRoot = fileManager.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let applicationSupportDirectory = testRoot
+            .appendingPathComponent("Application Support", isDirectory: true)
+
+        defer {
+            try? fileManager.removeItem(at: testRoot)
+        }
+
+        #expect(!fileManager.fileExists(atPath: applicationSupportDirectory.path))
+
+        try DayCrumbsModelContainer.prepareProductionStorageDirectory(
+            at: applicationSupportDirectory,
+            fileManager: fileManager
+        )
+        // Repeating startup preparation must remain safe once the directory exists.
+        try DayCrumbsModelContainer.prepareProductionStorageDirectory(
+            at: applicationSupportDirectory,
+            fileManager: fileManager
+        )
+
+        var isDirectory = ObjCBool(false)
+        #expect(
+            fileManager.fileExists(
+                atPath: applicationSupportDirectory.path,
+                isDirectory: &isDirectory
+            )
+        )
+        #expect(isDirectory.boolValue)
+    }
+
     @Test("The in-memory container uses the complete production schema")
     func inMemoryContainerUsesCompleteSchema() throws {
         let container = try DayCrumbsModelContainer.makeInMemoryContainer()
