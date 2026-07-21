@@ -11,7 +11,7 @@ struct AppleGeneratedAnalyticsInsight {
     var summary: String
 
     @Guide(
-        description: "Possible trigger candidates grounded in supplied rows. Use an empty array when one observation cannot support a trigger.",
+        description: "Contextual trigger candidates explicitly reflected in the summary and supported by supplied rows. Never an activity or topic inventory. Use an empty array when the data cannot support a trigger relationship.",
         .maximumCount(5)
     )
     var commonTriggers: [AppleGeneratedCommonTrigger]
@@ -30,12 +30,12 @@ struct AppleGeneratedAnalyticsInsight {
 }
 
 @available(iOS 26.0, *)
-@Generable(description: "A possible trigger supported by the supplied story rows.")
+@Generable(description: "A possible contextual trigger reflected in the overall summary and supported by story rows.")
 struct AppleGeneratedCommonTrigger {
-    @Guide(description: "A short English trigger label.")
+    @Guide(description: "A short English label for the contextual circumstance tied to a mood or behavior response, not a standalone activity, place, or session.")
     var title: String
 
-    @Guide(description: "A grounded English explanation using only supplied rows.")
+    @Guide(description: "A grounded English explanation naming the supplied circumstance and the mood or behavior response observed alongside it, consistent with the summary.")
     var explanation: String
 }
 
