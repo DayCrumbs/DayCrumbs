@@ -444,91 +444,138 @@ final class DashboardViewModel {
         }
     }
 
-    // Chart fixtures remain independent from the generation pipeline.
-    private let dayData: [MoodDataPoint] = [
-        MoodDataPoint(timeLabel: "Morning", moodScore: 4),
-        MoodDataPoint(timeLabel: "Afternoon", moodScore: 2),
-        MoodDataPoint(timeLabel: "Evening", moodScore: 3),
-        MoodDataPoint(timeLabel: "Night", moodScore: 5),
-    ]
+    // MARK: - LOGIKA AGREGASI DATA GRAFIK DINAMIS
 
-    private let weekData: [MoodDataPoint] = [
-        MoodDataPoint(timeLabel: "Mon", moodScore: 2),
-        MoodDataPoint(timeLabel: "Tue", moodScore: 3),
-        MoodDataPoint(timeLabel: "Wed", moodScore: 4),
-        MoodDataPoint(timeLabel: "Thu", moodScore: 3),
-        MoodDataPoint(timeLabel: "Fri", moodScore: 5),
-        MoodDataPoint(timeLabel: "Sat", moodScore: 4),
-        MoodDataPoint(timeLabel: "Sun", moodScore: 6),
-    ]
+    /// Data segmen Mood dinamis yang diekstrak secara berkala berdasarkan rentang waktu terpilih [14].
+    var currentMoodBarData: [MoodBarChartSegment] {
+        let referenceDate = now()
+        
+        // Saring entri cerita untuk rentang waktu terpilih menggunakan servis bawaan
+        guard let selectedEntries = try? entrySelectionService.entries(
+            for: selectedTimeRange,
+            from: allEntries,
+            referenceDate: referenceDate
+        ) else {
+            return []
+        }
+        
+        return aggregateMoodBarData(from: selectedEntries, for: selectedTimeRange, referenceDate: referenceDate)
+    }
 
-    private let monthData: [MoodDataPoint] = [
-        MoodDataPoint(timeLabel: "Week 1", moodScore: 3),
-        MoodDataPoint(timeLabel: "Week 2", moodScore: 5),
-        MoodDataPoint(timeLabel: "Week 3", moodScore: 2),
-        MoodDataPoint(timeLabel: "Week 4", moodScore: 4),
-    ]
-
-    // These visual fixtures remain separate from the analytics and generation
-    // pipelines until the Dashboard receives aggregated StoryEntry data.
-    private let dayBarData: [MoodBarChartSegment] = [
-        MoodBarChartSegment(timeLabel: "Morning", mood: .happy, count: 2),
-        MoodBarChartSegment(timeLabel: "Morning", mood: .surprise, count: 1),
-        MoodBarChartSegment(timeLabel: "Afternoon", mood: .disgust, count: 2),
-        MoodBarChartSegment(timeLabel: "Afternoon", mood: .fear, count: 1),
-        MoodBarChartSegment(timeLabel: "Evening", mood: .fear, count: 2),
-        MoodBarChartSegment(timeLabel: "Evening", mood: .sad, count: 1),
-        MoodBarChartSegment(timeLabel: "Night", mood: .sad, count: 3),
-        MoodBarChartSegment(timeLabel: "Night", mood: .happy, count: 1)
-    ]
-
-    private let weekBarData: [MoodBarChartSegment] = [
-        MoodBarChartSegment(timeLabel: "Mon", mood: .disgust, count: 1),
-        MoodBarChartSegment(timeLabel: "Mon", mood: .fear, count: 2),
-        MoodBarChartSegment(timeLabel: "Tue", mood: .fear, count: 2),
-        MoodBarChartSegment(timeLabel: "Tue", mood: .sad, count: 1),
-        MoodBarChartSegment(timeLabel: "Wed", mood: .surprise, count: 2),
-        MoodBarChartSegment(timeLabel: "Wed", mood: .happy, count: 1),
-        MoodBarChartSegment(timeLabel: "Thu", mood: .fear, count: 1),
-        MoodBarChartSegment(timeLabel: "Thu", mood: .angry, count: 1),
-        MoodBarChartSegment(timeLabel: "Fri", mood: .sad, count: 2),
-        MoodBarChartSegment(timeLabel: "Fri", mood: .happy, count: 2),
-        MoodBarChartSegment(timeLabel: "Sat", mood: .surprise, count: 1),
-        MoodBarChartSegment(timeLabel: "Sat", mood: .happy, count: 2),
-        MoodBarChartSegment(timeLabel: "Sun", mood: .happy, count: 3),
-        MoodBarChartSegment(timeLabel: "Sun", mood: .surprise, count: 1)
-    ]
-
-    private let monthBarData: [MoodBarChartSegment] = [
-        MoodBarChartSegment(timeLabel: "Week 1", mood: .fear, count: 2),
-        MoodBarChartSegment(timeLabel: "Week 1", mood: .sad, count: 1),
-        MoodBarChartSegment(timeLabel: "Week 2", mood: .happy, count: 3),
-        MoodBarChartSegment(timeLabel: "Week 2", mood: .surprise, count: 1),
-        MoodBarChartSegment(timeLabel: "Week 3", mood: .disgust, count: 2),
-        MoodBarChartSegment(timeLabel: "Week 3", mood: .fear, count: 1),
-        MoodBarChartSegment(timeLabel: "Week 4", mood: .surprise, count: 2),
-        MoodBarChartSegment(timeLabel: "Week 4", mood: .happy, count: 2)
-    ]
-
-    var currentChartData: [MoodDataPoint] {
-        switch selectedTimeRange {
+    /// Mengelompokkan dan menjumlahkan kemunculan mood berdasarkan segmen sumbu X [14].
+    private func aggregateMoodBarData(
+        from entries: [StoryEntry],
+        for range: TimeRange,
+        referenceDate: Date
+    ) -> [MoodBarChartSegment] {
+        // Simpan jumlah akumulasi: [LabelWaktu: [Mood: Jumlah]]
+        var counts: [String: [Moods: Int]] = [:]
+        
+        // Definisikan urutan label sumbu X agar visualisasi grafik tetap runtut
+        let orderedLabels: [String]
+        switch range {
         case .day:
-            dayData
+            orderedLabels = ["Morning", "Afternoon", "Evening", "Night"]
         case .week:
-            weekData
+            orderedLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         case .month:
-            monthData
+            orderedLabels = ["Week 1", "Week 2", "Week 3", "Week 4"]
+        }
+        
+        // Inisialisasi struktur penampung agar urutan label sumbu X aman
+        for label in orderedLabels {
+            counts[label] = [:]
+        }
+        
+        // Lakukan pengelompokan (grouping) dan penambahan nilai akumulasi
+        for entry in entries {
+            let label = timeLabel(for: entry, range: range, referenceDate: referenceDate)
+            
+            // Jaga-jaga jika label berada di luar orderedLabels default (misal karena penanggalan kalender)
+            if counts[label] == nil {
+                counts[label] = [:]
+            }
+            
+            counts[label]?[entry.mood, default: 0] += 1
+        }
+        
+        // Bentuk menjadi array MoodBarChartSegment yang diurutkan sesuai orderedLabels
+        var segments: [MoodBarChartSegment] = []
+        for label in orderedLabels {
+            guard let moodCounts = counts[label] else { continue }
+            for (mood, count) in moodCounts where count > 0 {
+                segments.append(
+                    MoodBarChartSegment(timeLabel: label, mood: mood, count: count)
+                )
+            }
+        }
+        
+        return segments
+    }
+
+    /// Menghasilkan string label sumbu X berdasarkan rentang waktu terpilih [14].
+    private func timeLabel(
+        for entry: StoryEntry,
+        range: TimeRange,
+        referenceDate: Date
+    ) -> String {
+        switch range {
+        case .day:
+            // Sesuai dengan enum Sesi: Morning, Afternoon, Evening, Night
+            switch entry.session {
+            case .morning: return "Morning"
+            case .afternoon: return "Afternoon"
+            case .evening: return "Evening"
+            case .night: return "Night"
+            }
+            
+        case .week:
+            // Ambil singkatan nama hari dalam bahasa Inggris (Mon, Tue, Wed, dst.)
+            let formatter = DateFormatter()
+            formatter.dateFormat = "E"
+            formatter.locale = Locale(identifier: "en_US")
+            return formatter.string(from: entry.recordedAt)
+            
+        case .month:
+            // Kelompokkan 30 hari ke belakang menjadi 4 blok minggu relatif terhadap referenceDate
+            let startOfEntryDay = calendar.startOfDay(for: entry.recordedAt)
+            let startOfReferenceDay = calendar.startOfDay(for: referenceDate)
+            
+            let daysAgo = calendar.dateComponents(
+                [.day],
+                from: startOfEntryDay,
+                to: startOfReferenceDay
+            ).day ?? 0
+            
+            if daysAgo < 7 {
+                return "Week 4"  // 7 Hari Terakhir
+            } else if daysAgo < 14 {
+                return "Week 3"  // 8-14 Hari yang lalu
+            } else if daysAgo < 21 {
+                return "Week 2"  // 15-21 Hari yang lalu
+            } else {
+                return "Week 1"  // 22-30 Hari yang lalu
+            }
         }
     }
 
-    var currentMoodBarData: [MoodBarChartSegment] {
-        switch selectedTimeRange {
-        case .day:
-            dayBarData
-        case .week:
-            weekBarData
-        case .month:
-            monthBarData
+    /// Opsional: Data Score Chart yang juga disesuaikan secara dinamis dari database
+    var currentChartData: [MoodDataPoint] {
+        let referenceDate = now()
+        guard let selectedEntries = try? entrySelectionService.entries(
+            for: selectedTimeRange,
+            from: allEntries,
+            referenceDate: referenceDate
+        ) else {
+            return []
+        }
+        
+        let grouped = Dictionary(grouping: selectedEntries) { entry in
+            timeLabel(for: entry, range: selectedTimeRange, referenceDate: referenceDate)
+        }
+        
+        return grouped.map { label, entriesInLabel in
+            MoodDataPoint(timeLabel: label, moodScore: entriesInLabel.count)
         }
     }
 }
