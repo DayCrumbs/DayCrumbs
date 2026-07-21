@@ -229,64 +229,101 @@ struct DashboardView: View {
     }
 
     private func moodChart(height: CGFloat) -> some View {
-        Chart(viewModel.currentChartData) { dataPoint in
-            LineMark(
-                x: .value("Time", dataPoint.timeLabel),
-                y: .value("Mood", dataPoint.moodScore)
-            )
-            .symbol(Circle())
-            .symbolSize(42)
-            .interpolationMethod(.linear)
-            .foregroundStyle(AppColour.txtCoklat)
-        }
-        .chartLegend(.hidden)
-        .chartYScale(domain: 1...6)
-        .chartXAxis {
-            AxisMarks { _ in
-                AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                    .foregroundStyle(AppColour.txtCoklat.opacity(0.22))
-                AxisTick(stroke: StrokeStyle(lineWidth: 1))
-                    .foregroundStyle(AppColour.txtCoklat.opacity(0.65))
-                AxisValueLabel()
-                    .font(.system(.headline, design: .rounded).weight(.bold))
-                    .foregroundStyle(AppColour.txtCoklat)
-            }
-        }
-        .chartYAxis {
-            AxisMarks(position: .leading, values: [1, 2, 3, 4, 5, 6]) { value in
-                AxisGridLine(stroke: StrokeStyle(lineWidth: 0))
-                AxisTick(stroke: StrokeStyle(lineWidth: 0))
-                AxisValueLabel(anchor: .trailing) {
-                    if let moodScore = value.as(Int.self) {
-                        Image(
-                            Moods.expressionImageName(
-                                forDashboardMoodScore: moodScore,
-                                gender: storyFlow.childGender
-                            )
-                        )
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 48, height: 48)
-                            .accessibilityHidden(true)
-                    }
+        HStack(alignment: .center, spacing: 14) {
+            moodChartLegend
+
+            Chart(viewModel.currentMoodBarData) { segment in
+                BarMark(
+                    x: .value("Time", segment.timeLabel),
+                    y: .value("Mood count", segment.count),
+                    stacking: .standard
+                )
+                .foregroundStyle(moodBarColour(for: segment.mood))
+                .cornerRadius(4)
+                .annotation(position: .overlay) {
+                    Text("\(segment.count)")
+                        .font(.system(.caption2, design: .rounded).weight(.bold))
+                        .foregroundStyle(AppColour.txtCoklat)
+                        .accessibilityHidden(true)
                 }
             }
-        }
-        .chartPlotStyle { plotArea in
-            plotArea
-                .padding(.top, 6)
-                .padding(.bottom, 10)
-        }
-        .transaction { transaction in
-            transaction.animation = nil
+            .chartLegend(.hidden)
+            .chartYScale(domain: 0...moodChartMaximumCount)
+            .chartXAxis {
+                AxisMarks { _ in
+                    AxisTick(stroke: StrokeStyle(lineWidth: 1))
+                        .foregroundStyle(AppColour.txtCoklat.opacity(0.65))
+                    AxisValueLabel()
+                        .font(.system(.headline, design: .rounded).weight(.bold))
+                        .foregroundStyle(AppColour.txtCoklat)
+                }
+            }
+            .chartYAxis {
+                AxisMarks { _ in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                        .foregroundStyle(AppColour.txtCoklat.opacity(0.22))
+                }
+            }
+            .chartPlotStyle { plotArea in
+                plotArea
+                    .padding(.top, 6)
+                    .padding(.bottom, 10)
+            }
+            .transaction { transaction in
+                transaction.animation = nil
+            }
+            .accessibilityChartDescriptor(
+                DashboardMoodChartDescriptor(
+                    timeRange: viewModel.selectedTimeRange,
+                    segments: viewModel.currentMoodBarData
+                )
+            )
         }
         .frame(height: height)
-        .accessibilityChartDescriptor(
-            DashboardMoodChartDescriptor(
-                timeRange: viewModel.selectedTimeRange,
-                dataPoints: viewModel.currentChartData
-            )
-        )
+    }
+
+    private var moodChartLegend: some View {
+        VStack(alignment: .trailing, spacing: 12) {
+            ForEach(moodLegendOrder, id: \.self) { mood in
+                HStack(spacing: 8) {
+                    Image(mood.expressionImageName(for: storyFlow.childGender))
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 38, height: 38)
+                        .accessibilityHidden(true)
+
+                    Circle()
+                        .fill(moodBarColour(for: mood))
+                        .frame(width: 14, height: 14)
+                        .accessibilityHidden(true)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(mood.accessibilityLabel) colour")
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private var moodLegendOrder: [Moods] {
+        [.happy, .sad, .angry, .surprise, .fear, .disgust]
+    }
+
+    private var moodChartMaximumCount: Int {
+        let totalsByTime = Dictionary(grouping: viewModel.currentMoodBarData, by: \.timeLabel)
+            .mapValues { segments in segments.reduce(0) { $0 + $1.count } }
+
+        return max(1, totalsByTime.values.max() ?? 0)
+    }
+
+    private func moodBarColour(for mood: Moods) -> Color {
+        switch mood {
+        case .happy: AppColour.barHappy
+        case .sad: AppColour.barSad
+        case .angry: AppColour.barAngry
+        case .surprise: AppColour.barSurprised
+        case .fear: AppColour.barFearful
+        case .disgust: AppColour.barDisgusted
+        }
     }
 
     private func commonTriggersCard(height: CGFloat) -> some View {
