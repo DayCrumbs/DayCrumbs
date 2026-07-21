@@ -1,15 +1,14 @@
 import SwiftUI
 
 struct IllustratedView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(StoryFlowCoordinator.self) private var storyFlow
 
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
     let selectedActivity: Activity.BuiltInActivity
     let selectedMood: Moods
 
-    @State private var isShowingContinuationCard = false
-    @State private var navigationRoute: StoryFlowRoute?
+    @State private var viewModel = IllustratedViewModel()
 
     var body: some View {
         GeometryReader { proxy in
@@ -18,11 +17,19 @@ struct IllustratedView: View {
                     .ignoresSafeArea()
                     .accessibilityHidden(true)
 
-                if isShowingContinuationCard {
+                if viewModel.isShowingContinuationCard {
                     BlurredStorySelectionBackground(imageNames: illustratedBackgroundImageNames)
                         .ignoresSafeArea()
                         .accessibilityHidden(true)
                         .transition(.opacity)
+
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .ignoresSafeArea()
+                        .accessibilityHidden(true)
+                        .onTapGesture {
+                            viewModel.dismissContinuationCard()
+                        }
 
                     continuationCard
                         .frame(
@@ -48,27 +55,27 @@ struct IllustratedView: View {
                 }
 
                 CircularBackButton(style: .yellowBtn) {
-                    dismiss()
+                    storyFlow.goBack()
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
             }
-            .animation(.easeInOut(duration: 0.22), value: isShowingContinuationCard)
+            .animation(.easeInOut(duration: 0.22), value: viewModel.isShowingContinuationCard)
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $navigationRoute)
     }
 
     private var illustratedBackgroundImageNames: [String] {
-        [
-            StorySelectionAsset.imageName(for: selectedPlace),
-            StorySelectionAsset.backgroundImageName(for: selectedActivity)
-        ]
+        viewModel.backgroundImageNames(
+            place: selectedPlace,
+            activity: selectedActivity,
+            gender: storyFlow.childGender
+        )
     }
 
     private var continueButton: some View {
         Button {
-            isShowingContinuationCard = true
+            viewModel.showContinuationCard()
         } label: {
             HStack(spacing: 8) {
                 Text("Continue")
@@ -101,20 +108,17 @@ struct IllustratedView: View {
 
             VStack(spacing: 14) {
                 continuationActionButton(title: "Add Another Activity") {
-                    navigationRoute = .pickPlace(selectedSession)
+                    storyFlow.addAnotherActivity()
                 }
 
-                continuationActionButton(title: "Continue to Another Session") {
-                    navigationRoute = .sessionOption
+                if selectedSession != .night {
+                    continuationActionButton(title: "Continue to Another Session") {
+                        storyFlow.continueToAnotherSession()
+                    }
                 }
 
                 continuationActionButton(title: "Finish Session") {
-                    navigationRoute = .reflection(
-                        selectedSession,
-                        selectedPlace,
-                        selectedActivity,
-                        selectedMood
-                    )
+                    storyFlow.finishSession()
                 }
             }
         }
@@ -123,6 +127,7 @@ struct IllustratedView: View {
         .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
+        .onTapGesture { }
     }
 
     private func continuationActionButton(
@@ -139,18 +144,7 @@ struct IllustratedView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
-        .accessibilityHint(continuationAccessibilityHint(for: title))
-    }
-
-    private func continuationAccessibilityHint(for title: String) -> String {
-        switch title {
-        case "Add Another Activity":
-            return "Starts another activity in the current session."
-        case "Continue to Another Session":
-            return "Returns to the session selection screen."
-        default:
-            return "Opens the end-of-day reflection."
-        }
+        .accessibilityHint(viewModel.continuationAccessibilityHint(for: title))
     }
 }
 
@@ -163,4 +157,5 @@ struct IllustratedView: View {
             selectedMood: .happy
         )
     }
+    .environment(StoryFlowCoordinator())
 }

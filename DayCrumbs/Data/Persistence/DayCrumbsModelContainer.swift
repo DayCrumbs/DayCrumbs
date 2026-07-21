@@ -3,9 +3,10 @@
 //  DayCrumbs
 //
 
+import Foundation
 import SwiftData
 
-enum DayCrumbsModelContainer {
+nonisolated enum DayCrumbsModelContainer {
     static let schema = Schema([
         ChildProfile.self,
         DailySession.self,
@@ -17,7 +18,21 @@ enum DayCrumbsModelContainer {
     ])
 
     static func makeProductionContainer() throws -> ModelContainer {
-        try makeContainer(isStoredInMemoryOnly: false)
+        // A fresh installation may not have created Application Support yet.
+        // Preparing it first prevents Core Data from entering noisy store recovery.
+        try prepareProductionStorageDirectory()
+        return try makeContainer(isStoredInMemoryOnly: false)
+    }
+
+    static func prepareProductionStorageDirectory(
+        at directory: URL = .applicationSupportDirectory,
+        fileManager: FileManager = .default
+    ) throws {
+        try fileManager.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
     }
 
     static func makeInMemoryContainer() throws -> ModelContainer {

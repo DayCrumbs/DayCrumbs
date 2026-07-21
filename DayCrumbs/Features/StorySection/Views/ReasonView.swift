@@ -1,34 +1,26 @@
 import SwiftUI
+import UIKit
 
 struct ReasonView: View {
-    private static let discussionCharacterLimit = 1_000
-
-    @Environment(\.dismiss) private var dismiss
+    @Environment(StoryFlowCoordinator.self) private var storyFlow
 
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
     let selectedActivity: Activity.BuiltInActivity
     let selectedMood: Moods
-    let onSaveDiscussion: (String) -> Void
-    let onContinueToIllustrated: () -> Void
-
-    @State private var discussionText = ""
-    @State private var navigationRoute: StoryFlowRoute?
+    @State private var viewModel = ReasonViewModel()
+    @State private var isKeyboardVisible = false
 
     init(
         selectedSession: Sessions,
         selectedPlace: Place.BuiltInPlace,
         selectedActivity: Activity.BuiltInActivity,
-        selectedMood: Moods,
-        onSaveDiscussion: @escaping (String) -> Void = { _ in },
-        onContinueToIllustrated: @escaping () -> Void = {}
+        selectedMood: Moods
     ) {
         self.selectedSession = selectedSession
         self.selectedPlace = selectedPlace
         self.selectedActivity = selectedActivity
         self.selectedMood = selectedMood
-        self.onSaveDiscussion = onSaveDiscussion
-        self.onContinueToIllustrated = onContinueToIllustrated
     }
 
     var body: some View {
@@ -37,7 +29,10 @@ struct ReasonView: View {
                 BlurredStorySelectionBackground(
                     imageNames: [
                         StorySelectionAsset.imageName(for: selectedPlace),
-                        StorySelectionAsset.backgroundImageName(for: selectedActivity)
+                        StorySelectionAsset.backgroundImageName(
+                            for: selectedActivity,
+                            gender: storyFlow.childGender
+                        )
                     ]
                 )
                 .ignoresSafeArea()
@@ -50,58 +45,110 @@ struct ReasonView: View {
                 }
 
                 CircularBackButton(style: .yellowBtn) {
-                    dismiss()
+                    storyFlow.goBack()
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
             }
+            .animation(.easeInOut(duration: 0.22), value: isKeyboardVisible)
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $navigationRoute)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isKeyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            isKeyboardVisible = false
+        }
     }
 
     private func wideContent(in size: CGSize) -> some View {
-        ZStack(alignment: .topLeading) {
+        let cardWidth = isKeyboardVisible
+            ? min(680, max(size.width * 0.70, size.width - 48))
+            : size.width * 0.43
+        let cardHeight = isKeyboardVisible
+            ? min(390, max(280, size.height - 44))
+            : size.height * 0.39
+        let cardOffsetX = isKeyboardVisible
+            ? (size.width - cardWidth) / 2
+            : size.width * 0.49
+        let cardOffsetY = isKeyboardVisible
+            ? max(0, (size.height - cardHeight) / 2) - min(30, size.height * 0.06)
+            : size.height * 0.51
+
+        return ZStack(alignment: .topLeading) {
             QuestionCharacterBubble(
-                characterImageName: "Reason_Girl",
+                characterImageName: StoryCharacterAsset.imageName(
+                    for: .reason,
+                    gender: storyFlow.childGender
+                ),
                 characterHeightRatio: 1084.0 / 655.0,
                 title: reasonQuestionTitle,
                 subtitle: "Share your story with your parent so we can better understand what happened.",
                 accessibilityLabel: reasonQuestionAccessibilityLabel
             )
             .frame(width: size.width, height: size.height * 0.60, alignment: .topLeading)
+            .opacity(isKeyboardVisible ? 0 : 1)
+            .allowsHitTesting(!isKeyboardVisible)
+            .accessibilityHidden(isKeyboardVisible)
 
             discussionCard
-                .frame(width: size.width * 0.43, height: size.height * 0.39)
-                .offset(x: size.width * 0.49, y: size.height * 0.51)
+                .frame(width: cardWidth, height: cardHeight)
+                .offset(x: cardOffsetX, y: cardOffsetY)
 
             skipButton
                 .frame(width: max(118, size.width * 0.11))
                 .offset(x: size.width * 0.81, y: size.height * 0.92)
+                .opacity(isKeyboardVisible ? 0 : 1)
+                .allowsHitTesting(!isKeyboardVisible)
+                .accessibilityHidden(isKeyboardVisible)
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
     }
 
     private func compactContent(in size: CGSize) -> some View {
-        ScrollView {
-            VStack(spacing: 24) {
+        let cardHeight = isKeyboardVisible
+            ? min(390, max(280, size.height - 44))
+            : 390
+        let cardWidth = min(680, max(size.width * 0.70, size.width - 48))
+
+        return ScrollView {
+            VStack(spacing: isKeyboardVisible ? 0 : 24) {
                 QuestionCharacterBubble(
-                    characterImageName: "Reason_Girl",
+                    characterImageName: StoryCharacterAsset.imageName(
+                        for: .reason,
+                        gender: storyFlow.childGender
+                    ),
                     characterHeightRatio: 1084.0 / 655.0,
                     title: reasonQuestionTitle,
                     subtitle: "Share your story with your parent so we can better understand what happened.",
                     accessibilityLabel: reasonQuestionAccessibilityLabel
                 )
-                .frame(height: min(520, size.height * 0.58))
+                .frame(height: isKeyboardVisible ? 0 : min(520, size.height * 0.58))
+                .opacity(isKeyboardVisible ? 0 : 1)
+                .accessibilityHidden(isKeyboardVisible)
+
+                Color.clear
+                    .frame(
+                        height: isKeyboardVisible
+                            ? max(0, (size.height - cardHeight) / 2 - 16)
+                            : 0
+                    )
 
                 discussionCard
-                    .frame(height: 390)
+                    .frame(
+                        width: isKeyboardVisible ? cardWidth : nil,
+                        height: cardHeight
+                    )
 
                 skipButton
                     .frame(width: 150)
+                    .opacity(isKeyboardVisible ? 0 : 1)
+                    .allowsHitTesting(!isKeyboardVisible)
+                    .accessibilityHidden(isKeyboardVisible)
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 24)
-            .padding(.top, 88)
+            .padding(.top, isKeyboardVisible ? 16 : 88)
             .padding(.bottom, 32)
         }
     }
@@ -121,7 +168,15 @@ struct ReasonView: View {
 
             discussionEditor
 
-            Button(action: saveDiscussionAndContinue) {
+            Button {
+                storyFlow.continueFromReason(
+                    session: selectedSession,
+                    place: selectedPlace,
+                    activity: selectedActivity,
+                    mood: selectedMood,
+                    discussion: viewModel.discussionText
+                )
+            } label: {
                 Text("Save Discussion")
                     .font(.system(.headline, design: .rounded).weight(.semibold))
                     .foregroundStyle(AppColour.txtCoklat)
@@ -130,8 +185,18 @@ struct ReasonView: View {
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
+            .disabled(!viewModel.isDiscussionReady)
             .accessibilityLabel("Save discussion")
-            .accessibilityHint("Saves the optional discussion and continues to the illustration.")
+            .accessibilityValue(
+                viewModel.isDiscussionReady
+                    ? "Ready to save"
+                    : "Disabled until a discussion is entered"
+            )
+            .accessibilityHint(
+                viewModel.isDiscussionReady
+                    ? "Saves the discussion and continues to the illustration."
+                    : "Write a discussion before saving. You can also skip this step."
+            )
         }
         .padding(24)
         .background(AppColour.cardKuning)
@@ -143,8 +208,8 @@ struct ReasonView: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(AppColour.bgPutih.opacity(0.24))
 
-            if discussionText.isEmpty {
-                Text("e.g. They felt \(selectedMood.rawValue) because they played hide and seek with friends at school")
+            if viewModel.discussionText.isEmpty {
+                Text(viewModel.discussionPlaceholder(for: selectedMood))
                     .font(.system(.body, design: .rounded))
                     .foregroundStyle(AppColour.txtCoklat.opacity(0.45))
                     .padding(.horizontal, 16)
@@ -152,7 +217,7 @@ struct ReasonView: View {
                     .allowsHitTesting(false)
             }
 
-            TextEditor(text: $discussionText)
+            TextEditor(text: $viewModel.discussionText)
                 .font(.system(.body, design: .rounded))
                 .foregroundStyle(AppColour.txtCoklat)
                 .scrollContentBackground(.hidden)
@@ -160,26 +225,21 @@ struct ReasonView: View {
                 .padding(.horizontal, 10)
                 .padding(.top, 8)
                 .padding(.bottom, 38)
-                .onChange(of: discussionText) { _, newValue in
-                    if newValue.count > Self.discussionCharacterLimit {
-                        discussionText = String(newValue.prefix(Self.discussionCharacterLimit))
-                    }
-                }
                 .accessibilityLabel(
-                    "Write discussion, \(discussionText.count) of \(Self.discussionCharacterLimit) characters"
+                    "Write discussion, \(viewModel.discussionCharacterCount) of \(viewModel.discussionCharacterLimit) characters"
                 )
                 .accessibilityHint(
-                    "Optional discussion. Enter up to \(Self.discussionCharacterLimit) characters."
+                    "Optional discussion. Enter up to \(viewModel.discussionCharacterLimit) characters."
                 )
 
             HStack(spacing: 12) {
                 Spacer()
 
-                Text("\(discussionText.count)/\(Self.discussionCharacterLimit)")
+                Text("\(viewModel.discussionCharacterCount)/\(viewModel.discussionCharacterLimit)")
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(AppColour.txtCoklat)
                     .accessibilityLabel(
-                        "\(discussionText.count) of \(Self.discussionCharacterLimit) characters"
+                        "\(viewModel.discussionCharacterCount) of \(viewModel.discussionCharacterLimit) characters"
                     )
 
                 Button {
@@ -202,7 +262,15 @@ struct ReasonView: View {
     }
 
     private var skipButton: some View {
-        Button(action: continueToIllustrated) {
+        Button {
+            storyFlow.continueFromReason(
+                session: selectedSession,
+                place: selectedPlace,
+                activity: selectedActivity,
+                mood: selectedMood,
+                discussion: nil
+            )
+        } label: {
             Text("Skip")
                 .font(.system(.headline, design: .rounded).weight(.semibold))
                 .foregroundStyle(AppColour.txtCoklat)
@@ -220,22 +288,7 @@ struct ReasonView: View {
     }
 
     private var reasonQuestionAccessibilityLabel: String {
-        "Can you tell us why you felt \(selectedMood.rawValue)? Share your story with your parent so we can better understand what happened."
-    }
-
-    private func saveDiscussionAndContinue() {
-        onSaveDiscussion(discussionText)
-        continueToIllustrated()
-    }
-
-    private func continueToIllustrated() {
-        onContinueToIllustrated()
-        navigationRoute = .illustrated(
-            selectedSession,
-            selectedPlace,
-            selectedActivity,
-            selectedMood
-        )
+        viewModel.reasonQuestionAccessibilityLabel(for: selectedMood)
     }
 }
 
@@ -248,4 +301,5 @@ struct ReasonView: View {
             selectedMood: .happy
         )
     }
+    .environment(StoryFlowCoordinator())
 }

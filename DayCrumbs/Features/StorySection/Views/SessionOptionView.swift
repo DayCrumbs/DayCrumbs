@@ -1,9 +1,7 @@
 import SwiftUI
 
 struct SessionOptionView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var navigationRoute: StoryFlowRoute?
+    @Environment(StoryFlowCoordinator.self) private var storyFlow
 
     var body: some View {
         GeometryReader { proxy in
@@ -18,14 +16,13 @@ struct SessionOptionView: View {
                 }
 
                 CircularBackButton(style: .yellowBtn) {
-                    dismiss()
+                    storyFlow.returnToDashboard()
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
             }
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $navigationRoute)
     }
 
     private func wideContent(in size: CGSize) -> some View {
@@ -48,7 +45,7 @@ struct SessionOptionView: View {
             .padding(.top, size.height * 0.13)
             .padding(.leading, size.width * 0.022)
 
-            Image("PickSession_Girl")
+            Image(StoryCharacterAsset.imageName(for: .session, gender: storyFlow.childGender))
                 .resizable()
                 .scaledToFit()
                 .frame(width: characterWidth, height: characterHeight, alignment: .bottomLeading)
@@ -88,7 +85,7 @@ struct SessionOptionView: View {
                 )
                 .frame(width: min(size.width * 0.72, 300))
 
-                Image("PickSession_Girl")
+                Image(StoryCharacterAsset.imageName(for: .session, gender: storyFlow.childGender))
                     .resizable()
                     .scaledToFit()
                     .frame(width: min(size.width * 0.58, 320))
@@ -113,14 +110,18 @@ struct SessionOptionView: View {
     }
 
     private func sessionCard(for session: Sessions) -> some View {
-        SessionSelectionCard(session: session) {
-            navigationRoute = .pickPlace(session)
+        SessionSelectionCard(
+            session: session,
+            isDisabled: storyFlow.isSessionDisabled(session)
+        ) {
+            storyFlow.selectSession(session)
         }
     }
 }
 
 private struct SessionSelectionCard: View {
     let session: Sessions
+    let isDisabled: Bool
     let action: () -> Void
 
     @ScaledMetric(relativeTo: .title2) private var titleSize: CGFloat = 36
@@ -160,11 +161,21 @@ private struct SessionSelectionCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
         }
         .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.42 : 1)
         .accessibilityLabel("Choose \(session.title) session")
-        .accessibilityHint("Starts a story for the \(session.title.lowercased()) session.")
+        .accessibilityValue(isDisabled ? "Unavailable" : "Available")
+        .accessibilityHint(
+            isDisabled
+                ? "This session has already been completed in the current story flow."
+                : "Starts a story for the \(session.title.lowercased()) session."
+        )
     }
 }
 
 #Preview {
-    SessionOptionView()
+    NavigationStack {
+        SessionOptionView()
+    }
+    .environment(StoryFlowCoordinator())
 }

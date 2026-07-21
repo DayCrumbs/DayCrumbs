@@ -8,6 +8,13 @@ nonisolated struct MoodDataPoint: Identifiable {
     let moodScore: Int
 }
 
+nonisolated struct MoodBarChartSegment: Identifiable {
+    var id: String { "\(timeLabel)-\(mood.rawValue)" }
+    let timeLabel: String
+    let mood: Moods
+    let count: Int
+}
+
 /// UI-ready lifecycle state for one selected Dashboard range.
 nonisolated enum DashboardPresentationState: Equatable {
     case idle
@@ -49,6 +56,11 @@ final class DashboardViewModel {
     @ObservationIgnored private var selectionRevision = UUID()
     @ObservationIgnored private var generationTask: Task<Void, Never>?
     @ObservationIgnored private var publishedTriggerDetails: [TriggerDetail] = []
+    /// Keeps one complete presentation result per range for this Dashboard visit.
+    /// The cache is intentionally in memory so leaving Dashboard starts a fresh visit.
+    @ObservationIgnored private var cachedResultsByRange: [
+        TimeRange: AppleLocalizedAnalyticsInsight
+    ] = [:]
 
     init(
         entrySource: (any StoryEntrySource)? = nil,
@@ -122,6 +134,10 @@ final class DashboardViewModel {
             return
         }
 
+        if restoreCachedResult(for: range) {
+            return
+        }
+
         await generateSelectedRange(debounce: true)
     }
 
@@ -133,6 +149,7 @@ final class DashboardViewModel {
 
         let revision = UUID()
         selectionRevision = revision
+        cachedResultsByRange[selectedTimeRange] = nil
         clearPublishedInsight()
 
         let previousTask = detachActiveGeneration()
@@ -168,7 +185,7 @@ final class DashboardViewModel {
             guard canPublish(requestID: requestID, range: range) else {
                 return
             }
-            publish(result)
+            publish(result, for: range)
         }
 
         generationTask = task
@@ -192,6 +209,20 @@ final class DashboardViewModel {
     func cancelGeneration() {
         selectionRevision = UUID()
         _ = detachActiveGeneration()
+    }
+
+    /// Ends one Dashboard visit. Background cancellation deliberately uses
+    /// `cancelGeneration()` instead so completed ranges remain cached on resume.
+    func endDashboardSession() {
+        selectionRevision = UUID()
+        _ = detachActiveGeneration()
+        cachedResultsByRange.removeAll()
+        clearPublishedInsight()
+        allEntries = []
+        hasLoadedEntries = false
+        hasStarted = false
+        activeReferenceDay = nil
+        childName = ""
     }
 
     /// A new calendar day changes all rolling range boundaries and requires fresh input.
@@ -218,6 +249,8 @@ final class DashboardViewModel {
         guard selectionRevision == revision else {
             return
         }
+        // Day, Week, and Month all receive new rolling boundaries after midnight.
+        cachedResultsByRange.removeAll()
         await reloadEntriesAndGenerate()
     }
 
@@ -299,7 +332,7 @@ final class DashboardViewModel {
                 guard canPublish(requestID: requestID, range: range) else {
                     return
                 }
-                publish(result)
+                publish(result, for: range)
             } catch {
                 // Translation cancellation can arrive as a domain error. Request
                 // identity and Task cancellation therefore take precedence.
@@ -321,7 +354,20 @@ final class DashboardViewModel {
         }
     }
 
-    private func publish(_ result: AppleLocalizedAnalyticsInsight) {
+    private func restoreCachedResult(for range: TimeRange) -> Bool {
+        guard let cachedResult = cachedResultsByRange[range] else {
+            return false
+        }
+
+        publish(cachedResult, for: range)
+        return true
+    }
+
+    private func publish(
+        _ result: AppleLocalizedAnalyticsInsight,
+        for range: TimeRange
+    ) {
+        cachedResultsByRange[range] = result
         generatedInsight = result.insight
         englishFallback = result.englishFallback
         // Legacy/test generators may not provide prelocalized details. Production
@@ -398,39 +444,140 @@ final class DashboardViewModel {
         }
     }
 
-    // Chart fixtures remain independent from the generation pipeline.
-    private let dayData: [MoodDataPoint] = [
-        MoodDataPoint(timeLabel: "Morning", moodScore: 4),
-        MoodDataPoint(timeLabel: "Afternoon", moodScore: 2),
-        MoodDataPoint(timeLabel: "Evening", moodScore: 3),
-        MoodDataPoint(timeLabel: "Night", moodScore: 5),
-    ]
+    // MARK: - LOGIKA AGREGASI DATA GRAFIK DINAMIS
 
-    private let weekData: [MoodDataPoint] = [
-        MoodDataPoint(timeLabel: "Mon", moodScore: 2),
-        MoodDataPoint(timeLabel: "Tue", moodScore: 3),
-        MoodDataPoint(timeLabel: "Wed", moodScore: 4),
-        MoodDataPoint(timeLabel: "Thu", moodScore: 3),
-        MoodDataPoint(timeLabel: "Fri", moodScore: 5),
-        MoodDataPoint(timeLabel: "Sat", moodScore: 4),
-        MoodDataPoint(timeLabel: "Sun", moodScore: 6),
-    ]
+    /// Data segmen Mood dinamis yang diekstrak secara berkala berdasarkan rentang waktu terpilih [14].
+    var currentMoodBarData: [MoodBarChartSegment] {
+        let referenceDate = now()
+        
+        // Saring entri cerita untuk rentang waktu terpilih menggunakan servis bawaan
+        guard let selectedEntries = try? entrySelectionService.entries(
+            for: selectedTimeRange,
+            from: allEntries,
+            referenceDate: referenceDate
+        ) else {
+            return []
+        }
+        
+        return aggregateMoodBarData(from: selectedEntries, for: selectedTimeRange, referenceDate: referenceDate)
+    }
 
-    private let monthData: [MoodDataPoint] = [
-        MoodDataPoint(timeLabel: "Week 1", moodScore: 3),
-        MoodDataPoint(timeLabel: "Week 2", moodScore: 5),
-        MoodDataPoint(timeLabel: "Week 3", moodScore: 2),
-        MoodDataPoint(timeLabel: "Week 4", moodScore: 4),
-    ]
-
-    var currentChartData: [MoodDataPoint] {
-        switch selectedTimeRange {
+    /// Mengelompokkan dan menjumlahkan kemunculan mood berdasarkan segmen sumbu X [14].
+    private func aggregateMoodBarData(
+        from entries: [StoryEntry],
+        for range: TimeRange,
+        referenceDate: Date
+    ) -> [MoodBarChartSegment] {
+        // Simpan jumlah akumulasi: [LabelWaktu: [Mood: Jumlah]]
+        var counts: [String: [Moods: Int]] = [:]
+        
+        // Definisikan urutan label sumbu X agar visualisasi grafik tetap runtut
+        let orderedLabels: [String]
+        switch range {
         case .day:
-            dayData
+            orderedLabels = ["Morning", "Afternoon", "Evening", "Night"]
         case .week:
-            weekData
+            orderedLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         case .month:
-            monthData
+            orderedLabels = ["Week 1", "Week 2", "Week 3", "Week 4"]
+        }
+        
+        // Inisialisasi struktur penampung agar urutan label sumbu X aman
+        for label in orderedLabels {
+            counts[label] = [:]
+        }
+        
+        // Lakukan pengelompokan (grouping) dan penambahan nilai akumulasi
+        for entry in entries {
+            let label = timeLabel(for: entry, range: range, referenceDate: referenceDate)
+            
+            // Jaga-jaga jika label berada di luar orderedLabels default (misal karena penanggalan kalender)
+            if counts[label] == nil {
+                counts[label] = [:]
+            }
+            
+            counts[label]?[entry.mood, default: 0] += 1
+        }
+        
+        // Bentuk menjadi array MoodBarChartSegment yang diurutkan sesuai orderedLabels
+        var segments: [MoodBarChartSegment] = []
+        for label in orderedLabels {
+            guard let moodCounts = counts[label] else { continue }
+            for (mood, count) in moodCounts where count > 0 {
+                segments.append(
+                    MoodBarChartSegment(timeLabel: label, mood: mood, count: count)
+                )
+            }
+        }
+        
+        return segments
+    }
+
+    /// Menghasilkan string label sumbu X berdasarkan rentang waktu terpilih.
+    private func timeLabel(
+        for entry: StoryEntry,
+        range: TimeRange,
+        referenceDate: Date
+    ) -> String {
+        switch range {
+        case .day:
+            // Sesuai dengan enum Sesi: Morning, Afternoon, Evening, Night
+            switch entry.session {
+            case .morning: return "Morning"
+            case .afternoon: return "Afternoon"
+            case .evening: return "Evening"
+            case .night: return "Night"
+            }
+            
+        case .week:
+            // Ambil singkatan nama hari dalam bahasa Inggris (Mon, Tue, Wed, dst.)
+            let formatter = DateFormatter()
+            formatter.dateFormat = "E"
+            formatter.locale = Locale(identifier: "en_US")
+            return formatter.string(from: entry.recordedAt)
+            
+        case .month:
+            // Kelompokkan data ke dalam 4 blok minggu presisi (masing-masing tepat 7 hari)
+            let startOfEntryDay = calendar.startOfDay(for: entry.recordedAt)
+            let startOfReferenceDay = calendar.startOfDay(for: referenceDate)
+            
+            let daysAgo = calendar.dateComponents(
+                [.day],
+                from: startOfEntryDay,
+                to: startOfReferenceDay
+            ).day ?? 0
+            
+            if daysAgo < 7 {
+                return "Week 4"  // Hari ke 1 - 7 (Terbaru / 0 s.d 6 hari yang lalu)
+            } else if daysAgo < 14 {
+                return "Week 3"  // Hari ke 8 - 14 (7 s.d 13 hari yang lalu)
+            } else if daysAgo < 21 {
+                return "Week 2"  // Hari ke 15 - 21 (14 s.d 20 hari yang lalu)
+            } else if daysAgo < 28 {
+                return "Week 1"  // Hari ke 22 - 28 (21 s.d 27 hari yang lalu)
+            } else {
+                return ""
+            }
+        }
+    }
+
+    /// Opsional: Data Score Chart yang juga disesuaikan secara dinamis dari database
+    var currentChartData: [MoodDataPoint] {
+        let referenceDate = now()
+        guard let selectedEntries = try? entrySelectionService.entries(
+            for: selectedTimeRange,
+            from: allEntries,
+            referenceDate: referenceDate
+        ) else {
+            return []
+        }
+        
+        let grouped = Dictionary(grouping: selectedEntries) { entry in
+            timeLabel(for: entry, range: selectedTimeRange, referenceDate: referenceDate)
+        }
+        
+        return grouped.map { label, entriesInLabel in
+            MoodDataPoint(timeLabel: label, moodScore: entriesInLabel.count)
         }
     }
 }

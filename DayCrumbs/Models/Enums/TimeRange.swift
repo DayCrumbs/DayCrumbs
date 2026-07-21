@@ -1,7 +1,7 @@
 import Foundation
 
 /// Rolling date scopes supported by the Dashboard.
-enum TimeRange: String, CaseIterable, Equatable, Sendable {
+enum TimeRange: String, CaseIterable, Equatable, Hashable, Sendable {
     case day = "Day"
     case week = "Week"
     case month = "Month"

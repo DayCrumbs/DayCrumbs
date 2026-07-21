@@ -1,41 +1,45 @@
 import Accessibility
 import SwiftUI
 
-/// VoiceOver representation of the visual mood trend chart.
+/// VoiceOver representation of the stacked mood-count chart.
 struct DashboardMoodChartDescriptor: AXChartDescriptorRepresentable {
     let timeRange: TimeRange
-    let dataPoints: [MoodDataPoint]
+    let segments: [MoodBarChartSegment]
 
     func makeChartDescriptor() -> AXChartDescriptor {
         let xAxis = AXCategoricalDataAxisDescriptor(
             title: xAxisTitle,
-            categoryOrder: dataPoints.map(\.timeLabel)
+            categoryOrder: orderedTimeLabels
         )
         let yAxis = AXNumericDataAxisDescriptor(
-            title: "Mood",
-            range: 1...6,
+            title: "Mood count",
+            range: 0...Double(maximumCount),
             gridlinePositions: []
         ) { value in
-            // VoiceOver receives a canonical mood, never the internal score.
-            Moods.dashboardAccessibilityLabel(forScore: value)
+            "\(Int(value)) logged moods"
         }
-        let series = AXDataSeriesDescriptor(
-            name: "Mood trend",
-            isContinuous: true,
-            dataPoints: dataPoints.map { dataPoint in
-                AXDataPoint(
-                    x: dataPoint.timeLabel,
-                    y: Double(dataPoint.moodScore)
-                )
-            }
-        )
+        let series = Moods.allCases.compactMap { mood -> AXDataSeriesDescriptor? in
+            let moodSegments = segments.filter { $0.mood == mood }
+            guard !moodSegments.isEmpty else { return nil }
+
+            return AXDataSeriesDescriptor(
+                name: mood.accessibilityLabel,
+                isContinuous: false,
+                dataPoints: moodSegments.map { segment in
+                    AXDataPoint(
+                        x: segment.timeLabel,
+                        y: Double(segment.count)
+                    )
+                }
+            )
+        }
 
         return AXChartDescriptor(
-            title: "Mood trend for \(timeRange.rawValue).",
+            title: "Mood counts for \(timeRange.rawValue).",
             summary: chartSummary,
             xAxis: xAxis,
             yAxis: yAxis,
-            series: [series]
+            series: series
         )
     }
 
@@ -51,6 +55,21 @@ struct DashboardMoodChartDescriptor: AXChartDescriptorRepresentable {
     }
 
     private var chartSummary: String {
-        "Shows the observed mood for each \(xAxisTitle.lowercased()) in this range."
+        "Shows the number of each observed mood for every \(xAxisTitle.lowercased()) in this range."
+    }
+
+    private var orderedTimeLabels: [String] {
+        var labels: [String] = []
+        for segment in segments where !labels.contains(segment.timeLabel) {
+            labels.append(segment.timeLabel)
+        }
+        return labels
+    }
+
+    private var maximumCount: Int {
+        let totalsByTime = Dictionary(grouping: segments, by: \.timeLabel)
+            .mapValues { values in values.reduce(0) { $0 + $1.count } }
+
+        return max(1, totalsByTime.values.max() ?? 0)
     }
 }

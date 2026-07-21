@@ -20,5 +20,11 @@ struct AppColour {
     static let bgAfternoon = Color("PlaceholderSiang")
     static let bgEvening = Color("PlaceholderSore")
     static let bgNight = Color("PlaceholderMalam")
+    static let barHappy = Color("Colour_Happy")
+    static let barSad = Color("Colour_Sad")
+    static let barAngry = Color("Colour_Angry")
+    static let barSurprised = Color("Colour_Surprise")
+    static let barFearful = Color("Colour_Fear")
+    static let barDisgusted = Color("Colour_Disgust")
     
 }

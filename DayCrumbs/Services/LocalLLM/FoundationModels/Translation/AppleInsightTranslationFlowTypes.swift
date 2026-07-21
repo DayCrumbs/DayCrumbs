@@ -15,6 +15,7 @@ nonisolated enum NativeTranslationBatchExecutionMode: Equatable, Sendable {
 nonisolated enum NativeTranslationBatchExecutionError: Error, Equatable, Sendable {
     case downloadDenied
     case cancelled
+    case transientSessionFailure
     case preparationFailed
     case translationFailed
 }
@@ -36,6 +37,7 @@ nonisolated struct AppleInsightTranslationFailure: Equatable, Sendable {
         case unsupportedLanguagePair
         case downloadDenied
         case cancelled
+        case transientSessionFailure
         case preparationFailed
         case translationFailed
         case invalidTranslationData
@@ -64,6 +66,8 @@ nonisolated struct AppleInsightTranslationFailure: Equatable, Sendable {
             } else {
                 "Output translation was cancelled. The generated insight remains available in English."
             }
+        case .transientSessionFailure:
+            "The on-device translation session was interrupted. Please try again."
         case .preparationFailed:
             "The required on-device language could not be prepared. Please try again."
         case .translationFailed:

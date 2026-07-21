@@ -1,20 +1,11 @@
 import SwiftUI
 
 struct PickPlaceView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(StoryFlowCoordinator.self) private var storyFlow
 
     let selectedSession: Sessions
 
-    @State private var selectedPlace: Place.BuiltInPlace?
-    @State private var navigationRoute: StoryFlowRoute?
-    
-    // The order follows the current illustration reference.
-    private let placeOptions: [Place.BuiltInPlace] = [
-        .house,
-        .outdoor,
-        .publicPlace,
-        .school
-    ]
+    @State private var viewModel = PickPlaceViewModel()
     
     var body: some View {
         GeometryReader { proxy in
@@ -24,39 +15,39 @@ struct PickPlaceView: View {
                 
                 VStack(spacing: 0) {
                     CharacterBubble(
-                        characterImageName: "PickPlace_Girl",
+                        characterImageName: StoryCharacterAsset.imageName(
+                            for: .place,
+                            gender: storyFlow.childGender
+                        ),
                         text: "Let's tell today's story together!\nWhere did your activity happen?"
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     
                     SelectionSlider(
                         title: "Choose the place where it happened",
-                        items: placeOptions,
-                        selectedItem: $selectedPlace,
+                        items: viewModel.placeOptions,
+                        selectedItem: $viewModel.selectedPlace,
                         itemName: { $0.rawValue },
                         onAddCustom: {
                             // Custom place creation will be added in a later flow.
                         },
-                        itemImageName: placeImageName(for:)
+                        onSelectItem: { place in
+                            storyFlow.selectPlace(place, in: selectedSession)
+                        },
+                        itemImageName: viewModel.placeImageName(for:)
                     )
                     .frame(height: proxy.size.height * 0.26)
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 
                 CircularBackButton() {
-                    dismiss()
+                    storyFlow.goBack()
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
             }
-            .onChange(of: selectedPlace) { _, newValue in
-                if let newValue {
-                    navigationRoute = .pickActivity(selectedSession, newValue)
-                }
-            }
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $navigationRoute)
     }
 
     private func sessionBackground(in size: CGSize) -> some View {
@@ -68,17 +59,11 @@ struct PickPlaceView: View {
             .clipped()
             .blur(radius: 12)
     }
-
-    private func placeImageName(for place: Place.BuiltInPlace) -> String {
-        switch place {
-        case .house: return "Place_House"
-        case .outdoor: return "Place_Outdoor"
-        case .school: return "Place_School"
-        case .publicPlace: return "Place_PublicArea"
-        }
-    }
 }
 
 #Preview {
-    PickPlaceView(selectedSession: .morning)
+    NavigationStack {
+        PickPlaceView(selectedSession: .morning)
+    }
+    .environment(StoryFlowCoordinator())
 }

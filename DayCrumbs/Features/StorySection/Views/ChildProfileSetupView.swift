@@ -9,11 +9,17 @@ import SwiftUI
 import SwiftData
 
 struct ChildProfileSetupView: View {
-    @Environment(\.dismiss) private var dismiss
+    private enum ProfileField: Hashable {
+        case name
+        case age
+    }
+
     @Environment(\.modelContext) private var modelContext
+    @Environment(StoryFlowCoordinator.self) private var storyFlow
     @State private var viewModel = ChildProfileSetupViewModel()
-    @State private var navigationRoute: StoryFlowRoute?
-    @State private var childAgeText: String = ""
+    @FocusState private var focusedField: ProfileField?
+    @State private var hasEditedName = false
+    @State private var hasEditedAge = false
     
     var body: some View {
         ZStack {
@@ -23,7 +29,7 @@ struct ChildProfileSetupView: View {
             VStack {
                 HStack {
                     CircularBackButton(style: .yellowBtn) {
-                        dismiss()
+                        storyFlow.goBack()
                     }
                     Spacer()
                 }
@@ -52,37 +58,64 @@ struct ChildProfileSetupView: View {
                     VStack(spacing: 24) {
                         
                         // Baris 1: Name
-                        HStack {
+                        HStack(alignment: .top) {
                             Text("Name")
                                 .font(.system(.title3, design: .rounded))
                                 .foregroundColor(AppColour.txtCoklat)
                                 .frame(width: 80, alignment: .leading)
+                                .padding(.top, 12)
                             
-                            TextField("What is your name", text: $viewModel.childName)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(Color.white.opacity(0.3))
-                                .cornerRadius(16)
-                                .foregroundColor(AppColour.txtCoklat)
+                            VStack(alignment: .leading, spacing: 6) {
+                                TextField("What is your name", text: $viewModel.childName)
+                                    .focused($focusedField, equals: .name)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background(Color.white.opacity(0.3))
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(
+                                                shouldShowNameError ? Color.red : .clear,
+                                                lineWidth: 1
+                                            )
+                                    }
+                                    .foregroundColor(AppColour.txtCoklat)
+
+                                if shouldShowNameError, let message = viewModel.nameValidationMessage {
+                                    validationMessage(message)
+                                }
+                            }
                         }
                         
                         // Baris 2: Age
-                        HStack {
+                        HStack(alignment: .top) {
                             Text("Age")
                                 .font(.system(.title3, design: .rounded))
                                 .foregroundColor(AppColour.txtCoklat)
                                 .frame(width: 80, alignment: .leading)
+                                .padding(.top, 12)
                             
-                            TextField("How old are you", text: $childAgeText)
-                                .keyboardType(.numberPad)
-                                .onChange(of: childAgeText) { _, ageText in
-                                    viewModel.childAge = Int(ageText) ?? 0
+                            VStack(alignment: .leading, spacing: 6) {
+                                TextField("How old are you", text: $viewModel.childAgeText)
+                                    .focused($focusedField, equals: .age)
+                                    .keyboardType(.numberPad)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background(Color.white.opacity(0.3))
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(
+                                                shouldShowAgeError ? Color.red : .clear,
+                                                lineWidth: 1
+                                            )
+                                    }
+                                    .foregroundColor(AppColour.txtCoklat)
+
+                                if shouldShowAgeError, let message = viewModel.ageValidationMessage {
+                                    validationMessage(message)
                                 }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(Color.white.opacity(0.3))
-                                .cornerRadius(16)
-                                .foregroundColor(AppColour.txtCoklat)
+                            }
                         }
                         
                         // Baris 3: Gender
@@ -107,12 +140,9 @@ struct ChildProfileSetupView: View {
                         Button(action: {
                             // Inisialisasi repositori menggunakan modelContext
                             let repository = ChildProfileRepository(modelContext: modelContext)
-                            viewModel.saveProfile(using: repository)
-                            
-                            if viewModel.isFormValid && viewModel.errorMessage == nil {
-                                navigationRoute = .sessionOption
+                            if viewModel.saveProfile(using: repository) {
+                                storyFlow.didSaveChildProfile(using: repository)
                             }
-                            
                         }) {
                             Text("Save Profile")
                                 .font(.system(.title3, design: .rounded).weight(.bold))
@@ -127,8 +157,8 @@ struct ChildProfileSetupView: View {
                         .disabled(!viewModel.isFormValid)
                         .accessibilityHint(
                             viewModel.isFormValid
-                                ? "Menyimpan profil anak"
-                                : "Masukkan nama dan umur anak yang valid untuk menyimpan profil"
+                            ? "Menyimpan profil anak"
+                            : "Masukkan nama dan umur anak yang valid untuk menyimpan profil"
                         )
                         .padding(.top, 8)
                         
@@ -143,22 +173,54 @@ struct ChildProfileSetupView: View {
             .padding(.horizontal, 40)
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $navigationRoute)
+        .task {
+            let repository = ChildProfileRepository(modelContext: modelContext)
+            viewModel.loadExistingProfile(using: repository)
+        }
+        .onChange(of: viewModel.childName) { _, _ in
+            hasEditedName = true
+        }
+        .onChange(of: viewModel.childAgeText) { _, _ in
+            hasEditedAge = true
+        }
+        .onChange(of: focusedField) { previousField, currentField in
+            if previousField == .name, currentField != .name {
+                hasEditedName = true
+            }
+            if previousField == .age, currentField != .age {
+                hasEditedAge = true
+            }
+        }
+    }
+
+    private var shouldShowNameError: Bool {
+        hasEditedName && viewModel.nameValidationMessage != nil
+    }
+
+    private var shouldShowAgeError: Bool {
+        hasEditedAge && viewModel.ageValidationMessage != nil
+    }
+
+    private func validationMessage(_ message: String) -> some View {
+        Text(message)
+            .font(.system(.caption, design: .rounded).weight(.medium))
+            .foregroundStyle(.red)
+            .accessibilityLabel("Validation error: \(message)")
     }
     
-    // MARK: - Komponen Bantuan
     @ViewBuilder
     private func genderSegment(for gender: ChildGender) -> some View {
         let isSelected = viewModel.selectedGender == gender
         
-        Button(action: {
-            viewModel.selectedGender = gender
-        }) {
+        Button {
+            viewModel.selectGender(gender)
+        } label: {
             Text(gender.rawValue.capitalized)
                 .font(.system(.body, design: .rounded).weight(.medium))
                 .foregroundColor(AppColour.txtCoklat)
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 44)
+                .contentShape(Rectangle()) // <--- TAMBAHKAN BARIS INI
                 .background(isSelected ? AppColour.btnPutih : Color.clear)
                 .clipShape(Capsule())
         }
@@ -168,5 +230,8 @@ struct ChildProfileSetupView: View {
 }
 
 #Preview {
-    ChildProfileSetupView()
+    NavigationStack {
+        ChildProfileSetupView()
+    }
+    .environment(StoryFlowCoordinator())
 }

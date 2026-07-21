@@ -146,10 +146,10 @@ enum DummyStory {
         // Hari 1: Sangat Aktif & Bahagia
         DayTemplate(
             entries: [
-                EntryTemplate(session: .morning, mood: .happy, activity: .wakeUp, place: .house, noteText: "Bangun pagi dengan ceria langsung minta minum susu."),
+                EntryTemplate(session: .morning, mood: .sad, activity: .wakeUp, place: .house, noteText: "Bangun pagi dengan sedih langsung minta minum susu."),
                 EntryTemplate(session: .afternoon, mood: .happy, activity: .eat, place: .house, noteText: nil),
                 EntryTemplate(session: .evening, mood: .happy, activity: .play, place: .outdoor, noteText: "Sore hari bermain sepeda di taman komplek."),
-                EntryTemplate(session: .night, mood: .happy, activity: .sleep, place: .house, noteText: nil)
+                EntryTemplate(session: .night, mood: .fear, activity: .sleep, place: .house, noteText: nil)
             ],
             reflectionText: "Hari yang sangat aktif di luar ruangan. Maya tidur dengan cepat karena lelah beraktivitas fisik."
         ),
