@@ -111,8 +111,10 @@ struct IllustratedView: View {
                     storyFlow.addAnotherActivity()
                 }
 
-                continuationActionButton(title: "Continue to Another Session") {
-                    storyFlow.continueToAnotherSession()
+                if selectedSession != .night {
+                    continuationActionButton(title: "Continue to Another Session") {
+                        storyFlow.continueToAnotherSession()
+                    }
                 }
 
                 continuationActionButton(title: "Finish Session") {
