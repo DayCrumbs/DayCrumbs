@@ -8,6 +8,13 @@ nonisolated struct MoodDataPoint: Identifiable {
     let moodScore: Int
 }
 
+nonisolated struct MoodBarChartSegment: Identifiable {
+    var id: String { "\(timeLabel)-\(mood.rawValue)" }
+    let timeLabel: String
+    let mood: Moods
+    let count: Int
+}
+
 /// UI-ready lifecycle state for one selected Dashboard range.
 nonisolated enum DashboardPresentationState: Equatable {
     case idle
@@ -462,6 +469,47 @@ final class DashboardViewModel {
         MoodDataPoint(timeLabel: "Week 4", moodScore: 4),
     ]
 
+    // These visual fixtures remain separate from the analytics and generation
+    // pipelines until the Dashboard receives aggregated StoryEntry data.
+    private let dayBarData: [MoodBarChartSegment] = [
+        MoodBarChartSegment(timeLabel: "Morning", mood: .happy, count: 2),
+        MoodBarChartSegment(timeLabel: "Morning", mood: .surprise, count: 1),
+        MoodBarChartSegment(timeLabel: "Afternoon", mood: .disgust, count: 2),
+        MoodBarChartSegment(timeLabel: "Afternoon", mood: .fear, count: 1),
+        MoodBarChartSegment(timeLabel: "Evening", mood: .fear, count: 2),
+        MoodBarChartSegment(timeLabel: "Evening", mood: .sad, count: 1),
+        MoodBarChartSegment(timeLabel: "Night", mood: .sad, count: 3),
+        MoodBarChartSegment(timeLabel: "Night", mood: .happy, count: 1)
+    ]
+
+    private let weekBarData: [MoodBarChartSegment] = [
+        MoodBarChartSegment(timeLabel: "Mon", mood: .disgust, count: 1),
+        MoodBarChartSegment(timeLabel: "Mon", mood: .fear, count: 2),
+        MoodBarChartSegment(timeLabel: "Tue", mood: .fear, count: 2),
+        MoodBarChartSegment(timeLabel: "Tue", mood: .sad, count: 1),
+        MoodBarChartSegment(timeLabel: "Wed", mood: .surprise, count: 2),
+        MoodBarChartSegment(timeLabel: "Wed", mood: .happy, count: 1),
+        MoodBarChartSegment(timeLabel: "Thu", mood: .fear, count: 1),
+        MoodBarChartSegment(timeLabel: "Thu", mood: .angry, count: 1),
+        MoodBarChartSegment(timeLabel: "Fri", mood: .sad, count: 2),
+        MoodBarChartSegment(timeLabel: "Fri", mood: .happy, count: 2),
+        MoodBarChartSegment(timeLabel: "Sat", mood: .surprise, count: 1),
+        MoodBarChartSegment(timeLabel: "Sat", mood: .happy, count: 2),
+        MoodBarChartSegment(timeLabel: "Sun", mood: .happy, count: 3),
+        MoodBarChartSegment(timeLabel: "Sun", mood: .surprise, count: 1)
+    ]
+
+    private let monthBarData: [MoodBarChartSegment] = [
+        MoodBarChartSegment(timeLabel: "Week 1", mood: .fear, count: 2),
+        MoodBarChartSegment(timeLabel: "Week 1", mood: .sad, count: 1),
+        MoodBarChartSegment(timeLabel: "Week 2", mood: .happy, count: 3),
+        MoodBarChartSegment(timeLabel: "Week 2", mood: .surprise, count: 1),
+        MoodBarChartSegment(timeLabel: "Week 3", mood: .disgust, count: 2),
+        MoodBarChartSegment(timeLabel: "Week 3", mood: .fear, count: 1),
+        MoodBarChartSegment(timeLabel: "Week 4", mood: .surprise, count: 2),
+        MoodBarChartSegment(timeLabel: "Week 4", mood: .happy, count: 2)
+    ]
+
     var currentChartData: [MoodDataPoint] {
         switch selectedTimeRange {
         case .day:
@@ -470,6 +518,17 @@ final class DashboardViewModel {
             weekData
         case .month:
             monthData
+        }
+    }
+
+    var currentMoodBarData: [MoodBarChartSegment] {
+        switch selectedTimeRange {
+        case .day:
+            dayBarData
+        case .week:
+            weekBarData
+        case .month:
+            monthBarData
         }
     }
 }
