@@ -47,7 +47,7 @@ struct DashboardView: View {
             await viewModel.start()
         }
         .onDisappear {
-            viewModel.cancelGeneration()
+            viewModel.endDashboardSession()
             translationTaskHost.cancelPendingBatch()
         }
         .onChange(of: scenePhase) { _, newPhase in

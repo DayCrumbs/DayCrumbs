@@ -25,13 +25,16 @@ struct AnalyticsSystemPromptTests {
         #expect(prompt.contains("without guessing"))
     }
 
-    @Test("Trigger wording preserves specific evidence for catalog matching")
-    func triggerSpecificityRules() {
-        #expect(prompt.contains("trigger-specificity rules"))
-        #expect(prompt.contains("most specific supplied circumstance"))
-        #expect(prompt.contains("noise-interrupted sleep"))
-        #expect(prompt.contains("nature or gardening"))
-        #expect(prompt.contains("keep the trigger broad and tentative"))
+    @Test("Common triggers explain the summary instead of listing activities")
+    func summaryToTriggerRules() {
+        #expect(prompt.contains("summary-to-trigger rules"))
+        #expect(prompt.contains("derive the overall summary first"))
+        #expect(prompt.contains("explicitly described in the summary"))
+        #expect(prompt.contains("not an activity inventory"))
+        #expect(prompt.contains("standalone activity, place, session"))
+        #expect(prompt.contains("school drop-off"))
+        #expect(prompt.contains("mood or behavior response"))
+        #expect(prompt.contains("empty commontriggers array"))
         #expect(prompt.contains("curated recommendation matcher"))
     }
 

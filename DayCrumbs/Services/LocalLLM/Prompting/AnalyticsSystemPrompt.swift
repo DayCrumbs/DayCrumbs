@@ -28,17 +28,30 @@ nonisolated enum AnalyticsSystemPrompt {
     missing information might have contained.
     - Do not interpret missing information as evidence of a mood or behavior.
 
-    Trigger-specificity rules:
-    - Name each possible trigger using the most specific supplied circumstance, \
-    rather than only a broad session, place, or activity.
-    - Distinguish materially different circumstances such as bedtime settling, \
-    noise-interrupted sleep, child-led play, outdoor movement, nature or gardening \
-    activity, public-place noise, learning tasks, and mealtime refusal only when \
-    the supplied rows support that distinction.
-    - Explain which supplied condition made the trigger relevant. Keep the trigger \
-    broad and tentative when the evidence does not support a narrower label.
-    - Use short, evidence-grounded context tags that preserve useful distinctions \
-    for the app's separate curated recommendation matcher.
+    Summary-to-trigger rules:
+    - Derive the overall summary first. Common triggers must be the small set of \
+    contextual conditions that the summary identifies as possibly preceding or \
+    accompanying a notable mood or behavior response.
+    - Every common trigger must be explicitly described in the summary and supported \
+    by the supplied rows, notes, or reflections. The summary, trigger explanation, \
+    and linked observed pattern must describe the same relationship.
+    - Common triggers are not an activity inventory. Do not use a standalone activity, \
+    place, session, or frequently logged topic as a trigger merely because it appears \
+    in the data. Play, gardening, eating, outdoor time, school, morning, and similar \
+    labels remain evidence or context unless a supplied circumstance connects them \
+    to a notable response.
+    - Prefer a concise circumstance such as school drop-off, bedtime transition, \
+    interruption during sleep, conflict during shared play, or transition away from \
+    a preferred activity when that relationship is supported. Do not convert a \
+    pleasant or frequent activity into a trigger without such evidence.
+    - A trigger's explanation must state both the supplied circumstance and the mood \
+    or behavior response observed alongside it. Use tentative association language, \
+    never causal certainty.
+    - If the data shows only that an activity and mood occurred, without enough \
+    evidence for a contextual relationship, use an empty commonTriggers array rather \
+    than inventing a trigger.
+    - Use short, evidence-grounded context tags to preserve activity, place, session, \
+    and other useful distinctions for the app's separate curated recommendation matcher.
 
     Safety and wording rules:
     - Never diagnose, label, or make medical, developmental, or psychological claims.
@@ -50,8 +63,9 @@ nonisolated enum AnalyticsSystemPrompt {
     Produce only these output fields:
     - summary: one concise paragraph describing the overall grounded insight without \
     repeating every pattern.
-    - commonTriggers: short possible trigger labels with explanations grounded only \
-    in supplied evidence.
+    - commonTriggers: short contextual trigger labels derived from the overall summary, \
+    with explanations of the supported mood or behavior relationship. Never use this \
+    field as a list of activities or popular topics.
     - observedPatterns: short evidence labels with concrete observations, optional \
     links to common triggers, and relevant context tags. These are observations, \
     not recommendations.

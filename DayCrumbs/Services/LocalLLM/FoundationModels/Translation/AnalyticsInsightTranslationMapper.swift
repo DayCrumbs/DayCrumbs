@@ -203,6 +203,10 @@ nonisolated struct TriggerDetailTranslationMapper: Sendable {
 
         var texts = [
             IdentifiedTranslationText(
+                id: FieldID.evidenceLabel,
+                text: TriggerDetail.SectionLabels.english.evidence
+            ),
+            IdentifiedTranslationText(
                 id: FieldID.recommendedActivitiesLabel,
                 text: TriggerDetail.SectionLabels.english.recommendedActivities
             ),
@@ -278,6 +282,10 @@ nonisolated struct TriggerDetailTranslationMapper: Sendable {
             expectedTexts: identifiedTexts(from: englishDetails)
         )
         let sectionLabels = TriggerDetail.SectionLabels(
+            evidence: try text(
+                for: FieldID.evidenceLabel,
+                in: translatedByIdentifier
+            ),
             recommendedActivities: try text(
                 for: FieldID.recommendedActivitiesLabel,
                 in: translatedByIdentifier
@@ -443,6 +451,7 @@ private extension AnalyticsInsightTranslationMapper {
 
 private extension TriggerDetailTranslationMapper {
     nonisolated enum FieldID {
+        static let evidenceLabel = "recommendations.labels.evidence"
         static let recommendedActivitiesLabel =
             "recommendations.labels.recommendedActivities"
         static let whatMayHelpLabel = "recommendations.labels.whatMayHelp"

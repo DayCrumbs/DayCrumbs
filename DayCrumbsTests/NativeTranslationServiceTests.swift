@@ -257,6 +257,7 @@ struct NativeTranslationServiceTests {
 private final class NativeTranslationSessionFake: NativeTranslationSession {
     let sourceLanguage: LanguageIdentifier?
     let targetLanguage: LanguageIdentifier?
+    let isReady = false
 
     private(set) var prepareCallCount = 0
     private(set) var receivedRequests: [NativeTranslationSessionRequest] = []

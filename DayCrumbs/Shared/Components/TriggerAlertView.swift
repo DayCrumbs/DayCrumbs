@@ -91,7 +91,10 @@ struct TriggerAlertView: View {
 
     private var evidenceSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionHeader(title: "Evidence", systemImage: "list.bullet.clipboard")
+            sectionHeader(
+                title: detail.sectionLabels.evidence,
+                systemImage: "list.bullet.clipboard"
+            )
 
             ForEach(detail.evidence.indices, id: \.self) { index in
                 let evidence = detail.evidence[index]
