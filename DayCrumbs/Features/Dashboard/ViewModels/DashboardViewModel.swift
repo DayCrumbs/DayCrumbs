@@ -513,7 +513,7 @@ final class DashboardViewModel {
         return segments
     }
 
-    /// Menghasilkan string label sumbu X berdasarkan rentang waktu terpilih [14].
+    /// Menghasilkan string label sumbu X berdasarkan rentang waktu terpilih.
     private func timeLabel(
         for entry: StoryEntry,
         range: TimeRange,
@@ -537,7 +537,7 @@ final class DashboardViewModel {
             return formatter.string(from: entry.recordedAt)
             
         case .month:
-            // Kelompokkan 30 hari ke belakang menjadi 4 blok minggu relatif terhadap referenceDate
+            // Kelompokkan data ke dalam 4 blok minggu presisi (masing-masing tepat 7 hari)
             let startOfEntryDay = calendar.startOfDay(for: entry.recordedAt)
             let startOfReferenceDay = calendar.startOfDay(for: referenceDate)
             
@@ -548,13 +548,15 @@ final class DashboardViewModel {
             ).day ?? 0
             
             if daysAgo < 7 {
-                return "Week 4"  // 7 Hari Terakhir
+                return "Week 4"  // Hari ke 1 - 7 (Terbaru / 0 s.d 6 hari yang lalu)
             } else if daysAgo < 14 {
-                return "Week 3"  // 8-14 Hari yang lalu
+                return "Week 3"  // Hari ke 8 - 14 (7 s.d 13 hari yang lalu)
             } else if daysAgo < 21 {
-                return "Week 2"  // 15-21 Hari yang lalu
+                return "Week 2"  // Hari ke 15 - 21 (14 s.d 20 hari yang lalu)
+            } else if daysAgo < 28 {
+                return "Week 1"  // Hari ke 22 - 28 (21 s.d 27 hari yang lalu)
             } else {
-                return "Week 1"  // 22-30 Hari yang lalu
+                return ""
             }
         }
     }
