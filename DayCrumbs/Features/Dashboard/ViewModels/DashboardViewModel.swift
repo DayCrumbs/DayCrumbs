@@ -49,6 +49,11 @@ final class DashboardViewModel {
     @ObservationIgnored private var selectionRevision = UUID()
     @ObservationIgnored private var generationTask: Task<Void, Never>?
     @ObservationIgnored private var publishedTriggerDetails: [TriggerDetail] = []
+    /// Keeps one complete presentation result per range for this Dashboard visit.
+    /// The cache is intentionally in memory so leaving Dashboard starts a fresh visit.
+    @ObservationIgnored private var cachedResultsByRange: [
+        TimeRange: AppleLocalizedAnalyticsInsight
+    ] = [:]
 
     init(
         entrySource: (any StoryEntrySource)? = nil,
@@ -122,6 +127,10 @@ final class DashboardViewModel {
             return
         }
 
+        if restoreCachedResult(for: range) {
+            return
+        }
+
         await generateSelectedRange(debounce: true)
     }
 
@@ -133,6 +142,7 @@ final class DashboardViewModel {
 
         let revision = UUID()
         selectionRevision = revision
+        cachedResultsByRange[selectedTimeRange] = nil
         clearPublishedInsight()
 
         let previousTask = detachActiveGeneration()
@@ -168,7 +178,7 @@ final class DashboardViewModel {
             guard canPublish(requestID: requestID, range: range) else {
                 return
             }
-            publish(result)
+            publish(result, for: range)
         }
 
         generationTask = task
@@ -192,6 +202,20 @@ final class DashboardViewModel {
     func cancelGeneration() {
         selectionRevision = UUID()
         _ = detachActiveGeneration()
+    }
+
+    /// Ends one Dashboard visit. Background cancellation deliberately uses
+    /// `cancelGeneration()` instead so completed ranges remain cached on resume.
+    func endDashboardSession() {
+        selectionRevision = UUID()
+        _ = detachActiveGeneration()
+        cachedResultsByRange.removeAll()
+        clearPublishedInsight()
+        allEntries = []
+        hasLoadedEntries = false
+        hasStarted = false
+        activeReferenceDay = nil
+        childName = ""
     }
 
     /// A new calendar day changes all rolling range boundaries and requires fresh input.
@@ -218,6 +242,8 @@ final class DashboardViewModel {
         guard selectionRevision == revision else {
             return
         }
+        // Day, Week, and Month all receive new rolling boundaries after midnight.
+        cachedResultsByRange.removeAll()
         await reloadEntriesAndGenerate()
     }
 
@@ -299,7 +325,7 @@ final class DashboardViewModel {
                 guard canPublish(requestID: requestID, range: range) else {
                     return
                 }
-                publish(result)
+                publish(result, for: range)
             } catch {
                 // Translation cancellation can arrive as a domain error. Request
                 // identity and Task cancellation therefore take precedence.
@@ -321,7 +347,20 @@ final class DashboardViewModel {
         }
     }
 
-    private func publish(_ result: AppleLocalizedAnalyticsInsight) {
+    private func restoreCachedResult(for range: TimeRange) -> Bool {
+        guard let cachedResult = cachedResultsByRange[range] else {
+            return false
+        }
+
+        publish(cachedResult, for: range)
+        return true
+    }
+
+    private func publish(
+        _ result: AppleLocalizedAnalyticsInsight,
+        for range: TimeRange
+    ) {
+        cachedResultsByRange[range] = result
         generatedInsight = result.insight
         englishFallback = result.englishFallback
         // Legacy/test generators may not provide prelocalized details. Production

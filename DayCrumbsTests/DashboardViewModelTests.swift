@@ -108,6 +108,74 @@ struct DashboardViewModelTests {
         #expect(generator.generatedRanges == [.day, .week, .month])
     }
 
+    @Test("Returning to a completed range reuses its Dashboard-session result")
+    func completedRangesAreCachedForDashboardSession() async {
+        let entries = makeDashboardTestEntries(
+            dayOffsets: Array(-29...0),
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
+        let generator = DashboardInsightGeneratorFake(
+            behaviors: [
+                .immediate(makeDashboardLocalizedResult(summary: "Cached Day")),
+                .immediate(makeDashboardLocalizedResult(summary: "Cached Week")),
+                .immediate(makeDashboardLocalizedResult(summary: "Cached Month")),
+            ]
+        )
+        let viewModel = makeDashboardTestViewModel(
+            source: DashboardStoryEntrySourceFake(entries: entries),
+            generator: generator,
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
+
+        await viewModel.start()
+        await viewModel.selectTimeRange(.week)
+        await viewModel.selectTimeRange(.day)
+
+        #expect(viewModel.generatedInsight?.summary == "Cached Day")
+        #expect(generator.generatedRanges == [.day, .week])
+
+        await viewModel.selectTimeRange(.week)
+        await viewModel.selectTimeRange(.month)
+        await viewModel.selectTimeRange(.day)
+
+        #expect(viewModel.generatedInsight?.summary == "Cached Day")
+        #expect(generator.generatedRanges == [.day, .week, .month])
+        #expect(generator.generatedEntries.map(\.count) == [1, 7, 30])
+    }
+
+    @Test("Leaving Dashboard clears completed range results")
+    func leavingDashboardClearsRangeCache() async {
+        let source = DashboardStoryEntrySourceFake(
+            entries: makeDashboardTestEntries(
+                dayOffsets: [0],
+                referenceDate: referenceDate,
+                calendar: calendar
+            )
+        )
+        let generator = DashboardInsightGeneratorFake(
+            behaviors: [
+                .immediate(makeDashboardLocalizedResult(summary: "First visit")),
+                .immediate(makeDashboardLocalizedResult(summary: "Second visit")),
+            ]
+        )
+        let viewModel = makeDashboardTestViewModel(
+            source: source,
+            generator: generator,
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
+
+        await viewModel.start()
+        viewModel.endDashboardSession()
+        await viewModel.start()
+
+        #expect(source.fetchCallCount == 2)
+        #expect(generator.generatedRanges == [.day, .day])
+        #expect(viewModel.generatedInsight?.summary == "Second visit")
+    }
+
     @Test("A late cancelled result cannot replace the new range")
     func staleResultIsNotPublished() async {
         let entries = makeDashboardTestEntries(
@@ -239,6 +307,46 @@ struct DashboardViewModelTests {
         #expect(viewModel.generatedInsight == localizedInsight)
         #expect(viewModel.englishFallback == nil)
         #expect(generator.generatedEntries.count == 1)
+        #expect(generator.retryCallCount == 1)
+    }
+
+    @Test("Successful translation retry updates the cached range result")
+    func translationRetryUpdatesCachedRange() async {
+        let englishInsight = makeDashboardTestInsight(summary: "English Day")
+        let localizedInsight = makeDashboardTestInsight(summary: "Hari Indonesia")
+        let generator = DashboardInsightGeneratorFake(
+            behaviors: [
+                .immediate(
+                    makeDashboardLocalizedResult(
+                        insight: englishInsight,
+                        withEnglishFallback: true
+                    )
+                ),
+                .immediate(makeDashboardLocalizedResult(summary: "Week result")),
+            ],
+            retryResult: makeDashboardLocalizedResult(insight: localizedInsight)
+        )
+        let viewModel = makeDashboardTestViewModel(
+            source: DashboardStoryEntrySourceFake(
+                entries: makeDashboardTestEntries(
+                    dayOffsets: Array(-6...0),
+                    referenceDate: referenceDate,
+                    calendar: calendar
+                )
+            ),
+            generator: generator,
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
+
+        await viewModel.start()
+        await viewModel.retryOutputTranslation()
+        await viewModel.selectTimeRange(.week)
+        await viewModel.selectTimeRange(.day)
+
+        #expect(viewModel.generatedInsight == localizedInsight)
+        #expect(viewModel.englishFallback == nil)
+        #expect(generator.generatedRanges == [.day, .week])
         #expect(generator.retryCallCount == 1)
     }
 
