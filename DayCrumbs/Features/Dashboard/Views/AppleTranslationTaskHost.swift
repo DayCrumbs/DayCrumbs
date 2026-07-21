@@ -3,6 +3,10 @@ import OSLog
 import SwiftUI
 import Translation
 
+typealias TranslationOperationTimeoutSleeper = @MainActor @Sendable (
+    Duration
+) async throws -> Void
+
 /// Bridges service batch requests into the TranslationSession owned by Dashboard's root.
 @MainActor
 @Observable
@@ -24,6 +28,7 @@ final class AppleTranslationTaskHost {
 
     private let nativeTranslationService: any NativeTranslationService
     private let operationTimeout: Duration
+    private let operationTimeoutSleeper: TranslationOperationTimeoutSleeper
     @ObservationIgnored private var pendingOperation: PendingOperation?
     @ObservationIgnored private weak var activeSession: (
         any NativeTranslationSession
@@ -36,14 +41,22 @@ final class AppleTranslationTaskHost {
     init() {
         nativeTranslationService = AppleNativeTranslationService()
         operationTimeout = .seconds(30)
+        operationTimeoutSleeper = { duration in
+            try await Task.sleep(for: duration)
+        }
     }
 
     init(
         nativeTranslationService: any NativeTranslationService,
-        operationTimeout: Duration = .seconds(30)
+        operationTimeout: Duration = .seconds(30),
+        operationTimeoutSleeper: @escaping TranslationOperationTimeoutSleeper = {
+            duration in
+            try await Task.sleep(for: duration)
+        }
     ) {
         self.nativeTranslationService = nativeTranslationService
         self.operationTimeout = operationTimeout
+        self.operationTimeoutSleeper = operationTimeoutSleeper
     }
 
     var batchHandler: PreparedNativeTranslationBatchHandler {
@@ -231,7 +244,7 @@ final class AppleTranslationTaskHost {
             }
 
             do {
-                try await Task.sleep(for: operationTimeout)
+                try await operationTimeoutSleeper(operationTimeout)
             } catch {
                 return
             }

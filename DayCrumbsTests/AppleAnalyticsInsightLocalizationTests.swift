@@ -400,25 +400,37 @@ struct AppleAnalyticsInsightLocalizationTests {
 
     @Test("Host times out when Translation never supplies a session")
     func hostTimesOutBeforeSessionStarts() async {
+        let timeoutGate = TranslationOperationTimeoutGate()
         let host = AppleTranslationTaskHost(
             nativeTranslationService: NativeTranslationServiceFake(),
-            operationTimeout: .milliseconds(100)
+            operationTimeoutSleeper: { duration in
+                try await timeoutGate.sleep(for: duration)
+            }
         )
         let batch = makeBatch()
+
+        let execution = Task { @MainActor in
+            try await host.execute(batch, executionMode: .translateInstalled)
+        }
+        await timeoutGate.waitUntilArmed()
+        timeoutGate.fire()
 
         await #expect(
             throws: NativeTranslationBatchExecutionError.transientSessionFailure
         ) {
-            try await host.execute(batch, executionMode: .translateInstalled)
+            try await execution.value
         }
         #expect(host.configuration == nil)
     }
 
     @Test("Host cancels an active Translation session when it times out")
     func hostTimesOutDuringTranslation() async {
+        let timeoutGate = TranslationOperationTimeoutGate()
         let host = AppleTranslationTaskHost(
             nativeTranslationService: NativeTranslationServiceFake(),
-            operationTimeout: .milliseconds(100)
+            operationTimeoutSleeper: { duration in
+                try await timeoutGate.sleep(for: duration)
+            }
         )
         let batch = makeBatch()
         let session = NativeTranslationSessionHostFake(
@@ -429,11 +441,13 @@ struct AppleAnalyticsInsightLocalizationTests {
         let execution = Task { @MainActor in
             try await host.execute(batch, executionMode: .translateInstalled)
         }
-        await Task.yield()
+        await timeoutGate.waitUntilArmed()
 
         let sessionExecution = Task { @MainActor in
             await host.performPending(using: session)
         }
+        await session.waitUntilTranslationStarts()
+        timeoutGate.fire()
 
         await #expect(
             throws: NativeTranslationBatchExecutionError.transientSessionFailure
@@ -660,6 +674,8 @@ private final class NativeTranslationSessionHostFake: NativeTranslationSession {
     private let suspendsTranslationUntilCancelled: Bool
     private(set) var prepareCallCount = 0
     private(set) var cancelCallCount = 0
+    private var didStartTranslation = false
+    private var translationStartContinuation: CheckedContinuation<Void, Never>?
     private var translationContinuation: CheckedContinuation<
         [NativeTranslationSessionResponse],
         any Error
@@ -683,6 +699,10 @@ private final class NativeTranslationSessionHostFake: NativeTranslationSession {
     func translations(
         from requests: [NativeTranslationSessionRequest]
     ) async throws -> [NativeTranslationSessionResponse] {
+        didStartTranslation = true
+        translationStartContinuation?.resume()
+        translationStartContinuation = nil
+
         if suspendsTranslationUntilCancelled {
             return try await withCheckedThrowingContinuation { continuation in
                 translationContinuation = continuation
@@ -701,6 +721,58 @@ private final class NativeTranslationSessionHostFake: NativeTranslationSession {
         cancelCallCount += 1
         translationContinuation?.resume(throwing: CancellationError())
         translationContinuation = nil
+    }
+
+    func waitUntilTranslationStarts() async {
+        guard !didStartTranslation else {
+            return
+        }
+
+        await withCheckedContinuation { continuation in
+            if didStartTranslation {
+                continuation.resume()
+            } else {
+                translationStartContinuation = continuation
+            }
+        }
+    }
+}
+
+/// Replaces wall-clock sleeps so timeout tests control exactly when the
+/// watchdog fires, independent of Xcode Cloud scheduling load.
+@MainActor
+private final class TranslationOperationTimeoutGate {
+    private var isArmed = false
+    private var armedContinuation: CheckedContinuation<Void, Never>?
+    private var timeoutContinuation: CheckedContinuation<Void, any Error>?
+
+    func sleep(for _: Duration) async throws {
+        isArmed = true
+        armedContinuation?.resume()
+        armedContinuation = nil
+
+        try await withCheckedThrowingContinuation { continuation in
+            timeoutContinuation = continuation
+        }
+    }
+
+    func waitUntilArmed() async {
+        guard !isArmed else {
+            return
+        }
+
+        await withCheckedContinuation { continuation in
+            if isArmed {
+                continuation.resume()
+            } else {
+                armedContinuation = continuation
+            }
+        }
+    }
+
+    func fire() {
+        timeoutContinuation?.resume()
+        timeoutContinuation = nil
     }
 }
 
