@@ -23,20 +23,27 @@ final class AppleTranslationTaskHost {
     }
 
     private let nativeTranslationService: any NativeTranslationService
+    private let operationTimeout: Duration
     @ObservationIgnored private var pendingOperation: PendingOperation?
     @ObservationIgnored private weak var activeSession: (
         any NativeTranslationSession
     )?
     @ObservationIgnored private var activeOperationID: UUID?
+    @ObservationIgnored private var operationTimeoutTask: Task<Void, Never>?
 
     private(set) var configuration: TranslationSession.Configuration?
 
     init() {
         nativeTranslationService = AppleNativeTranslationService()
+        operationTimeout = .seconds(30)
     }
 
-    init(nativeTranslationService: any NativeTranslationService) {
+    init(
+        nativeTranslationService: any NativeTranslationService,
+        operationTimeout: Duration = .seconds(30)
+    ) {
         self.nativeTranslationService = nativeTranslationService
+        self.operationTimeout = operationTimeout
     }
 
     var batchHandler: PreparedNativeTranslationBatchHandler {
@@ -77,6 +84,7 @@ final class AppleTranslationTaskHost {
                     executionMode: executionMode,
                     continuation: continuation
                 )
+                startTimeout(for: operationID)
                 activateConfiguration(for: batch.pair)
             }
         } onCancel: {
@@ -181,8 +189,12 @@ final class AppleTranslationTaskHost {
             return
         }
 
+        operationTimeoutTask?.cancel()
+        operationTimeoutTask = nil
         if activeOperationID == operation.id {
             activeSession?.cancel()
+            activeOperationID = nil
+            activeSession = nil
         }
         pendingOperation = nil
         configuration = nil
@@ -203,8 +215,52 @@ final class AppleTranslationTaskHost {
             return
         }
 
+        operationTimeoutTask?.cancel()
+        operationTimeoutTask = nil
         pendingOperation = nil
         operation.continuation.resume(with: result)
+    }
+
+    /// Prevents a crashed or disconnected translation daemon from leaving the
+    /// Dashboard generation continuation suspended forever.
+    private func startTimeout(for operationID: UUID) {
+        operationTimeoutTask?.cancel()
+        operationTimeoutTask = Task { @MainActor [weak self] in
+            guard let self else {
+                return
+            }
+
+            do {
+                try await Task.sleep(for: operationTimeout)
+            } catch {
+                return
+            }
+
+            timeOut(operationID: operationID)
+        }
+    }
+
+    private func timeOut(operationID: UUID) {
+        guard let operation = pendingOperation,
+              operation.id == operationID else {
+            return
+        }
+
+        Self.logger.error(
+            "Translation operation timed out operation=\(operation.id, privacy: .public) pair=\(operation.batch.pair.source.rawValue, privacy: .public)->\(operation.batch.pair.target.rawValue, privacy: .public) mode=\(self.modeLabel(operation.executionMode), privacy: .public)"
+        )
+
+        operationTimeoutTask = nil
+        if activeOperationID == operation.id {
+            activeSession?.cancel()
+            activeOperationID = nil
+            activeSession = nil
+        }
+        pendingOperation = nil
+        configuration = nil
+        operation.continuation.resume(
+            throwing: NativeTranslationBatchExecutionError.transientSessionFailure
+        )
     }
 
     private func preparationError(

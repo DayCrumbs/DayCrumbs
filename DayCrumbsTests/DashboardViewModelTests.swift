@@ -375,6 +375,7 @@ struct DashboardViewModelTests {
             whatMayHelp: ["Gunakan urutan yang dapat diperkirakan."],
             sourceLabels: [.cdc],
             sectionLabels: TriggerDetail.SectionLabels(
+                evidence: "Bukti",
                 recommendedActivities: "Aktivitas yang disarankan",
                 whatMayHelp: "Yang mungkin membantu",
                 curatedSources: "Sumber terkurasi"
