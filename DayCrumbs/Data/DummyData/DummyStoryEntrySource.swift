@@ -21,7 +21,7 @@ final class DummyStoryEntrySource: StoryEntrySource {
 
         // One profile owns every generated session and entry, matching the
         // production single-child invariant.
-        let childProfile = ChildProfile(name: "Maya", age: 3, gender: .girl)
+        let childProfile = DummyProfile.maya
         let sessions = DummyStory.generateSessions(
             for: childProfile,
             referenceDate: referenceDate,
