@@ -1,4 +1,5 @@
 import Observation
+import OSLog
 import SwiftUI
 import Translation
 
@@ -6,6 +7,11 @@ import Translation
 @MainActor
 @Observable
 final class AppleTranslationTaskHost {
+    private static let logger = Logger(
+        subsystem: "DayCrumbs",
+        category: "AppleTranslationHost"
+    )
+
     private struct PendingOperation {
         let id: UUID
         let batch: NativeTranslationBatch
@@ -101,14 +107,27 @@ final class AppleTranslationTaskHost {
         }
 
         do {
+            let sessionIsReady = await session.isReady
+            Self.logger.debug(
+                "Translation operation \(operation.id, privacy: .public) pair=\(operation.batch.pair.source.rawValue, privacy: .public)->\(operation.batch.pair.target.rawValue, privacy: .public) mode=\(self.modeLabel(operation.executionMode), privacy: .public) sessionReady=\(sessionIsReady, privacy: .public)"
+            )
+
             if operation.executionMode == .prepareThenTranslate {
-                do {
-                    _ = try await nativeTranslationService.prepareTranslation(
-                        for: operation.batch.pair,
-                        using: session
-                    )
-                } catch {
-                    throw preparationError(from: error)
+                if !sessionIsReady {
+                    do {
+                        _ = try await nativeTranslationService.prepareTranslation(
+                            for: operation.batch.pair,
+                            using: session
+                        )
+                    } catch {
+                        log(
+                            error,
+                            stage: "preparation",
+                            operation: operation,
+                            sessionIsReady: sessionIsReady
+                        )
+                        throw preparationError(from: error)
+                    }
                 }
             }
 
@@ -119,6 +138,12 @@ final class AppleTranslationTaskHost {
                     using: session
                 )
             } catch {
+                log(
+                    error,
+                    stage: "translation",
+                    operation: operation,
+                    sessionIsReady: sessionIsReady
+                )
                 throw translationError(from: error)
             }
 
@@ -191,6 +216,9 @@ final class AppleTranslationTaskHost {
         if TranslationError.notInstalled ~= error {
             return .downloadDenied
         }
+        if isTransientSessionError(error) {
+            return .transientSessionFailure
+        }
         return .preparationFailed
     }
 
@@ -203,7 +231,54 @@ final class AppleTranslationTaskHost {
         if TranslationError.notInstalled ~= error {
             return .downloadDenied
         }
+        if isTransientSessionError(error) {
+            return .transientSessionFailure
+        }
         return .translationFailed
+    }
+
+    private func isTransientSessionError(_ error: any Error) -> Bool {
+        if TranslationError.internalError ~= error {
+            return true
+        }
+
+        let nsError = error as NSError
+        if nsError.domain == NSCocoaErrorDomain,
+           [
+               NSXPCConnectionInterrupted,
+               NSXPCConnectionInvalid,
+               NSXPCConnectionReplyInvalid,
+           ].contains(nsError.code) {
+            return true
+        }
+
+        guard let underlyingError = nsError.userInfo[NSUnderlyingErrorKey] as? Error else {
+            return false
+        }
+        return isTransientSessionError(underlyingError)
+    }
+
+    private func log(
+        _ error: any Error,
+        stage: String,
+        operation: PendingOperation,
+        sessionIsReady: Bool
+    ) {
+        let nsError = error as NSError
+        Self.logger.error(
+            "Translation \(stage, privacy: .public) failed operation=\(operation.id, privacy: .public) pair=\(operation.batch.pair.source.rawValue, privacy: .public)->\(operation.batch.pair.target.rawValue, privacy: .public) mode=\(self.modeLabel(operation.executionMode), privacy: .public) sessionReady=\(sessionIsReady, privacy: .public) domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)"
+        )
+    }
+
+    private func modeLabel(
+        _ mode: NativeTranslationBatchExecutionMode
+    ) -> String {
+        switch mode {
+        case .translateInstalled:
+            "translateInstalled"
+        case .prepareThenTranslate:
+            "prepareThenTranslate"
+        }
     }
 }
 

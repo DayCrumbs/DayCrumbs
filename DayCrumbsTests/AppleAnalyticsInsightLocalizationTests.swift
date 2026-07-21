@@ -287,6 +287,89 @@ struct AppleAnalyticsInsightLocalizationTests {
         ])
     }
 
+    @Test("Ready session skips preparation and translates immediately")
+    func readyHostSessionSkipsPreparation() async throws {
+        let nativeService = NativeTranslationServiceFake()
+        let host = AppleTranslationTaskHost(
+            nativeTranslationService: nativeService
+        )
+        let batch = makeBatch()
+        let session = NativeTranslationSessionHostFake(
+            pair: batch.pair,
+            isReady: true
+        )
+
+        let execution = Task { @MainActor in
+            try await host.execute(batch, executionMode: .prepareThenTranslate)
+        }
+        await Task.yield()
+
+        await host.performPending(using: session)
+        let translations = try await execution.value
+
+        #expect(nativeService.prepareCallCount == 0)
+        #expect(session.prepareCallCount == 0)
+        #expect(nativeService.translateCallCount == 1)
+        #expect(translations == [
+            NativeTranslatedText(id: "summary", text: "ID: Hello"),
+        ])
+    }
+
+    @Test("Internal Translation errors are classified as transient")
+    func internalTranslationErrorIsTransient() async {
+        let nativeService = NativeTranslationServiceFake(
+            preparationError: TranslationError.internalError
+        )
+        let host = AppleTranslationTaskHost(
+            nativeTranslationService: nativeService
+        )
+        let batch = makeBatch()
+        let session = NativeTranslationSessionHostFake(pair: batch.pair)
+
+        let execution = Task { @MainActor in
+            try await host.execute(batch, executionMode: .prepareThenTranslate)
+        }
+        await Task.yield()
+
+        await host.performPending(using: session)
+
+        await #expect(
+            throws: NativeTranslationBatchExecutionError.transientSessionFailure
+        ) {
+            try await execution.value
+        }
+        #expect(nativeService.translateCallCount == 0)
+    }
+
+    @Test("XPC invalidation errors are classified as transient")
+    func xpcInvalidationIsTransient() async {
+        let nativeService = NativeTranslationServiceFake(
+            preparationError: NSError(
+                domain: NSCocoaErrorDomain,
+                code: NSXPCConnectionInvalid
+            )
+        )
+        let host = AppleTranslationTaskHost(
+            nativeTranslationService: nativeService
+        )
+        let batch = makeBatch()
+        let session = NativeTranslationSessionHostFake(pair: batch.pair)
+
+        let execution = Task { @MainActor in
+            try await host.execute(batch, executionMode: .prepareThenTranslate)
+        }
+        await Task.yield()
+
+        await host.performPending(using: session)
+
+        await #expect(
+            throws: NativeTranslationBatchExecutionError.transientSessionFailure
+        ) {
+            try await execution.value
+        }
+        #expect(nativeService.translateCallCount == 0)
+    }
+
     @Test("Cancelling a pending host operation resumes it as cancellation")
     func hostCancellation() async {
         let host = AppleTranslationTaskHost(
@@ -444,8 +527,13 @@ private final class AnalyticsInsightGeneratorFake: AnalyticsInsightGenerating {
 
 @MainActor
 private final class NativeTranslationServiceFake: NativeTranslationService {
+    private let preparationError: (any Error)?
     private(set) var prepareCallCount = 0
     private(set) var translateCallCount = 0
+
+    init(preparationError: (any Error)? = nil) {
+        self.preparationError = preparationError
+    }
 
     func readiness(
         for pair: TranslationLanguagePair
@@ -479,6 +567,9 @@ private final class NativeTranslationServiceFake: NativeTranslationService {
         using session: any NativeTranslationSession
     ) async throws -> NativeTranslationPreparationState {
         prepareCallCount += 1
+        if let preparationError {
+            throw preparationError
+        }
         try await session.prepareTranslation()
         return .ready
     }
@@ -508,12 +599,17 @@ private final class NativeTranslationServiceFake: NativeTranslationService {
 private final class NativeTranslationSessionHostFake: NativeTranslationSession {
     let sourceLanguage: LanguageIdentifier?
     let targetLanguage: LanguageIdentifier?
+    let isReady: Bool
     private(set) var prepareCallCount = 0
     private(set) var cancelCallCount = 0
 
-    init(pair: TranslationLanguagePair) {
+    init(
+        pair: TranslationLanguagePair,
+        isReady: Bool = false
+    ) {
         sourceLanguage = pair.source
         targetLanguage = pair.target
+        self.isReady = isReady
     }
 
     func prepareTranslation() async throws {

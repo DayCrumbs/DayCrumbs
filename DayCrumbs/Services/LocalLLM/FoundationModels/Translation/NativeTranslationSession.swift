@@ -20,6 +20,7 @@ nonisolated struct NativeTranslationSessionResponse: Equatable, Sendable {
 protocol NativeTranslationSession: AnyObject {
     var sourceLanguage: LanguageIdentifier? { get }
     var targetLanguage: LanguageIdentifier? { get }
+    var isReady: Bool { get async }
 
     func prepareTranslation() async throws
 

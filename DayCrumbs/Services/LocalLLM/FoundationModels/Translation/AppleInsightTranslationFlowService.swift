@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import OSLog
 
 /// Defines translation policy around a future Apple Foundation Models request.
 @MainActor
@@ -28,6 +29,11 @@ protocol AppleInsightTranslationFlow {
 /// Apple-only orchestration boundary; it never starts generation or touches Gemma.
 @MainActor
 struct AppleInsightTranslationFlowService: AppleInsightTranslationFlow {
+    private static let logger = Logger(
+        subsystem: "DayCrumbs",
+        category: "AppleTranslationFlow"
+    )
+
     private struct FlowFailure: Error {
         let reason: AppleInsightTranslationFailure.Reason
         let pair: TranslationLanguagePair?
@@ -61,7 +67,11 @@ struct AppleInsightTranslationFlowService: AppleInsightTranslationFlow {
             let translation = try await translationCoordinator.translateInputContext(
                 context
             ) { batch in
-                try await executeReadyBatch(batch, using: executeBatch)
+                try await executeReadyBatch(
+                    batch,
+                    stage: .input,
+                    using: executeBatch
+                )
             }
             return .ready(translation)
         } catch {
@@ -80,7 +90,11 @@ struct AppleInsightTranslationFlowService: AppleInsightTranslationFlow {
                 from: .english,
                 to: targetLanguage
             ) { batch in
-                try await executeReadyBatch(batch, using: executeBatch)
+                try await executeReadyBatch(
+                    batch,
+                    stage: .output,
+                    using: executeBatch
+                )
             }
             return .localized(localizedTexts)
         } catch {
@@ -109,10 +123,15 @@ struct AppleInsightTranslationFlowService: AppleInsightTranslationFlow {
 
     private func executeReadyBatch(
         _ batch: NativeTranslationBatch,
+        stage: AppleInsightTranslationFailure.Stage,
         using executeBatch: PreparedNativeTranslationBatchHandler
     ) async throws -> [NativeTranslatedText] {
         let readiness = await nativeTranslationService.readiness(for: batch.pair)
         let executionMode: NativeTranslationBatchExecutionMode
+
+        Self.logger.debug(
+            "Translation readiness stage=\(stageLabel(stage), privacy: .public) pair=\(batch.pair.source.rawValue, privacy: .public)->\(batch.pair.target.rawValue, privacy: .public) availability=\(availabilityLabel(readiness.availability), privacy: .public)"
+        )
 
         switch readiness.availability {
         case .installed:
@@ -129,16 +148,58 @@ struct AppleInsightTranslationFlowService: AppleInsightTranslationFlow {
 
         do {
             return try await executeBatch(batch, executionMode)
-        } catch is CancellationError {
-            throw FlowFailure(reason: .cancelled, pair: batch.pair)
-        } catch let error as NativeTranslationBatchExecutionError {
-            throw FlowFailure(
-                reason: reason(for: error),
-                pair: batch.pair
-            )
         } catch {
-            throw FlowFailure(reason: .translationFailed, pair: batch.pair)
+            guard let executionError = error as? NativeTranslationBatchExecutionError,
+                  shouldRecheckReadiness(after: executionError) else {
+                throw flowFailure(from: error, pair: batch.pair)
+            }
+
+            let updatedReadiness = await nativeTranslationService.readiness(
+                for: batch.pair
+            )
+            Self.logger.notice(
+                "Translation readiness recheck stage=\(stageLabel(stage), privacy: .public) pair=\(batch.pair.source.rawValue, privacy: .public)->\(batch.pair.target.rawValue, privacy: .public) failure=\(errorLabel(executionError), privacy: .public) availability=\(availabilityLabel(updatedReadiness.availability), privacy: .public)"
+            )
+
+            guard updatedReadiness.availability == .installed else {
+                throw flowFailure(from: executionError, pair: batch.pair)
+            }
+
+            try Task.checkCancellation()
+            Self.logger.notice(
+                "Retrying translation batch once with a fresh installed session stage=\(stageLabel(stage), privacy: .public) pair=\(batch.pair.source.rawValue, privacy: .public)->\(batch.pair.target.rawValue, privacy: .public)"
+            )
+
+            do {
+                return try await executeBatch(batch, .translateInstalled)
+            } catch {
+                throw flowFailure(from: error, pair: batch.pair)
+            }
         }
+    }
+
+    private func shouldRecheckReadiness(
+        after error: NativeTranslationBatchExecutionError
+    ) -> Bool {
+        switch error {
+        case .transientSessionFailure, .preparationFailed:
+            true
+        case .downloadDenied, .cancelled, .translationFailed:
+            false
+        }
+    }
+
+    private func flowFailure(
+        from error: any Error,
+        pair: TranslationLanguagePair
+    ) -> FlowFailure {
+        if error is CancellationError {
+            return FlowFailure(reason: .cancelled, pair: pair)
+        }
+        if let executionError = error as? NativeTranslationBatchExecutionError {
+            return FlowFailure(reason: reason(for: executionError), pair: pair)
+        }
+        return FlowFailure(reason: .translationFailed, pair: pair)
     }
 
     private func reason(
@@ -149,10 +210,53 @@ struct AppleInsightTranslationFlowService: AppleInsightTranslationFlow {
             .downloadDenied
         case .cancelled:
             .cancelled
+        case .transientSessionFailure:
+            .transientSessionFailure
         case .preparationFailed:
             .preparationFailed
         case .translationFailed:
             .translationFailed
+        }
+    }
+
+    private func stageLabel(
+        _ stage: AppleInsightTranslationFailure.Stage
+    ) -> String {
+        switch stage {
+        case .input:
+            "input"
+        case .output:
+            "output"
+        }
+    }
+
+    private func availabilityLabel(
+        _ availability: NativeTranslationAvailability
+    ) -> String {
+        switch availability {
+        case .installed:
+            "installed"
+        case .supported:
+            "supported"
+        case .unsupported:
+            "unsupported"
+        }
+    }
+
+    private func errorLabel(
+        _ error: NativeTranslationBatchExecutionError
+    ) -> String {
+        switch error {
+        case .downloadDenied:
+            "downloadDenied"
+        case .cancelled:
+            "cancelled"
+        case .transientSessionFailure:
+            "transientSessionFailure"
+        case .preparationFailed:
+            "preparationFailed"
+        case .translationFailed:
+            "translationFailed"
         }
     }
 

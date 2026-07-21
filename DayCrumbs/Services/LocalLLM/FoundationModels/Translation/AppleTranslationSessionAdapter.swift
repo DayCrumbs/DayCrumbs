@@ -29,6 +29,12 @@ final class AppleTranslationSessionAdapter: NativeTranslationSession {
         }
     }
 
+    var isReady: Bool {
+        get async {
+            await session.isReady
+        }
+    }
+
     func prepareTranslation() async throws {
         try await session.prepareTranslation()
     }
