@@ -1,6 +1,7 @@
 import SwiftUI
 
 enum StoryFlowRoute: Hashable {
+    case childProfileSetup
     case pickPlace(Sessions)
     case pickActivity(Sessions, Place.BuiltInPlace)
     case pickMood(Sessions, Place.BuiltInPlace, Activity.BuiltInActivity)
@@ -8,7 +9,6 @@ enum StoryFlowRoute: Hashable {
     case illustrated(Sessions, Place.BuiltInPlace, Activity.BuiltInActivity, Moods)
     case reflection(Sessions, Place.BuiltInPlace, Activity.BuiltInActivity, Moods)
     case sessionOption
-    case onboarding
 }
 
 private struct StoryFlowDestinationView: View {
@@ -16,6 +16,9 @@ private struct StoryFlowDestinationView: View {
 
     var body: some View {
         switch route {
+        case .childProfileSetup:
+            ChildProfileSetupView()
+
         case .pickPlace(let session):
             PickPlaceView(selectedSession: session)
 
@@ -56,17 +59,13 @@ private struct StoryFlowDestinationView: View {
         case .sessionOption:
             SessionOptionView()
 
-        case .onboarding:
-            OnboardingView()
         }
     }
 }
 
 extension View {
-    func storyFlowNavigationDestination(
-        route: Binding<StoryFlowRoute?>
-    ) -> some View {
-        navigationDestination(item: route) { destination in
+    func storyFlowNavigationDestinations() -> some View {
+        navigationDestination(for: StoryFlowRoute.self) { destination in
             StoryFlowDestinationView(route: destination)
         }
     }

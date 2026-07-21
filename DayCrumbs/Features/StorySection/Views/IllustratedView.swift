@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct IllustratedView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(StoryFlowCoordinator.self) private var storyFlow
 
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
@@ -22,6 +22,14 @@ struct IllustratedView: View {
                         .ignoresSafeArea()
                         .accessibilityHidden(true)
                         .transition(.opacity)
+
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .ignoresSafeArea()
+                        .accessibilityHidden(true)
+                        .onTapGesture {
+                            viewModel.dismissContinuationCard()
+                        }
 
                     continuationCard
                         .frame(
@@ -47,7 +55,7 @@ struct IllustratedView: View {
                 }
 
                 CircularBackButton(style: .yellowBtn) {
-                    dismiss()
+                    storyFlow.goBack()
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
@@ -55,11 +63,14 @@ struct IllustratedView: View {
             .animation(.easeInOut(duration: 0.22), value: viewModel.isShowingContinuationCard)
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $viewModel.navigationRoute)
     }
 
     private var illustratedBackgroundImageNames: [String] {
-        viewModel.backgroundImageNames(place: selectedPlace, activity: selectedActivity)
+        viewModel.backgroundImageNames(
+            place: selectedPlace,
+            activity: selectedActivity,
+            gender: storyFlow.childGender
+        )
     }
 
     private var continueButton: some View {
@@ -97,20 +108,15 @@ struct IllustratedView: View {
 
             VStack(spacing: 14) {
                 continuationActionButton(title: "Add Another Activity") {
-                    viewModel.addAnotherActivity(in: selectedSession)
+                    storyFlow.addAnotherActivity()
                 }
 
                 continuationActionButton(title: "Continue to Another Session") {
-                    viewModel.continueToAnotherSession()
+                    storyFlow.continueToAnotherSession()
                 }
 
                 continuationActionButton(title: "Finish Session") {
-                    viewModel.finishSession(
-                        session: selectedSession,
-                        place: selectedPlace,
-                        activity: selectedActivity,
-                        mood: selectedMood
-                    )
+                    storyFlow.finishSession()
                 }
             }
         }
@@ -119,6 +125,7 @@ struct IllustratedView: View {
         .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
+        .onTapGesture { }
     }
 
     private func continuationActionButton(
@@ -148,4 +155,5 @@ struct IllustratedView: View {
             selectedMood: .happy
         )
     }
+    .environment(StoryFlowCoordinator())
 }

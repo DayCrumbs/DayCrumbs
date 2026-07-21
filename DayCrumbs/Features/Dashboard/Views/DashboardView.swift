@@ -2,13 +2,12 @@ import Charts
 import SwiftUI
 
 struct DashboardView: View {
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(StoryFlowCoordinator.self) private var storyFlow
 
     @AccessibilityFocusState private var accessibilityFocus: DashboardAccessibilityFocus?
     @State private var viewModel: DashboardViewModel
     @State private var translationTaskHost: AppleTranslationTaskHost
-    @State private var navigateToSession = false
 
     /// Remembers which trigger opened the detail so modal dismissal can restore
     /// VoiceOver to the originating chip in the next presentation step.
@@ -64,9 +63,6 @@ struct DashboardView: View {
                 break
             }
         }
-        .navigationDestination(isPresented: $navigateToSession) {
-            SessionOptionView()
-        }
         .overlay {
             if let detail = viewModel.selectedTriggerDetail {
                 ZStack {
@@ -95,13 +91,6 @@ struct DashboardView: View {
     private func sharedDashboardSurface(in size: CGSize) -> some View {
         dashboardContent(in: size)
             .frame(width: size.width, height: size.height)
-            .overlay(alignment: .topLeading) {
-                CircularBackButton(style: .yellowBtn) {
-                    dismiss()
-                }
-                .padding(.top, 24)
-                .padding(.leading, 32)
-            }
             .accessibilityHidden(viewModel.selectedTriggerDetail != nil)
     }
 
@@ -190,43 +179,42 @@ struct DashboardView: View {
     }
 
     private var timeRangePicker: some View {
-        HStack(spacing: 0) {
-            ForEach(TimeRange.allCases, id: \.self) { range in
-                Button {
-                    Task {
-                        await viewModel.selectTimeRange(range)
-                    }
-                } label: {
-                    Text(range.rawValue)
-                        .font(.system(.headline, design: .rounded).weight(.semibold))
-                        .foregroundStyle(AppColour.txtCoklat)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background {
-                            if viewModel.selectedTimeRange == range {
-                                Capsule()
-                                    .fill(AppColour.btnKuning)
-                                    .accessibilityHidden(true)
-                            }
+            HStack(spacing: 0) {
+                ForEach(TimeRange.allCases, id: \.self) { range in
+                    Button {
+                        Task {
+                            await viewModel.selectTimeRange(range)
                         }
+                    } label: {
+                        Text(range.rawValue)
+                            .font(.system(.headline, design: .rounded).weight(.semibold))
+                            .foregroundStyle(AppColour.txtCoklat)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .contentShape(Rectangle()) // <--- TAMBAHKAN BARIS INI
+                            .background {
+                                if viewModel.selectedTimeRange == range {
+                                    Capsule()
+                                        .fill(AppColour.btnKuning)
+                                        .accessibilityHidden(true)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(range.rawValue) range")
+                    .accessibilityAddTraits(
+                        viewModel.selectedTimeRange == range ? .isSelected : []
+                    )
+                    .accessibilityHint(timeRangeAccessibilityHint(for: range))
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(range.rawValue) range")
-                .accessibilityAddTraits(
-                    viewModel.selectedTimeRange == range ? .isSelected : []
-                )
-                .accessibilityHint(timeRangeAccessibilityHint(for: range))
             }
+            .padding(2)
+            .background {
+                Capsule()
+                    .fill(AppColour.btnKuning.opacity(0.18))
+                    .accessibilityHidden(true)
+            }
+            .accessibilityElement(children: .contain)
         }
-        .padding(2)
-        .background {
-            Capsule()
-                .fill(AppColour.btnKuning.opacity(0.18))
-                .accessibilityHidden(true)
-        }
-        // Keep the layout container out of linear VoiceOver navigation while
-        // preserving each range button as an independent accessible child.
-        .accessibilityElement(children: .contain)
-    }
 
     /// Explains each rolling range without exposing its date calculations.
     private func timeRangeAccessibilityHint(for range: TimeRange) -> String {
@@ -270,7 +258,12 @@ struct DashboardView: View {
                 AxisTick(stroke: StrokeStyle(lineWidth: 0))
                 AxisValueLabel(anchor: .trailing) {
                     if let moodScore = value.as(Int.self) {
-                        Image(Moods.expressionImageName(forDashboardMoodScore: moodScore))
+                        Image(
+                            Moods.expressionImageName(
+                                forDashboardMoodScore: moodScore,
+                                gender: storyFlow.childGender
+                            )
+                        )
                             .resizable()
                             .scaledToFit()
                             .frame(width: 48, height: 48)
@@ -405,7 +398,7 @@ struct DashboardView: View {
 
     private var addStoryButton: some View {
         Button {
-            navigateToSession = true
+            storyFlow.startStoryFromDashboard()
         } label: {
             HStack(spacing: 8) {
                 Text("Add Story!")
@@ -514,4 +507,5 @@ struct DashboardView: View {
     NavigationStack {
         DashboardView()
     }
+    .environment(StoryFlowCoordinator())
 }

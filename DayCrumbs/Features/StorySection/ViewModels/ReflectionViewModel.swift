@@ -12,6 +12,5 @@ final class ReflectionViewModel {
 
     func saveReflectionAndFinish(onSave: (String) -> Void) {
         onSave(reflectionText)
-        navigationRoute = .onboarding
     }
 }

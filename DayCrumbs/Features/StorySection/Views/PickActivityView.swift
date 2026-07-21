@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct PickActivityView: View {
-  @Environment(\.dismiss) private var dismiss
+  @Environment(StoryFlowCoordinator.self) private var storyFlow
 
   let selectedSession: Sessions
   let selectedPlace: Place.BuiltInPlace
@@ -24,7 +24,10 @@ struct PickActivityView: View {
               
               VStack(spacing: 0) {
                   CharacterBubble(
-                      characterImageName: "PickActivity_Girl",
+                      characterImageName: StoryCharacterAsset.imageName(
+                          for: .activity,
+                          gender: storyFlow.childGender
+                      ),
                       text: "Let's tell today's story together!\nWhat was your child doing?"
                   )
                   .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -37,33 +40,38 @@ struct PickActivityView: View {
                       onAddCustom: {
                           // Custom activity creation will be added in a later flow.
                       },
-                      itemImageName: viewModel.activityImageName(for:)
+                      onSelectItem: { activity in
+                          storyFlow.selectActivity(
+                              activity,
+                              in: selectedSession,
+                              place: selectedPlace
+                          )
+                      },
+                      itemImageName: {
+                          viewModel.activityImageName(
+                              for: $0,
+                              gender: storyFlow.childGender
+                          )
+                      }
                   )
                   .frame(height: proxy.size.height * 0.26)
               }
               .frame(width: proxy.size.width, height: proxy.size.height)
-              .onChange(of: viewModel.selectedActivity) { _, newValue in
-                  if let newValue {
-                      viewModel.handleActivitySelection(
-                          newValue,
-                          session: selectedSession,
-                          place: selectedPlace
-                      )
-                  }
-              }
               
               CircularBackButton() {
-                  dismiss()
+                  storyFlow.goBack()
               }
               .padding(.top, 24)
               .padding(.leading, 32)
           }
       }
       .navigationBarBackButtonHidden(true)
-      .storyFlowNavigationDestination(route: $viewModel.navigationRoute)
   }
 }
 
 #Preview {
-  PickActivityView(selectedSession: .morning, selectedPlace: .house)
+  NavigationStack {
+      PickActivityView(selectedSession: .morning, selectedPlace: .house)
+  }
+  .environment(StoryFlowCoordinator())
 }

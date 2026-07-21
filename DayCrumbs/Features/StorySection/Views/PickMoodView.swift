@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct PickMoodView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(StoryFlowCoordinator.self) private var storyFlow
 
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
@@ -14,7 +14,10 @@ struct PickMoodView: View {
                 BlurredStorySelectionBackground(
                     imageNames: [
                         StorySelectionAsset.imageName(for: selectedPlace),
-                        StorySelectionAsset.backgroundImageName(for: selectedActivity)
+                        StorySelectionAsset.backgroundImageName(
+                            for: selectedActivity,
+                            gender: storyFlow.childGender
+                        )
                     ]
                 )
                     .ignoresSafeArea()
@@ -22,7 +25,10 @@ struct PickMoodView: View {
 
                 VStack(spacing: 0) {
                     QuestionCharacterBubble(
-                        characterImageName: "PickMood_Girl",
+                        characterImageName: StoryCharacterAsset.imageName(
+                            for: .mood,
+                            gender: storyFlow.childGender
+                        ),
                         characterHeightRatio: 1084.0 / 655.0,
                         title: moodQuestionTitle,
                         subtitle: "Pick a face that looks like how you felt.",
@@ -57,7 +63,7 @@ struct PickMoodView: View {
                 .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
 
                 CircularBackButton(style: .yellowBtn) {
-                    dismiss()
+                    storyFlow.goBack()
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
@@ -83,7 +89,6 @@ struct PickMoodView: View {
             .animation(.easeInOut(duration: 0.2), value: viewModel.moodAlert)
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $viewModel.navigationRoute)
     }
 
     private var moodGrid: some View {
@@ -98,10 +103,11 @@ struct PickMoodView: View {
             ForEach(viewModel.moodOptions, id: \.self) { mood in
                 MoodExpressionButton(
                     mood: mood,
+                    gender: storyFlow.childGender,
                     selectMood: {
-                        viewModel.selectMood(
+                        storyFlow.selectMood(
                             mood,
-                            session: selectedSession,
+                            in: selectedSession,
                             place: selectedPlace,
                             activity: selectedActivity
                         )
@@ -120,15 +126,20 @@ struct PickMoodView: View {
 
 private struct MoodExpressionButton: View {
     let mood: Moods
+    let gender: ChildGender
     let selectMood: () -> Void
     let showMoodAlert: () -> Void
 
+    // Ubah dari @GestureState menjadi @State biasa
+    @State private var isPressed = false
+
     var body: some View {
         VStack(spacing: 10) {
-            Image(mood.expressionImageName)
+            Image(mood.expressionImageName(for: gender))
                 .resizable()
                 .scaledToFit()
                 .frame(height: 132)
+                .accessibilityHidden(true)
 
             Text(mood.rawValue.capitalized)
                 .font(.system(.headline, design: .rounded).weight(.semibold))
@@ -140,15 +151,26 @@ private struct MoodExpressionButton: View {
         }
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
-        .gesture(
-            LongPressGesture(minimumDuration: 0.5)
-                .onEnded { _ in
-                    showMoodAlert()
-                }
-                .exclusively(before: TapGesture().onEnded { _ in
-                    selectMood()
-                })
+        
+        // 1. Terapkan efek visual berdasarkan state
+        .opacity(isPressed ? 0.6 : 1.0)
+        .scaleEffect(isPressed ? 0.95 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: isPressed)
+        
+        .onTapGesture {
+            selectMood()
+        }
+        .onLongPressGesture(
+            minimumDuration: 0.5,
+            perform: {
+                showMoodAlert()
+            },
+            onPressingChanged: { pressing in
+                isPressed = pressing
+            }
         )
+        
+        .accessibilityElement(children: .ignore)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(mood.accessibilityLabel)
         .accessibilityHint("Activate to choose this mood. Hold for half a second to learn more.")
@@ -162,9 +184,12 @@ private struct MoodExpressionButton: View {
 }
 
 #Preview {
-    PickMoodView(
-        selectedSession: .morning,
-        selectedPlace: .house,
-        selectedActivity: .study
-    )
+    NavigationStack {
+        PickMoodView(
+            selectedSession: .morning,
+            selectedPlace: .house,
+            selectedActivity: .study
+        )
+    }
+    .environment(StoryFlowCoordinator())
 }

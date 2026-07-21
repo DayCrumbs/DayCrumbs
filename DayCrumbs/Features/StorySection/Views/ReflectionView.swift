@@ -1,27 +1,26 @@
 import SwiftUI
+import UIKit
 
 struct ReflectionView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(StoryFlowCoordinator.self) private var storyFlow
     
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
     let selectedActivity: Activity.BuiltInActivity
     let selectedMood: Moods
-    let onSaveEndOfDayReflection: (String) -> Void
     @State private var viewModel = ReflectionViewModel()
+    @State private var isKeyboardVisible = false
     
     init(
         selectedSession: Sessions,
         selectedPlace: Place.BuiltInPlace,
         selectedActivity: Activity.BuiltInActivity,
-        selectedMood: Moods,
-        onSaveEndOfDayReflection: @escaping (String) -> Void = { _ in }
+        selectedMood: Moods
     ) {
         self.selectedSession = selectedSession
         self.selectedPlace = selectedPlace
         self.selectedActivity = selectedActivity
         self.selectedMood = selectedMood
-        self.onSaveEndOfDayReflection = onSaveEndOfDayReflection
     }
     
     var body: some View {
@@ -30,7 +29,10 @@ struct ReflectionView: View {
                 BlurredStorySelectionBackground(
                     imageNames: [
                         StorySelectionAsset.imageName(for: selectedPlace),
-                        StorySelectionAsset.backgroundImageName(for: selectedActivity)
+                        StorySelectionAsset.backgroundImageName(
+                            for: selectedActivity,
+                            gender: storyFlow.childGender
+                        )
                     ]
                 )
                     .ignoresSafeArea()
@@ -42,38 +44,71 @@ struct ReflectionView: View {
                     compactContent(in: proxy.size)
                 }
             }
+            .animation(.easeInOut(duration: 0.22), value: isKeyboardVisible)
         }
         .navigationBarBackButtonHidden(true)
-        .storyFlowNavigationDestination(route: $viewModel.navigationRoute)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isKeyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            isKeyboardVisible = false
+        }
     }
     
     private func wideContent(in size: CGSize) -> some View {
-        VStack(spacing: -84) {
-            OutlinedParentReflectionIllustration()
-                .frame(width: min(286, size.width * 0.34))
-                .offset(y: -24)
+        let illustrationWidth = isKeyboardVisible ? 0 : min(286, size.width * 0.34)
+        let cardWidth = isKeyboardVisible
+            ? min(580, max(size.width * 0.82, size.width - 48))
+            : min(556, size.width * 0.66)
+        let cardHeight = isKeyboardVisible
+            ? min(390, max(280, size.height - 36))
+            : size.height * 0.47
+
+        return VStack(spacing: isKeyboardVisible ? 0 : -84) {
+            OutlinedParentReflectionIllustration(gender: storyFlow.childGender)
+                .frame(width: illustrationWidth)
+                .offset(y: isKeyboardVisible ? 0 : -24)
                 .zIndex(1)
+                .opacity(isKeyboardVisible ? 0 : 1)
             
             reflectionCard
-                .frame(width: min(556, size.width * 0.66), height: size.height * 0.47)
+                .frame(width: cardWidth, height: cardHeight)
         }
         .frame(width: size.width, height: size.height, alignment: .center)
-        .offset(y: -26)
+        .offset(y: isKeyboardVisible ? -min(24, size.height * 0.05) : -26)
     }
     
     private func compactContent(in size: CGSize) -> some View {
-        ScrollView {
-            VStack(spacing: -54) {
-                OutlinedParentReflectionIllustration()
-                    .frame(width: min(250, size.width * 0.64))
-                    .offset(y: -20)
+        let illustrationWidth = isKeyboardVisible ? 0 : min(250, size.width * 0.64)
+        let cardHeight = isKeyboardVisible
+            ? min(390, max(280, size.height - 36))
+            : 370
+        let cardWidth = min(580, max(size.width * 0.82, size.width - 48))
+
+        return ScrollView {
+            VStack(spacing: isKeyboardVisible ? 0 : -54) {
+                OutlinedParentReflectionIllustration(gender: storyFlow.childGender)
+                    .frame(width: illustrationWidth)
+                    .offset(y: isKeyboardVisible ? 0 : -20)
                     .zIndex(1)
+                    .opacity(isKeyboardVisible ? 0 : 1)
+
+                Color.clear
+                    .frame(
+                        height: isKeyboardVisible
+                            ? max(0, (size.height - cardHeight) / 2 - 16)
+                            : 0
+                    )
                 
                 reflectionCard
-                    .frame(height: 370)
+                    .frame(
+                        width: isKeyboardVisible ? cardWidth : nil,
+                        height: cardHeight
+                    )
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 24)
-            .padding(.top, 62)
+            .padding(.top, isKeyboardVisible ? 16 : 62)
             .padding(.bottom, 32)
         }
     }
@@ -100,7 +135,7 @@ struct ReflectionView: View {
             
             HStack {
                 CircularBackButton(style: .whiteBtn) {
-                    dismiss()
+                    storyFlow.goBack()
                 }
                 .scaleEffect(0.7)
                 
@@ -181,17 +216,18 @@ struct ReflectionView: View {
         )
         .accessibilityHint(
             viewModel.isReflectionReady
-            ? "Saves the reflection and returns to onboarding."
+            ? "Saves the reflection and returns to the dashboard."
             : "Write an end-of-day reflection before continuing."
         )
     }
     
     private func saveReflectionAndFinish() {
-        viewModel.saveReflectionAndFinish(onSave: onSaveEndOfDayReflection)
+        storyFlow.finishReflection(viewModel.reflectionText)
     }
 }
 
 private struct OutlinedParentReflectionIllustration: View {
+    let gender: ChildGender
     private let outlineOffsets: [CGSize] = [
         CGSize(width: -5, height: -5),
         CGSize(width: 0, height: -7),
@@ -206,7 +242,7 @@ private struct OutlinedParentReflectionIllustration: View {
     var body: some View {
         ZStack {
             ForEach(outlineOffsets.indices, id: \.self) { index in
-                Image("ParentsReflection_Girl")
+                Image(StoryCharacterAsset.imageName(for: .reflection, gender: gender))
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
@@ -217,7 +253,7 @@ private struct OutlinedParentReflectionIllustration: View {
                     )
             }
 
-            Image("ParentsReflection_Girl")
+            Image(StoryCharacterAsset.imageName(for: .reflection, gender: gender))
                 .resizable()
                 .scaledToFit()
         }
@@ -234,4 +270,5 @@ private struct OutlinedParentReflectionIllustration: View {
             selectedMood: .happy
         )
     }
+    .environment(StoryFlowCoordinator())
 }
