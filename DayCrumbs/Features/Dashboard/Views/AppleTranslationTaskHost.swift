@@ -112,9 +112,18 @@ final class AppleTranslationTaskHost {
         guard let operation = pendingOperation else {
             return
         }
+
+        // This marker distinguishes a SwiftUI callback that never arrived from a
+        // callback that entered the host but stalled while querying the session.
+        Self.logger.debug(
+            "Translation session callback entered operation=\(operation.id, privacy: .public) pair=\(operation.batch.pair.source.rawValue, privacy: .public)->\(operation.batch.pair.target.rawValue, privacy: .public) mode=\(self.modeLabel(operation.executionMode), privacy: .public)"
+        )
         guard session.sourceLanguage == operation.batch.pair.source,
               session.targetLanguage == operation.batch.pair.target else {
             // A cancelled configuration may deliver its old session after a new batch starts.
+            Self.logger.notice(
+                "Ignoring stale Translation session operation=\(operation.id, privacy: .public) expectedPair=\(operation.batch.pair.source.rawValue, privacy: .public)->\(operation.batch.pair.target.rawValue, privacy: .public)"
+            )
             return
         }
 
@@ -128,10 +137,33 @@ final class AppleTranslationTaskHost {
         }
 
         do {
-            let sessionIsReady = await session.isReady
-            Self.logger.debug(
-                "Translation operation \(operation.id, privacy: .public) pair=\(operation.batch.pair.source.rawValue, privacy: .public)->\(operation.batch.pair.target.rawValue, privacy: .public) mode=\(self.modeLabel(operation.executionMode), privacy: .public) sessionReady=\(sessionIsReady, privacy: .public)"
-            )
+            let sessionIsReady: Bool
+
+            switch operation.executionMode {
+            case .translateInstalled:
+                // LanguageAvailability already verified this pair immediately
+                // before scheduling. Avoid another daemon round trip that can
+                // hang even though the installed session can translate.
+                sessionIsReady = true
+                Self.logger.debug(
+                    "Translation readiness check skipped operation=\(operation.id, privacy: .public) pair=\(operation.batch.pair.source.rawValue, privacy: .public)->\(operation.batch.pair.target.rawValue, privacy: .public) mode=translateInstalled"
+                )
+
+            case .prepareThenTranslate:
+                Self.logger.debug(
+                    "Translation session readiness check started operation=\(operation.id, privacy: .public) pair=\(operation.batch.pair.source.rawValue, privacy: .public)->\(operation.batch.pair.target.rawValue, privacy: .public)"
+                )
+                sessionIsReady = await session.isReady
+                Self.logger.debug(
+                    "Translation session readiness check completed operation=\(operation.id, privacy: .public) pair=\(operation.batch.pair.source.rawValue, privacy: .public)->\(operation.batch.pair.target.rawValue, privacy: .public) sessionReady=\(sessionIsReady, privacy: .public)"
+                )
+            }
+
+            // A watchdog or range cancellation may have finished this operation
+            // while the framework-owned session was suspended.
+            guard pendingOperation?.id == operation.id else {
+                return
+            }
 
             if operation.executionMode == .prepareThenTranslate {
                 if !sessionIsReady {
@@ -148,6 +180,10 @@ final class AppleTranslationTaskHost {
                             sessionIsReady: sessionIsReady
                         )
                         throw preparationError(from: error)
+                    }
+
+                    guard pendingOperation?.id == operation.id else {
+                        return
                     }
                 }
             }
@@ -180,20 +216,36 @@ final class AppleTranslationTaskHost {
     }
 
     func cancelPendingBatch() {
-        guard let operation = pendingOperation else {
-            configuration = nil
-            return
+        if let operation = pendingOperation {
+            cancel(operationID: operation.id)
         }
-        cancel(operationID: operation.id)
+
+        // Dashboard disappearance/background cancellation intentionally removes
+        // the mounted task. Normal range cancellation keeps it mounted so the
+        // next same-pair request can invalidate it reliably.
+        configuration = nil
     }
 
     private func activateConfiguration(for pair: TranslationLanguagePair) {
-        var nextConfiguration = nativeTranslationService.configuration(for: pair)
-        if configuration == nextConfiguration {
-            // Invalidating reruns `.translationTask` for new content with the same pair.
-            nextConfiguration.invalidate()
+        let nextConfiguration = nativeTranslationService.configuration(for: pair)
+
+        if hasSameLanguagePair(configuration, as: nextConfiguration) {
+            // Invalidate the configuration currently observed by SwiftUI. This
+            // increments its version and reruns `.translationTask` for new text.
+            configuration?.invalidate()
+            return
         }
+
         configuration = nextConfiguration
+    }
+
+    private func hasSameLanguagePair(
+        _ current: TranslationSession.Configuration?,
+        as next: TranslationSession.Configuration
+    ) -> Bool {
+        current?.source == next.source
+            && current?.target == next.target
+            && current?.preferredStrategy == next.preferredStrategy
     }
 
     private func cancel(operationID: UUID) {
@@ -210,7 +262,6 @@ final class AppleTranslationTaskHost {
             activeSession = nil
         }
         pendingOperation = nil
-        configuration = nil
         operation.continuation.resume(
             throwing: NativeTranslationBatchExecutionError.cancelled
         )
@@ -245,6 +296,7 @@ final class AppleTranslationTaskHost {
 
             do {
                 try await operationTimeoutSleeper(operationTimeout)
+                try Task.checkCancellation()
             } catch {
                 return
             }
@@ -270,7 +322,6 @@ final class AppleTranslationTaskHost {
             activeSession = nil
         }
         pendingOperation = nil
-        configuration = nil
         operation.continuation.resume(
             throwing: NativeTranslationBatchExecutionError.transientSessionFailure
         )
