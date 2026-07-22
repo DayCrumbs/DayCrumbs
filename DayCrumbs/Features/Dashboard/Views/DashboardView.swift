@@ -1,9 +1,11 @@
 
 import Charts
 import SwiftUI
+import SwiftData
 
 struct DashboardView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.modelContext) private var modelContext
     @Environment(StoryFlowCoordinator.self) private var storyFlow
     
     @AccessibilityFocusState private var accessibilityFocus: DashboardAccessibilityFocus?
@@ -14,11 +16,12 @@ struct DashboardView: View {
     /// VoiceOver to the originating chip in the next presentation step.
     @State private var triggerFocusReturnTarget: String?
     
-    init() {
+    init(modelContext: ModelContext) {
         let translationTaskHost = AppleTranslationTaskHost()
         _translationTaskHost = State(initialValue: translationTaskHost)
         _viewModel = State(
             initialValue: DashboardViewModel(
+                entrySource: StoryEntrySource(modelContext: modelContext),
                 executeTranslationBatch: translationTaskHost.batchHandler
             )
         )
@@ -546,9 +549,9 @@ struct DashboardView: View {
     
 }
 
-#Preview {
-    NavigationStack {
-        DashboardView()
-    }
-    .environment(StoryFlowCoordinator())
-}
+//#Preview {
+//    NavigationStack {
+//        DashboardView()
+//    }
+//    .environment(StoryFlowCoordinator())
+//}
