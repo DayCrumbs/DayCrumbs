@@ -252,7 +252,7 @@ struct DashboardView: View {
             .chartLegend(.hidden)
             .chartYScale(
                 domain: 0...moodChartMaximumCount,
-                range: .plotDimension(startPadding: 8)
+                range: .plotDimension(startPadding: 20)
             )
             .chartXAxis {
                 AxisMarks { _ in

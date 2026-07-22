@@ -32,14 +32,14 @@ final class DashboardViewModel {
         subsystem: "DayCrumbs",
         category: "DashboardGeneration"
     )
-
+    
     private(set) var selectedTimeRange: TimeRange = .day
     private(set) var state: DashboardPresentationState = .idle
     private(set) var generatedInsight: AnalyticsInsight?
     private(set) var englishFallback: AppleAnalyticsInsightEnglishFallback?
     private(set) var selectedTriggerDetail: TriggerDetail?
     private(set) var childName = ""
-
+    
     private let entrySource: any StoryEntrySource
     private let entrySelectionService: DashboardEntrySelectionService
     private let generationService: any AppleLocalizedInsightGenerating
@@ -48,7 +48,7 @@ final class DashboardViewModel {
     private let calendar: Calendar
     private let now: () -> Date
     private let rangeChangeDebounce: Duration
-
+    
     @ObservationIgnored private var allEntries: [StoryEntry] = []
     @ObservationIgnored private var hasLoadedEntries = false
     @ObservationIgnored private var hasStarted = false
@@ -62,7 +62,7 @@ final class DashboardViewModel {
     @ObservationIgnored private var cachedResultsByRange: [
         TimeRange: AppleLocalizedAnalyticsInsight
     ] = [:]
-
+    
     init(
         entrySource: (any StoryEntrySource)? = nil,
         entrySelectionService: DashboardEntrySelectionService? = nil,
@@ -84,19 +84,19 @@ final class DashboardViewModel {
         self.now = now
         self.rangeChangeDebounce = rangeChangeDebounce
     }
-
+    
     var summaryText: String {
         generatedInsight?.summary ?? ""
     }
-
+    
     var commonTriggers: [String] {
         generatedInsight?.commonTriggers.map(\.title) ?? []
     }
-
+    
     var englishFallbackLabel: String? {
         englishFallback?.displayLabel
     }
-
+    
     /// Fetches once for this ViewModel lifecycle and automatically generates Day.
     func start() async {
         if hasStarted {
@@ -109,109 +109,109 @@ final class DashboardViewModel {
             }
             return
         }
-
+        
         hasStarted = true
         await reloadEntriesAndGenerate()
     }
-
+    
     /// Range selection is an intent: it owns cancellation, filtering, and regeneration.
     func selectTimeRange(_ range: TimeRange) async {
         guard range != selectedTimeRange else {
             return
         }
-
+        
         let revision = UUID()
         selectionRevision = revision
         selectedTimeRange = range
         clearPublishedInsight()
-
+        
         let previousTask = detachActiveGeneration()
         await previousTask?.value
-
+        
         guard selectionRevision == revision, selectedTimeRange == range else {
             return
         }
         guard hasLoadedEntries else {
             return
         }
-
+        
         if restoreCachedResult(for: range) {
             return
         }
-
+        
         await generateSelectedRange(debounce: true)
     }
-
+    
     func retryGeneration() async {
         guard hasLoadedEntries else {
             await reloadEntriesAndGenerate()
             return
         }
-
+        
         let revision = UUID()
         selectionRevision = revision
         cachedResultsByRange[selectedTimeRange] = nil
         clearPublishedInsight()
-
+        
         let previousTask = detachActiveGeneration()
         await previousTask?.value
-
+        
         guard selectionRevision == revision else {
             return
         }
         await generateSelectedRange(debounce: false)
     }
-
+    
     /// Reuses preserved English fields; this path cannot invoke generation again.
     func retryOutputTranslation() async {
         guard let fallback = englishFallback else {
             return
         }
-
+        
         let range = selectedTimeRange
         let requestID = UUID()
         activeRequestID = requestID
         state = .loading(.outputTranslation)
-
+        
         let task = Task { @MainActor [weak self] in
             guard let self else {
                 return
             }
-
+            
             let result = await generationService.retryOutputTranslation(
                 fallback,
                 using: executeTranslationBatch
             )
-
+            
             guard canPublish(requestID: requestID, range: range) else {
                 return
             }
             publish(result, for: range)
         }
-
+        
         generationTask = task
         await task.value
         if activeRequestID == requestID {
             generationTask = nil
         }
     }
-
+    
     func selectTrigger(_ triggerTitle: String) {
         selectedTriggerDetail = publishedTriggerDetails.first {
             $0.title == triggerTitle
         }
     }
-
+    
     func dismissTrigger() {
         selectedTriggerDetail = nil
     }
-
+    
     /// Cancels app-owned work when the stable Dashboard root leaves the foreground.
     func cancelGeneration() {
         selectionRevision = UUID()
         _ = detachActiveGeneration()
     }
-
+    
     /// Ends one Dashboard visit. Background cancellation deliberately uses
     /// `cancelGeneration()` instead so completed ranges remain cached on resume.
     func endDashboardSession() {
@@ -225,14 +225,14 @@ final class DashboardViewModel {
         activeReferenceDay = nil
         childName = ""
     }
-
+    
     /// A new calendar day changes all rolling range boundaries and requires fresh input.
     func refreshIfRangeBoundaryChanged() async {
         let currentDay = calendar.startOfDay(for: now())
         guard hasStarted else {
             return
         }
-
+        
         if activeReferenceDay == currentDay {
             if generationTask == nil,
                hasLoadedEntries,
@@ -241,12 +241,12 @@ final class DashboardViewModel {
             }
             return
         }
-
+        
         let revision = UUID()
         selectionRevision = revision
         let previousTask = detachActiveGeneration()
         await previousTask?.value
-
+        
         guard selectionRevision == revision else {
             return
         }
@@ -254,21 +254,21 @@ final class DashboardViewModel {
         cachedResultsByRange.removeAll()
         await reloadEntriesAndGenerate()
     }
-
+    
     private func reloadEntriesAndGenerate() async {
         state = .loading(.stories)
         clearPublishedInsight(keepingState: true)
         hasLoadedEntries = false
-
+        
         do {
             let entries = try await entrySource.fetchEntries()
             try Task.checkCancellation()
-
+            
             allEntries = entries.sorted { $0.recordedAt < $1.recordedAt }
             hasLoadedEntries = true
             activeReferenceDay = calendar.startOfDay(for: now())
             childName = allEntries.first?.dailySession?.childProfile?.name ?? "Your child"
-
+            
             await generateSelectedRange(debounce: false)
         } catch is CancellationError {
             return
@@ -281,12 +281,12 @@ final class DashboardViewModel {
             )
         }
     }
-
+    
     private func generateSelectedRange(debounce: Bool) async {
         let range = selectedTimeRange
         let referenceDate = now()
         let entries: [StoryEntry]
-
+        
         do {
             entries = try entrySelectionService.entries(
                 for: range,
@@ -302,33 +302,33 @@ final class DashboardViewModel {
             )
             return
         }
-
+        
         guard !entries.isEmpty else {
             state = .empty
             return
         }
-
+        
         let requestID = UUID()
         activeRequestID = requestID
         state = .loading(.insight)
-
+        
         let task = Task { @MainActor [weak self] in
             guard let self else {
                 return
             }
-
+            
             do {
                 if debounce {
                     try await Task.sleep(for: rangeChangeDebounce)
                 }
                 try Task.checkCancellation()
-
+                
                 let result = try await generationService.generateInsight(
                     from: entries,
                     for: range,
                     using: executeTranslationBatch
                 )
-
+                
                 try Task.checkCancellation()
                 guard canPublish(requestID: requestID, range: range) else {
                     return
@@ -347,23 +347,23 @@ final class DashboardViewModel {
                 state = .failed(message: userMessage(for: error))
             }
         }
-
+        
         generationTask = task
         await task.value
         if activeRequestID == requestID {
             generationTask = nil
         }
     }
-
+    
     private func restoreCachedResult(for range: TimeRange) -> Bool {
         guard let cachedResult = cachedResultsByRange[range] else {
             return false
         }
-
+        
         publish(cachedResult, for: range)
         return true
     }
-
+    
     private func publish(
         _ result: AppleLocalizedAnalyticsInsight,
         for range: TimeRange
@@ -374,16 +374,16 @@ final class DashboardViewModel {
         // Legacy/test generators may not provide prelocalized details. Production
         // Apple generation always publishes translated catalog content here.
         publishedTriggerDetails = result.triggerDetails.isEmpty
-            ? recommendationCatalog.triggerDetails(for: result.insight)
-            : result.triggerDetails
+        ? recommendationCatalog.triggerDetails(for: result.insight)
+        : result.triggerDetails
         selectedTriggerDetail = nil
         state = .loaded
     }
-
+    
     private func canPublish(requestID: UUID, range: TimeRange) -> Bool {
         activeRequestID == requestID && selectedTimeRange == range
     }
-
+    
     private func detachActiveGeneration() -> Task<Void, Never>? {
         let task = generationTask
         generationTask = nil
@@ -392,7 +392,7 @@ final class DashboardViewModel {
         generationService.releaseSession()
         return task
     }
-
+    
     private func clearPublishedInsight(keepingState: Bool = false) {
         generatedInsight = nil
         englishFallback = nil
@@ -402,12 +402,12 @@ final class DashboardViewModel {
             state = .idle
         }
     }
-
+    
     private func userMessage(for error: any Error) -> String {
         guard let generationError = error as? AppleAnalyticsGenerationError else {
             return "The on-device insight could not be generated. Please try again."
         }
-
+        
         switch generationError {
         case .emptyEntries:
             return "There are no stories in this range yet."
@@ -427,7 +427,7 @@ final class DashboardViewModel {
             return "Insight generation was cancelled."
         }
     }
-
+    
     private func userMessage(
         for error: AppleFoundationModelsSessionError
     ) -> String {
@@ -444,9 +444,9 @@ final class DashboardViewModel {
             return "The on-device insight could not be completed. Please try again."
         }
     }
-
+    
     // MARK: - LOGIKA AGREGASI DATA GRAFIK DINAMIS
-
+    
     /// Data segmen Mood dinamis yang diekstrak secara berkala berdasarkan rentang waktu terpilih [14].
     var currentMoodBarData: [MoodBarChartSegment] {
         let referenceDate = now()
@@ -462,7 +462,7 @@ final class DashboardViewModel {
         
         return aggregateMoodBarData(from: selectedEntries, for: selectedTimeRange, referenceDate: referenceDate)
     }
-
+    
     /// Mengelompokkan dan menjumlahkan kemunculan mood berdasarkan segmen sumbu X [14].
     private func aggregateMoodBarData(
         from entries: [StoryEntry],
@@ -502,18 +502,25 @@ final class DashboardViewModel {
         
         // Bentuk menjadi array MoodBarChartSegment yang diurutkan sesuai orderedLabels
         var segments: [MoodBarChartSegment] = []
+        
+        // Urutan ini menentukan tumpukan dari bawah ke atas di dalam Bar Chart
+        let moodStackOrder: [Moods] = [.angry, .disgust, .fear, .surprise, .sad, .happy]
+        
         for label in orderedLabels {
             guard let moodCounts = counts[label] else { continue }
-            for (mood, count) in moodCounts where count > 0 {
-                segments.append(
-                    MoodBarChartSegment(timeLabel: label, mood: mood, count: count)
-                )
+            
+            for mood in moodStackOrder {
+                if let count = moodCounts[mood], count > 0 {
+                    segments.append(
+                        MoodBarChartSegment(timeLabel: label, mood: mood, count: count)
+                    )
+                }
             }
         }
         
         return segments
     }
-
+    
     /// Menghasilkan string label sumbu X berdasarkan rentang waktu terpilih.
     private func timeLabel(
         for entry: StoryEntry,
@@ -561,7 +568,7 @@ final class DashboardViewModel {
             }
         }
     }
-
+    
     /// Opsional: Data Score Chart yang juga disesuaikan secara dinamis dari database
     var currentChartData: [MoodDataPoint] {
         let referenceDate = now()
