@@ -498,7 +498,7 @@ struct DashboardViewModelTests {
 }
 
 @MainActor
-final class DashboardStoryEntrySourceFake: StoryEntrySource {
+final class DashboardStoryEntrySourceFake: StoryEntrySourceProtocol {
     private let entries: [StoryEntry]
     private(set) var fetchCallCount = 0
 
@@ -600,7 +600,7 @@ final class DashboardInsightGeneratorFake: AppleLocalizedInsightGenerating {
 
 @MainActor
 func makeDashboardTestViewModel(
-    source: any StoryEntrySource,
+    source: any StoryEntrySourceProtocol,
     generator: any AppleLocalizedInsightGenerating,
     referenceDate: Date,
     calendar: Calendar

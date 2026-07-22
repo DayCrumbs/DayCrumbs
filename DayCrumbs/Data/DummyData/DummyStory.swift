@@ -465,12 +465,12 @@ enum DummyStory {
         // Hari 30: Hari Santai Berkebun Ringan
         DayTemplate(
             entries: [
-                EntryTemplate(session: .morning, mood: .happy, activity: .wakeUp, place: .house, noteText: "Bangun tidur agak siang lalu berjemur di halaman belakang bersama Ayah."),
-                EntryTemplate(session: .afternoon, mood: .happy, activity: .play, place: .outdoor, noteText: "Membantu menyiram tanaman bunga menggunakan selang air kecil."),
-                EntryTemplate(session: .evening, mood: .happy, activity: .eat, place: .house, noteText: nil),
+                EntryTemplate(session: .morning, mood: .disgust, activity: .wakeUp, place: .house, noteText: "Bangun tidur agak siang lalu berjemur di halaman belakang bersama Ayah."),
+                EntryTemplate(session: .afternoon, mood: .fear, activity: .play, place: .outdoor, noteText: "Membantu menyiram tanaman bunga menggunakan selang air kecil."),
+                EntryTemplate(session: .evening, mood: .angry, activity: .eat, place: .house, noteText: nil),
                 EntryTemplate(session: .night, mood: .happy, activity: .sleep, place: .house, noteText: "Tidur nyenyak dengan senyuman setelah hari yang tenang.")
             ],
-            reflectionText: "Hari penutup bulan yang santai dan menyenangkan. Maya sangat menikmati aktivitas berkebun ringan di luar rumah bersama orang tua."
+            reflectionText: "Hari yang santai dan agak menyenangkan. Maya hampir menikmati aktivitas berkebun ringan di luar rumah bersama orang tua."
         )
     ]
 }

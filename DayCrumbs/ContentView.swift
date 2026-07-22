@@ -39,7 +39,7 @@ struct ContentView: View {
             OnboardingView()
 
         case .dashboard:
-            DashboardView()
+            DashboardView(modelContext: modelContext)
 
         case .profileDataError(let message):
             ContentUnavailableView(
