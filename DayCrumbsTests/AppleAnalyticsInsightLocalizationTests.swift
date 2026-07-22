@@ -324,6 +324,44 @@ struct AppleAnalyticsInsightLocalizationTests {
         ])
     }
 
+    @Test("Two installed operations with the same pair invalidate the mounted configuration")
+    func repeatedInstalledPairRetriggersTranslationTask() async throws {
+        let nativeService = NativeTranslationServiceFake()
+        let host = AppleTranslationTaskHost(
+            nativeTranslationService: nativeService
+        )
+        let batch = makeBatch()
+        let firstSession = NativeTranslationSessionHostFake(
+            pair: batch.pair,
+            suspendsReadinessUntilCancelled: true
+        )
+        let secondSession = NativeTranslationSessionHostFake(
+            pair: batch.pair,
+            suspendsReadinessUntilCancelled: true
+        )
+
+        let firstExecution = Task { @MainActor in
+            try await host.execute(batch, executionMode: .translateInstalled)
+        }
+        await Task.yield()
+        let firstVersion = try #require(host.configuration?.version)
+        await host.performPending(using: firstSession)
+        _ = try await firstExecution.value
+
+        let secondExecution = Task { @MainActor in
+            try await host.execute(batch, executionMode: .translateInstalled)
+        }
+        await Task.yield()
+        let secondVersion = try #require(host.configuration?.version)
+        await host.performPending(using: secondSession)
+        _ = try await secondExecution.value
+
+        #expect(secondVersion > firstVersion)
+        #expect(firstSession.readinessCheckCount == 0)
+        #expect(secondSession.readinessCheckCount == 0)
+        #expect(nativeService.translateCallCount == 2)
+    }
+
     @Test("Internal Translation errors are classified as transient")
     func internalTranslationErrorIsTransient() async {
         let nativeService = NativeTranslationServiceFake(
@@ -413,14 +451,99 @@ struct AppleAnalyticsInsightLocalizationTests {
             try await host.execute(batch, executionMode: .translateInstalled)
         }
         await timeoutGate.waitUntilArmed()
-        timeoutGate.fire()
+        timeoutGate.fireNext()
 
         await #expect(
             throws: NativeTranslationBatchExecutionError.transientSessionFailure
         ) {
             try await execution.value
         }
-        #expect(host.configuration == nil)
+        #expect(host.configuration != nil)
+    }
+
+    @Test("A timed out operation can immediately retry the same installed pair")
+    func hostTimeoutImmediatelyRetriesSamePair() async throws {
+        let timeoutGate = TranslationOperationTimeoutGate()
+        let nativeService = NativeTranslationServiceFake()
+        let host = AppleTranslationTaskHost(
+            nativeTranslationService: nativeService,
+            operationTimeoutSleeper: { duration in
+                try await timeoutGate.sleep(for: duration)
+            }
+        )
+        let batch = makeBatch()
+
+        let firstExecution = Task { @MainActor in
+            try await host.execute(batch, executionMode: .translateInstalled)
+        }
+        await timeoutGate.waitUntilArmed(count: 1)
+        let timedOutVersion = try #require(host.configuration?.version)
+        timeoutGate.fireNext()
+
+        await #expect(
+            throws: NativeTranslationBatchExecutionError.transientSessionFailure
+        ) {
+            try await firstExecution.value
+        }
+
+        let retryExecution = Task { @MainActor in
+            try await host.execute(batch, executionMode: .translateInstalled)
+        }
+        await timeoutGate.waitUntilArmed(count: 2)
+        let retryVersion = try #require(host.configuration?.version)
+        let retrySession = NativeTranslationSessionHostFake(pair: batch.pair)
+        await host.performPending(using: retrySession)
+        let translations = try await retryExecution.value
+
+        // Release the injected sleeper after the successful operation cancels
+        // its watchdog; the cancelled watchdog then exits without timing out.
+        timeoutGate.fireNext()
+
+        #expect(retryVersion > timedOutVersion)
+        #expect(translations == [
+            NativeTranslatedText(id: "summary", text: "ID: Hello"),
+        ])
+        #expect(nativeService.translateCallCount == 1)
+    }
+
+    @Test("Host timeout cancels a session stalled in its readiness query")
+    func hostTimesOutDuringReadinessCheck() async {
+        let timeoutGate = TranslationOperationTimeoutGate()
+        let nativeService = NativeTranslationServiceFake()
+        let host = AppleTranslationTaskHost(
+            nativeTranslationService: nativeService,
+            operationTimeoutSleeper: { duration in
+                try await timeoutGate.sleep(for: duration)
+            }
+        )
+        let batch = makeBatch()
+        let session = NativeTranslationSessionHostFake(
+            pair: batch.pair,
+            suspendsReadinessUntilCancelled: true
+        )
+
+        let execution = Task { @MainActor in
+            try await host.execute(batch, executionMode: .prepareThenTranslate)
+        }
+        await timeoutGate.waitUntilArmed()
+
+        let sessionExecution = Task { @MainActor in
+            await host.performPending(using: session)
+        }
+        await session.waitUntilReadinessStarts()
+        timeoutGate.fireNext()
+
+        await #expect(
+            throws: NativeTranslationBatchExecutionError.transientSessionFailure
+        ) {
+            try await execution.value
+        }
+        await sessionExecution.value
+
+        #expect(session.cancelCallCount == 1)
+        #expect(session.readinessCheckCount == 1)
+        #expect(nativeService.prepareCallCount == 0)
+        #expect(nativeService.translateCallCount == 0)
     }
 
     @Test("Host cancels an active Translation session when it times out")
@@ -447,7 +570,7 @@ struct AppleAnalyticsInsightLocalizationTests {
             await host.performPending(using: session)
         }
         await session.waitUntilTranslationStarts()
-        timeoutGate.fire()
+        timeoutGate.fireNext()
 
         await #expect(
             throws: NativeTranslationBatchExecutionError.transientSessionFailure
@@ -457,7 +580,7 @@ struct AppleAnalyticsInsightLocalizationTests {
         await sessionExecution.value
 
         #expect(session.cancelCallCount == 1)
-        #expect(host.configuration == nil)
+        #expect(host.configuration != nil)
     }
 }
 
@@ -670,11 +793,16 @@ private final class NativeTranslationServiceFake: NativeTranslationService {
 private final class NativeTranslationSessionHostFake: NativeTranslationSession {
     let sourceLanguage: LanguageIdentifier?
     let targetLanguage: LanguageIdentifier?
-    let isReady: Bool
+    private let configuredIsReady: Bool
     private let suspendsTranslationUntilCancelled: Bool
+    private let suspendsReadinessUntilCancelled: Bool
     private(set) var prepareCallCount = 0
     private(set) var cancelCallCount = 0
+    private(set) var readinessCheckCount = 0
+    private var didStartReadiness = false
     private var didStartTranslation = false
+    private var readinessStartContinuation: CheckedContinuation<Void, Never>?
+    private var readinessContinuation: CheckedContinuation<Bool, Never>?
     private var translationStartContinuation: CheckedContinuation<Void, Never>?
     private var translationContinuation: CheckedContinuation<
         [NativeTranslationSessionResponse],
@@ -684,12 +812,31 @@ private final class NativeTranslationSessionHostFake: NativeTranslationSession {
     init(
         pair: TranslationLanguagePair,
         isReady: Bool = false,
-        suspendsTranslationUntilCancelled: Bool = false
+        suspendsTranslationUntilCancelled: Bool = false,
+        suspendsReadinessUntilCancelled: Bool = false
     ) {
         sourceLanguage = pair.source
         targetLanguage = pair.target
-        self.isReady = isReady
+        configuredIsReady = isReady
         self.suspendsTranslationUntilCancelled = suspendsTranslationUntilCancelled
+        self.suspendsReadinessUntilCancelled = suspendsReadinessUntilCancelled
+    }
+
+    var isReady: Bool {
+        get async {
+            readinessCheckCount += 1
+            didStartReadiness = true
+            readinessStartContinuation?.resume()
+            readinessStartContinuation = nil
+
+            if suspendsReadinessUntilCancelled {
+                return await withCheckedContinuation { continuation in
+                    readinessContinuation = continuation
+                }
+            }
+
+            return configuredIsReady
+        }
     }
 
     func prepareTranslation() async throws {
@@ -719,8 +866,24 @@ private final class NativeTranslationSessionHostFake: NativeTranslationSession {
 
     func cancel() {
         cancelCallCount += 1
+        readinessContinuation?.resume(returning: false)
+        readinessContinuation = nil
         translationContinuation?.resume(throwing: CancellationError())
         translationContinuation = nil
+    }
+
+    func waitUntilReadinessStarts() async {
+        guard !didStartReadiness else {
+            return
+        }
+
+        await withCheckedContinuation { continuation in
+            if didStartReadiness {
+                continuation.resume()
+            } else {
+                readinessStartContinuation = continuation
+            }
+        }
     }
 
     func waitUntilTranslationStarts() async {
@@ -742,37 +905,45 @@ private final class NativeTranslationSessionHostFake: NativeTranslationSession {
 /// watchdog fires, independent of Xcode Cloud scheduling load.
 @MainActor
 private final class TranslationOperationTimeoutGate {
-    private var isArmed = false
-    private var armedContinuation: CheckedContinuation<Void, Never>?
-    private var timeoutContinuation: CheckedContinuation<Void, any Error>?
+    private var armCount = 0
+    private var armedContinuations: [
+        Int: [CheckedContinuation<Void, Never>]
+    ] = [:]
+    private var timeoutContinuations: [
+        CheckedContinuation<Void, any Error>
+    ] = []
 
     func sleep(for _: Duration) async throws {
-        isArmed = true
-        armedContinuation?.resume()
-        armedContinuation = nil
+        armCount += 1
+        let currentArmCount = armCount
+        armedContinuations.removeValue(forKey: currentArmCount)?.forEach {
+            $0.resume()
+        }
 
         try await withCheckedThrowingContinuation { continuation in
-            timeoutContinuation = continuation
+            timeoutContinuations.append(continuation)
         }
     }
 
-    func waitUntilArmed() async {
-        guard !isArmed else {
+    func waitUntilArmed(count: Int = 1) async {
+        guard armCount < count else {
             return
         }
 
         await withCheckedContinuation { continuation in
-            if isArmed {
+            if armCount >= count {
                 continuation.resume()
             } else {
-                armedContinuation = continuation
+                armedContinuations[count, default: []].append(continuation)
             }
         }
     }
 
-    func fire() {
-        timeoutContinuation?.resume()
-        timeoutContinuation = nil
+    func fireNext() {
+        guard !timeoutContinuations.isEmpty else {
+            return
+        }
+        timeoutContinuations.removeFirst().resume()
     }
 }
 
