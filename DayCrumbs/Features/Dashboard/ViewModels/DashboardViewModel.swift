@@ -40,7 +40,7 @@ final class DashboardViewModel {
     private(set) var selectedTriggerDetail: TriggerDetail?
     private(set) var childName = ""
     
-    private let entrySource: any StoryEntrySource
+    private let entrySource: any StoryEntrySourceProtocol
     private let entrySelectionService: DashboardEntrySelectionService
     private let generationService: any AppleLocalizedInsightGenerating
     private let recommendationCatalog: ParentRecommendationCatalog
@@ -65,7 +65,7 @@ final class DashboardViewModel {
     ] = [:]
     
     init(
-        entrySource: (any StoryEntrySource)? = nil,
+        entrySource: (any StoryEntrySourceProtocol)? = nil,
         entrySelectionService: DashboardEntrySelectionService? = nil,
         generationService: (any AppleLocalizedInsightGenerating)? = nil,
         recommendationCatalog: ParentRecommendationCatalog = ParentRecommendationCatalog(),

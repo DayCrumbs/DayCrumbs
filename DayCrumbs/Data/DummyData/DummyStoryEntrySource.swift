@@ -2,7 +2,7 @@ import Foundation
 
 /// Supplies the rolling 30-day fixture while persistence wiring is pending.
 @MainActor
-final class DummyStoryEntrySource: StoryEntrySource {
+final class DummyStoryEntrySource: StoryEntrySourceProtocol {
     private let fixedReferenceDate: Date?
     private let calendar: Calendar
 
