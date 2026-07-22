@@ -54,6 +54,7 @@ final class DashboardViewModel {
     @ObservationIgnored private var hasStarted = false
     @ObservationIgnored private var activeReferenceDay: Date?
     @ObservationIgnored private var activeRequestID: UUID?
+    @ObservationIgnored private var generationTaskID: UUID?
     @ObservationIgnored private var selectionRevision = UUID()
     @ObservationIgnored private var generationTask: Task<Void, Never>?
     @ObservationIgnored private var publishedTriggerDetails: [TriggerDetail] = []
@@ -190,10 +191,9 @@ final class DashboardViewModel {
         }
         
         generationTask = task
+        generationTaskID = requestID
         await task.value
-        if activeRequestID == requestID {
-            generationTask = nil
-        }
+        finishGenerationTask(requestID: requestID)
     }
     
     func selectTrigger(_ triggerTitle: String) {
@@ -349,10 +349,9 @@ final class DashboardViewModel {
         }
         
         generationTask = task
+        generationTaskID = requestID
         await task.value
-        if activeRequestID == requestID {
-            generationTask = nil
-        }
+        finishGenerationTask(requestID: requestID)
     }
     
     private func restoreCachedResult(for range: TimeRange) -> Bool {
@@ -386,11 +385,25 @@ final class DashboardViewModel {
     
     private func detachActiveGeneration() -> Task<Void, Never>? {
         let task = generationTask
-        generationTask = nil
         activeRequestID = nil
-        task?.cancel()
-        generationService.releaseSession()
+
+        // Keep the cancelled task visible until it has actually unwound. Rapid
+        // range selections will all await the same task instead of starting a
+        // new generation while the previous translation is still finishing.
+        if let task, !task.isCancelled {
+            task.cancel()
+            generationService.releaseSession()
+        }
         return task
+    }
+
+    private func finishGenerationTask(requestID: UUID) {
+        guard generationTaskID == requestID else {
+            return
+        }
+
+        generationTask = nil
+        generationTaskID = nil
     }
     
     private func clearPublishedInsight(keepingState: Bool = false) {

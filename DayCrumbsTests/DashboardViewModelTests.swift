@@ -231,6 +231,82 @@ struct DashboardViewModelTests {
         #expect(viewModel.selectedTimeRange == .week)
     }
 
+    @Test("Rapid Day Week Month switching waits for the cancelled generation to unwind")
+    func rapidRangeSwitchingKeepsOneGenerationInFlight() async {
+        let entries = makeDashboardTestEntries(
+            dayOffsets: Array(-29...0),
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
+        let generator = DashboardInsightGeneratorFake(
+            behaviors: [.suspended, .suspended]
+        )
+        let viewModel = makeDashboardTestViewModel(
+            source: DashboardStoryEntrySourceFake(entries: entries),
+            generator: generator,
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
+
+        let initialDay = Task { @MainActor in
+            await viewModel.start()
+        }
+        await waitForDashboardTestCondition {
+            generator.generatedRanges == [.day]
+        }
+
+        let weekSelection = Task { @MainActor in
+            await viewModel.selectTimeRange(.week)
+        }
+        await waitForDashboardTestCondition {
+            viewModel.selectedTimeRange == .week
+        }
+
+        let monthSelection = Task { @MainActor in
+            await viewModel.selectTimeRange(.month)
+        }
+        await waitForDashboardTestCondition {
+            viewModel.selectedTimeRange == .month
+        }
+
+        let finalDaySelection = Task { @MainActor in
+            await viewModel.selectTimeRange(.day)
+        }
+        await waitForDashboardTestCondition {
+            viewModel.selectedTimeRange == .day
+        }
+
+        // All selectors must still be waiting on the original cancelled task;
+        // Week and Month may not start a competing generation.
+        #expect(generator.generatedRanges == [.day])
+        #expect(generator.maximumConcurrentGenerationCount == 1)
+
+        generator.resumeGeneration(
+            at: 0,
+            with: makeDashboardLocalizedResult(summary: "Stale Day")
+        )
+        await waitForDashboardTestCondition {
+            generator.generatedRanges.count == 2
+        }
+
+        #expect(generator.generatedRanges == [.day, .day])
+        #expect(generator.maximumConcurrentGenerationCount == 1)
+
+        generator.resumeGeneration(
+            at: 1,
+            with: makeDashboardLocalizedResult(summary: "Current Day")
+        )
+        await initialDay.value
+        await weekSelection.value
+        await monthSelection.value
+        await finalDaySelection.value
+
+        #expect(viewModel.state == .loaded)
+        #expect(viewModel.generatedInsight?.summary == "Current Day")
+        #expect(viewModel.selectedTimeRange == .day)
+        #expect(generator.maximumConcurrentGenerationCount == 1)
+    }
+
     @Test("Cancellation releases the session and publishes no late result")
     func cancellationReleasesSession() async {
         let generator = DashboardInsightGeneratorFake(behaviors: [.suspended])
@@ -453,6 +529,8 @@ final class DashboardInsightGeneratorFake: AppleLocalizedInsightGenerating {
     private(set) var generatedRanges: [TimeRange] = []
     private(set) var retryCallCount = 0
     private(set) var releaseCallCount = 0
+    private(set) var maximumConcurrentGenerationCount = 0
+    private var concurrentGenerationCount = 0
 
     init(
         behaviors: [DashboardInsightGeneratorBehavior],
@@ -470,6 +548,14 @@ final class DashboardInsightGeneratorFake: AppleLocalizedInsightGenerating {
         let callIndex = generatedEntries.count
         generatedEntries.append(entries)
         generatedRanges.append(range)
+        concurrentGenerationCount += 1
+        maximumConcurrentGenerationCount = max(
+            maximumConcurrentGenerationCount,
+            concurrentGenerationCount
+        )
+        defer {
+            concurrentGenerationCount -= 1
+        }
 
         guard behaviors.indices.contains(callIndex) else {
             throw AppleAnalyticsGenerationError.generationFailed(.unavailableRuntime)
