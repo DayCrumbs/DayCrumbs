@@ -124,30 +124,42 @@ private struct MoodExpressionButton: View {
     let gender: ChildGender
     let selectMood: () -> Void
     let showMoodAlert: () -> Void
-    
-    // Ubah dari @GestureState menjadi @State biasa
+
     @State private var isPressed = false
-    
+
     var body: some View {
-        VStack(spacing: 10) {
-            Image(mood.expressionImageName(for: gender))
-                .resizable()
-                .scaledToFit()
-                .frame(height: 132)
-                .accessibilityHidden(true)
-            
-            Text(mood.rawValue.capitalized)
-                .font(.system(.headline, design: .rounded).weight(.semibold))
-                .foregroundStyle(AppColour.txtCoklat)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
-                .background(AppColour.btnKuning)
-                .clipShape(Capsule())
+        ZStack(alignment: .bottom) {
+            // 1. Background utama kartu (kuning)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(AppColour.btnKuning)
+
+            VStack(spacing: 0) {
+                // 2. Kotak putih di bagian atas untuk wajah anak
+                ZStack(alignment: .bottom) {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(AppColour.bgPutih)
+                    
+                    Image(mood.expressionImageName(for: gender))
+                        .resizable()
+                        .scaledToFit()
+                        .padding(.top, 12)
+                        .padding(.horizontal, 4)
+                        .accessibilityHidden(true)
+                }
+                .padding([.top, .horizontal], 6)
+
+                // 3. Area teks mood di bagian bawah
+                Text(mood.rawValue.capitalized)
+                    .font(.system(.title3, design: .rounded).weight(.bold))
+                    .foregroundStyle(AppColour.txtCoklat)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+            }
         }
-        .frame(maxWidth: .infinity)
-        .contentShape(Rectangle())
+        .frame(height: 180)
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         
-        // 1. Terapkan efek visual berdasarkan state
+        // Efek visual saat ditekan / ditahan
         .opacity(isPressed ? 0.6 : 1.0)
         .scaleEffect(isPressed ? 0.95 : 1.0)
         .animation(.easeInOut(duration: 0.2), value: isPressed)
