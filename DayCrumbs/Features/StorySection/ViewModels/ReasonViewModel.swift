@@ -13,6 +13,10 @@ final class ReasonViewModel {
         }
     }
     var navigationRoute: StoryFlowRoute?
+    
+    init(initialText: String = "") {
+        self.discussionText = initialText
+    }
 
     var discussionCharacterCount: Int {
         discussionText.count
