@@ -10,7 +10,7 @@ import SwiftUI
 struct CircularBackButton: View {
     enum ButtonStyle {
         case yellowBtn
-        case whiteBtn
+        case brownBtn
     }
     
     var style: ButtonStyle = .yellowBtn
@@ -21,8 +21,8 @@ struct CircularBackButton: View {
         switch style {
         case .yellowBtn:
             return AppColour.btnKuning
-        case .whiteBtn:
-            return AppColour.btnPutih
+        case .brownBtn:
+            return AppColour.btnCoklat .opacity(0.45)
         }
     }
     
@@ -31,8 +31,8 @@ struct CircularBackButton: View {
         switch style {
         case .yellowBtn:
             return AppColour.chevPutih
-        case .whiteBtn:
-            return AppColour.chevKuning
+        case .brownBtn:
+            return AppColour.chevPutih
         }
     }
     
@@ -62,7 +62,7 @@ struct CircularBackButton: View {
                 print("Tombol kuning ditekan")
             })
             
-            CircularBackButton(style: .whiteBtn, action: {
+            CircularBackButton(style: .brownBtn, action: {
                 print("Tombol putih ditekan")
             })
         }

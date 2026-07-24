@@ -29,11 +29,11 @@ struct OnboardingView: View {
                 }) {
                     Text("Start The Story")
                         .font(.system(.title2, design: .rounded).weight(.bold))
-                        .foregroundColor(AppColour.txtCoklat)
+                        .foregroundColor(AppColour.txtPutih)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 20)
                 }
-                .background(AppColour.btnKuning)
+                .background(AppColour.btnCoklat)
                 .clipShape(Capsule())
                 .frame(maxWidth: 500)
                 .padding(.top, 80)

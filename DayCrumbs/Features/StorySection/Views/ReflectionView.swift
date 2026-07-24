@@ -134,7 +134,7 @@ struct ReflectionView: View {
             .padding(.bottom, 26)
             
             HStack {
-                CircularBackButton(style: .whiteBtn) {
+                CircularBackButton(style: .brownBtn) {
                     storyFlow.goBack()
                 }
                 .scaleEffect(0.7)
@@ -197,14 +197,13 @@ struct ReflectionView: View {
         Button(action: saveReflectionAndFinish) {
             Image(systemName: "checkmark")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(viewModel.isReflectionReady ? AppColour.txtCoklat : AppColour.txtCoklat.opacity(0.35))
+                .foregroundStyle(AppColour.txtPutih)
                 .frame(width: 34, height: 34)
-                .background(AppColour.bgPutih)
+                .background (
+                    AppColour.btnCoklat
+                        .opacity(viewModel.isReflectionReady ? 1.0 : 0.45)
+                )
                 .clipShape(Circle())
-                .overlay {
-                    Circle()
-                    .stroke(AppColour.txtCoklat.opacity(viewModel.isReflectionReady ? 0.8 : 0.3), lineWidth: 2)
-                }
         }
         .buttonStyle(.plain)
         .disabled(!viewModel.isReflectionReady)

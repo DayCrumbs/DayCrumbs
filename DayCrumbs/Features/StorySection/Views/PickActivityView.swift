@@ -28,7 +28,7 @@ struct PickActivityView: View {
                           for: .activity,
                           gender: storyFlow.childGender
                       ),
-                      text: "Let's tell today's story together!\nWhat was your child doing?"
+                      text: "Awesome! Keep the story going.\nWhat were you doing here?"
                   )
                   .frame(maxWidth: .infinity, maxHeight: .infinity)
                   

@@ -66,7 +66,7 @@ struct ChildProfileSetupView: View {
                                 .padding(.top, 12)
                             
                             VStack(alignment: .leading, spacing: 6) {
-                                TextField("What is your name", text: $viewModel.childName)
+                                TextField("What is your name?", text: $viewModel.childName)
                                     .focused($focusedField, equals: .name)
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 12)
@@ -96,7 +96,7 @@ struct ChildProfileSetupView: View {
                                 .padding(.top, 12)
                             
                             VStack(alignment: .leading, spacing: 6) {
-                                TextField("How old are you", text: $viewModel.childAgeText)
+                                TextField("How old are you?", text: $viewModel.childAgeText)
                                     .focused($focusedField, equals: .age)
                                     .keyboardType(.numberPad)
                                     .padding(.horizontal, 16)
@@ -146,11 +146,11 @@ struct ChildProfileSetupView: View {
                         }) {
                             Text("Save Profile")
                                 .font(.system(.title3, design: .rounded).weight(.bold))
-                                .foregroundColor(AppColour.txtCoklat)
+                                .foregroundColor(AppColour.txtPutih)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
                                 .background(
-                                    AppColour.btnPutih.opacity(viewModel.isFormValid ? 1 : 0.45)
+                                    AppColour.btnCoklat.opacity(viewModel.isFormValid ? 1 : 0.45)
                                 )
                                 .clipShape(Capsule())
                         }
@@ -220,9 +220,11 @@ struct ChildProfileSetupView: View {
                 .foregroundColor(AppColour.txtCoklat)
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 44)
-                .contentShape(Rectangle()) // <--- TAMBAHKAN BARIS INI
-                .background(isSelected ? AppColour.btnPutih : Color.clear)
-                .clipShape(Capsule())
+                .contentShape(Rectangle())
+                .overlay(
+                    Capsule()
+                        .stroke(isSelected ? AppColour.btnCoklat : Color.clear, lineWidth: 2)
+                )
         }
         .buttonStyle(.plain)
         .accessibilityValue(isSelected ? "Selected" : "Not selected")

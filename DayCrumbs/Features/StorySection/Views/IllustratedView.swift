@@ -83,10 +83,10 @@ struct IllustratedView: View {
                     .accessibilityHidden(true)
             }
             .font(.system(.headline, design: .rounded).weight(.semibold))
-            .foregroundStyle(AppColour.txtCoklat)
+            .foregroundStyle(AppColour.txtPutih)
             .padding(.horizontal, 24)
             .frame(minHeight: 48)
-            .background(AppColour.bgPutih)
+            .background(AppColour.btnCoklat)
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -137,9 +137,9 @@ struct IllustratedView: View {
         Button(action: action) {
             Text(title)
                 .font(.system(.headline, design: .rounded).weight(.semibold))
-                .foregroundStyle(AppColour.txtCoklat)
+                .foregroundStyle(AppColour.txtPutih)
                 .frame(maxWidth: .infinity, minHeight: 54)
-                .background(AppColour.bgPutih)
+                .background(AppColour.btnCoklat)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)

@@ -85,7 +85,7 @@ struct SelectionSlider<T: Hashable>: View {
         }) {
             VStack(spacing: 6) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 2)
+                    RoundedRectangle(cornerRadius: 30)
                         .fill(AppColour.cardKuning.opacity(selectedItem == item ? 1.0 : 0.72))
 
                     if let imageName = itemImageName?(item), !imageName.isEmpty {
@@ -93,7 +93,7 @@ struct SelectionSlider<T: Hashable>: View {
                             .resizable()
                             .scaledToFill()
                             .frame(width: width, height: height)
-                            .clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: 30))
                             .accessibilityHidden(true)
                     }
 

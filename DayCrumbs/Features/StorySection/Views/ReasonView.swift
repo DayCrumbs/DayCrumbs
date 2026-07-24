@@ -179,9 +179,9 @@ struct ReasonView: View {
             } label: {
                 Text("Save Discussion")
                     .font(.system(.headline, design: .rounded).weight(.semibold))
-                    .foregroundStyle(AppColour.txtCoklat)
+                    .foregroundStyle(AppColour.txtPutih)
                     .frame(maxWidth: .infinity, minHeight: 46)
-                    .background(AppColour.bgPutih)
+                    .background(AppColour.btnCoklat)
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
@@ -275,7 +275,7 @@ struct ReasonView: View {
                 .font(.system(.headline, design: .rounded).weight(.semibold))
                 .foregroundStyle(AppColour.txtCoklat)
                 .frame(maxWidth: .infinity, minHeight: 46)
-                .background(AppColour.bgPutih)
+                .background(AppColour.btnPutih)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)

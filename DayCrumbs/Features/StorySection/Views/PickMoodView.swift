@@ -2,12 +2,12 @@ import SwiftUI
 
 struct PickMoodView: View {
     @Environment(StoryFlowCoordinator.self) private var storyFlow
-
+    
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
     let selectedActivity: Activity.BuiltInActivity
     @State private var viewModel = PickMoodViewModel()
-
+    
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
@@ -20,9 +20,9 @@ struct PickMoodView: View {
                         )
                     ]
                 )
-                    .ignoresSafeArea()
-                    .accessibilityHidden(true)
-
+                .ignoresSafeArea()
+                .accessibilityHidden(true)
+                
                 VStack(spacing: 0) {
                     QuestionCharacterBubble(
                         characterImageName: StoryCharacterAsset.imageName(
@@ -31,51 +31,46 @@ struct PickMoodView: View {
                         ),
                         characterHeightRatio: 1084.0 / 655.0,
                         title: moodQuestionTitle,
-                        subtitle: "Pick a face that looks like how you felt.",
-                        accessibilityLabel: "How did you feel when you \(viewModel.activityPastTense(selectedActivity))? Pick a face that looks like how you felt."
+                        subtitle: "Pick a face that looks like how you felt.You can also hold any emotion to learn more about it.",
+                        accessibilityLabel: "How did you feel when you \(viewModel.activityPastTense(selectedActivity))? Pick a face that looks like how you felt.You can also hold any emotion to learn more about it."
                     )
                     .frame(height: proxy.size.height * 0.60)
-
+                    
                     HStack(alignment: .top, spacing: 0) {
                         Spacer()
                             .frame(width: proxy.size.width * 0.47)
-
+                        
                         VStack(spacing: 0) {
                             moodGrid
                                 .offset(y: -84)
                                 .padding(.bottom, -84)
-
-                            Text("Hold any emotion to learn more about it")
-                                .font(.system(.subheadline, design: .rounded))
-                                .foregroundStyle(AppColour.txtCoklat.opacity(0.9))
-                                .padding(.horizontal, 28)
-                                .padding(.vertical, 12)
-                                .background(AppColour.bgPutih)
-                                .clipShape(Capsule())
-                                .padding(.top, 20)
+                            
                         }
                         .frame(width: proxy.size.width * 0.47)
-
+                        
                         Spacer(minLength: 0)
                     }
                     .frame(height: proxy.size.height * 0.40, alignment: .top)
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
-
+                
                 CircularBackButton(style: .yellowBtn) {
                     storyFlow.goBack()
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
                 .accessibilityHidden(viewModel.moodAlert != nil)
-
+                
                 if let moodAlert = viewModel.moodAlert {
                     Color.black.opacity(0.18)
                         .ignoresSafeArea()
                         .accessibilityHidden(true)
                         .transition(.opacity)
-
-                    MoodAlertView(mood: moodAlert) {
+                    
+                    MoodAlertView(
+                        mood: moodAlert,
+                        gender: storyFlow.childGender
+                    ) {
                         viewModel.dismissMoodAlert()
                     }
                     .frame(
@@ -90,7 +85,7 @@ struct PickMoodView: View {
         }
         .navigationBarBackButtonHidden(true)
     }
-
+    
     private var moodGrid: some View {
         LazyVGrid(
             columns: [
@@ -118,7 +113,7 @@ struct PickMoodView: View {
         }
         .padding(.horizontal, 8)
     }
-
+    
     private var moodQuestionTitle: Text {
         Text("How did you feel when you \(Text(viewModel.activityPastTense(selectedActivity)).underline())?")
     }
@@ -129,10 +124,10 @@ private struct MoodExpressionButton: View {
     let gender: ChildGender
     let selectMood: () -> Void
     let showMoodAlert: () -> Void
-
+    
     // Ubah dari @GestureState menjadi @State biasa
     @State private var isPressed = false
-
+    
     var body: some View {
         VStack(spacing: 10) {
             Image(mood.expressionImageName(for: gender))
@@ -140,7 +135,7 @@ private struct MoodExpressionButton: View {
                 .scaledToFit()
                 .frame(height: 132)
                 .accessibilityHidden(true)
-
+            
             Text(mood.rawValue.capitalized)
                 .font(.system(.headline, design: .rounded).weight(.semibold))
                 .foregroundStyle(AppColour.txtCoklat)

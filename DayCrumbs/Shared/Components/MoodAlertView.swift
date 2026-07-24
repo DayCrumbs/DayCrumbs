@@ -2,12 +2,22 @@ import SwiftUI
 
 struct MoodAlertView: View {
     let mood: Moods
+    let gender: ChildGender 
     let dismiss: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
+            
+            // --- BAGIAN GAMBAR WAJAH ANAK ---
+            Image(mood.expressionImageName(for: gender))
+                .resizable()
+                .scaledToFit()
+                .frame(height: 160)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityHidden(true)
+            
             Text(mood.alertTitle)
-                .font(.system(size: 34, design: .rounded).weight(.bold))
+                .font(.system(size: 26, design: .rounded).weight(.bold))
                 .foregroundStyle(AppColour.txtCoklat)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -25,9 +35,9 @@ struct MoodAlertView: View {
             Button(action: dismiss) {
                 Text("Done")
                     .font(.system(.title2, design: .rounded).weight(.bold))
-                    .foregroundStyle(AppColour.txtCoklat)
+                    .foregroundStyle(AppColour.txtPutih)
                     .frame(maxWidth: .infinity, minHeight: 64)
-                    .background(AppColour.btnKuning)
+                    .background(AppColour.btnCoklat)
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
@@ -36,7 +46,7 @@ struct MoodAlertView: View {
             .accessibilityHint("Closes the mood information.")
         }
         .padding(42)
-        .frame(maxWidth: 620, alignment: .leading)
+        .frame(maxWidth: 420, alignment: .leading)
         .background(AppColour.bgPutih)
         .clipShape(RoundedRectangle(cornerRadius: 44, style: .continuous))
         .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
