@@ -19,6 +19,18 @@ struct DashboardView: View {
     /// Remembers which trigger opened the detail so modal dismissal can restore
     /// VoiceOver to the originating chip in the next presentation step.
     @State private var triggerFocusReturnTarget: String?
+
+    /// Tracks which bar segments show their count annotation.
+    /// `.none` means all counts are hidden.
+    /// `.segment(id)` shows only that specific segment (from bar tap).
+    /// `.mood(mood)` shows all segments of that mood (from legend tap).
+    @State private var chartSelection: ChartSelection = .none
+
+    private enum ChartSelection: Equatable {
+        case none
+        case segment(String)
+        case mood(Moods)
+    }
     
     init(modelContext: ModelContext) {
         let translationTaskHost = AppleTranslationTaskHost()
@@ -260,10 +272,13 @@ struct DashboardView: View {
                 .foregroundStyle(moodBarColour(for: segment.mood))
                 .cornerRadius(4)
                 .annotation(position: .overlay) {
-                    Text("\(segment.count)")
-                        .font(.system(.caption2, design: .rounded).weight(.bold))
-                        .foregroundStyle(AppColour.txtCoklat)
-                        .accessibilityHidden(true)
+                    if shouldShowCount(for: segment) {
+                        Text("\(segment.count)")
+                            .font(.system(.caption2, design: .rounded).weight(.bold))
+                            .foregroundStyle(AppColour.txtCoklat)
+                            .accessibilityHidden(true)
+                            .transition(.opacity)
+                    }
                 }
             }
             .chartLegend(.hidden)
@@ -292,6 +307,21 @@ struct DashboardView: View {
                     .padding(.top, 6)
                     .padding(.bottom, 10)
             }
+            .chartOverlay { chartProxy in
+                GeometryReader { geometryProxy in
+                    Rectangle()
+                        .fill(.clear)
+                        .contentShape(Rectangle())
+                        .onTapGesture { location in
+                            selectMood(
+                                at: location,
+                                chartProxy: chartProxy,
+                                geometryProxy: geometryProxy
+                            )
+                        }
+                        .accessibilityHidden(true)
+                }
+            }
             .transaction { transaction in
                 transaction.animation = nil
             }
@@ -304,27 +334,118 @@ struct DashboardView: View {
         }
         .frame(height: height)
     }
+
+    private func selectMood(
+        at location: CGPoint,
+        chartProxy: ChartProxy,
+        geometryProxy: GeometryProxy
+    ) {
+        guard let plotFrameAnchor = chartProxy.plotFrame else { return }
+
+        let plotFrame = geometryProxy[plotFrameAnchor]
+        guard plotFrame.contains(location) else { return }
+
+        let plotLocation = CGPoint(
+            x: location.x - plotFrame.minX,
+            y: location.y - plotFrame.minY
+        )
+        guard
+            let timeLabel: String = chartProxy.value(atX: plotLocation.x),
+            let count: Double = chartProxy.value(atY: plotLocation.y),
+            let barCenterX = chartProxy.position(forX: timeLabel)
+        else {
+            return
+        }
+
+        let categoryWidth = plotFrame.width
+            / CGFloat(max(1, Set(viewModel.currentMoodBarData.map(\.timeLabel)).count))
+        let barHalfWidth = categoryWidth * 0.55 / 2
+        guard abs(plotLocation.x - barCenterX) <= barHalfWidth else { return }
+
+        let segments = viewModel.currentMoodBarData.filter {
+            $0.timeLabel == timeLabel
+        }
+        var cumulativeCount = 0.0
+        let tappedSegment = segments.first { segment in
+            cumulativeCount += Double(segment.count)
+            return count <= cumulativeCount
+        }
+
+        guard let tappedSegment else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if chartSelection == .segment(tappedSegment.id) {
+                chartSelection = .none
+            } else {
+                chartSelection = .segment(tappedSegment.id)
+            }
+        }
+    }
+
+    private func shouldShowCount(for segment: MoodBarChartSegment) -> Bool {
+        switch chartSelection {
+        case .none:
+            return false
+        case .segment(let id):
+            return segment.id == id
+        case .mood(let mood):
+            return segment.mood == mood
+        }
+    }
     
     private var moodChartLegend: some View {
-        VStack(alignment: .trailing, spacing: 12) {
+        VStack(alignment: .trailing, spacing: 14) {
             ForEach(moodLegendOrder, id: \.self) { mood in
-                HStack(spacing: 8) {
-                    Image(mood.expressionImageName(for: storyFlow.childGender))
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 38, height: 38)
-                        .accessibilityHidden(true)
-                    
-                    Circle()
-                        .fill(moodBarColour(for: mood))
-                        .frame(width: 14, height: 14)
-                        .accessibilityHidden(true)
+                Button {
+                    toggleMoodSegments(mood)
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(mood.expressionImageName(for: storyFlow.childGender))
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 48, height: 48)
+                            .accessibilityHidden(true)
+
+                        Circle()
+                            .fill(moodBarColour(for: mood))
+                            .frame(width: 18, height: 18)
+                            .accessibilityHidden(true)
+                    }
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 8)
+                    .background {
+                        if isMoodSelected(mood) {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(moodBarColour(for: mood).opacity(0.18))
+                                .accessibilityHidden(true)
+                        }
+                    }
                 }
+                .buttonStyle(.plain)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(mood.accessibilityLabel) colour")
+                .accessibilityHint(
+                    isMoodSelected(mood)
+                        ? "Hides count for \(mood.accessibilityLabel)."
+                        : "Shows count for \(mood.accessibilityLabel) on the chart."
+                )
+                .accessibilityAddTraits(.isButton)
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    private func toggleMoodSegments(_ mood: Moods) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if chartSelection == .mood(mood) {
+                chartSelection = .none
+            } else {
+                chartSelection = .mood(mood)
+            }
+        }
+    }
+
+    private func isMoodSelected(_ mood: Moods) -> Bool {
+        chartSelection == .mood(mood)
     }
     
     private var moodLegendOrder: [Moods] {
