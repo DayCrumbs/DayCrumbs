@@ -8,19 +8,22 @@ struct ReasonView: View {
     let selectedPlace: Place.BuiltInPlace
     let selectedActivity: Activity.BuiltInActivity
     let selectedMood: Moods
-    @State private var viewModel = ReasonViewModel()
+    @State private var viewModel: ReasonViewModel
     @State private var isKeyboardVisible = false
 
     init(
         selectedSession: Sessions,
         selectedPlace: Place.BuiltInPlace,
         selectedActivity: Activity.BuiltInActivity,
-        selectedMood: Moods
+        selectedMood: Moods,
+        initialText: String = ""
     ) {
         self.selectedSession = selectedSession
         self.selectedPlace = selectedPlace
         self.selectedActivity = selectedActivity
         self.selectedMood = selectedMood
+        
+        _viewModel = State(initialValue: ReasonViewModel(initialText: initialText))
     }
 
     var body: some View {
@@ -53,6 +56,14 @@ struct ReasonView: View {
             .animation(.easeInOut(duration: 0.22), value: isKeyboardVisible)
         }
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            if viewModel.discussionText.isEmpty && !storyFlow.cachedDiscussionText.isEmpty {
+                viewModel.discussionText = storyFlow.cachedDiscussionText
+            }
+        }
+        .onChange(of: viewModel.discussionText) { _, newValue in
+            storyFlow.updateDiscussionCache(newValue)
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             isKeyboardVisible = true
         }
