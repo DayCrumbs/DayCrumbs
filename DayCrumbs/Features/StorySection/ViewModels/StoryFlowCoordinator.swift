@@ -25,6 +25,7 @@ final class StoryFlowCoordinator {
     var childGender: ChildGender = .girl
     var disabledSessions: Set<Sessions> = []
     var errorMessage: String?
+    var cachedDiscussionText: String = ""
 
     private var childProfile: ChildProfile?
     private var repository: StoryFlowRepositoryProtocol?
@@ -68,6 +69,7 @@ final class StoryFlowCoordinator {
             disabledSessions = []
             currentActivityDraft = nil
             currentActivityIsPersisted = false
+            cachedDiscussionText = ""
             errorMessage = nil
             root = .dashboard
             navigationPath = [.sessionOption]
@@ -85,12 +87,14 @@ final class StoryFlowCoordinator {
 
         currentActivityDraft = nil
         currentActivityIsPersisted = false
+        cachedDiscussionText = ""
         navigationPath = [.sessionOption]
     }
 
     func returnToDashboard() {
         currentActivityDraft = nil
         currentActivityIsPersisted = false
+        cachedDiscussionText = ""
         navigationPath = []
         root = childProfile == nil ? .onboarding : .dashboard
     }
@@ -132,6 +136,10 @@ final class StoryFlowCoordinator {
     ) {
         navigationPath.append(.reason(session, place, activity, mood))
     }
+    
+    func updateDiscussionCache(_ text: String) {
+        cachedDiscussionText = text
+    }
 
     func continueFromReason(
         session: Sessions,
@@ -157,6 +165,7 @@ final class StoryFlowCoordinator {
         disabledSessions.formUnion(sessions(before: draft.session))
         currentActivityDraft = nil
         currentActivityIsPersisted = false
+        cachedDiscussionText = ""
         navigationPath = [.sessionOption, .pickPlace(draft.session)]
     }
 
@@ -166,6 +175,7 @@ final class StoryFlowCoordinator {
         disabledSessions.formUnion(sessions(through: draft.session))
         currentActivityDraft = nil
         currentActivityIsPersisted = false
+        cachedDiscussionText = ""
         navigationPath = [.sessionOption]
     }
 
@@ -196,6 +206,7 @@ final class StoryFlowCoordinator {
             disabledSessions = []
             currentActivityDraft = nil
             currentActivityIsPersisted = false
+            cachedDiscussionText = ""
             errorMessage = nil
             navigationPath = []
             root = .dashboard
