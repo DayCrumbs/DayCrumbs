@@ -4,6 +4,10 @@ import SwiftUI
 import SwiftData
 
 struct DashboardView: View {
+    #if DEBUG
+    private let showsDevelopmentDataButton = true
+    #endif
+
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
     @Environment(StoryFlowCoordinator.self) private var storyFlow
@@ -37,6 +41,16 @@ struct DashboardView: View {
                 .accessibilityHidden(true)
         )
         .toolbar(.hidden, for: .navigationBar)
+        #if DEBUG
+        .overlay(alignment: .topTrailing) {
+            if showsDevelopmentDataButton {
+                developmentDataButton
+                    .padding(.top, 12)
+                    .padding(.trailing, 16)
+                    .accessibilityHidden(viewModel.selectedTriggerDetail != nil)
+            }
+        }
+        #endif
         .appleTranslationTaskHost(translationTaskHost)
         .onChange(of: viewModel.state) { _, newState in
             postAccessibilityAnnouncement(for: newState)
@@ -463,6 +477,25 @@ struct DashboardView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Add story")
     }
+
+    #if DEBUG
+    private var developmentDataButton: some View {
+        NavigationLink {
+            DevelopmentStoryDataView(modelContext: modelContext)
+        } label: {
+            Label("Story Data", systemImage: "tablecells")
+                .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                .foregroundStyle(AppColour.txtCoklat)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(.regularMaterial)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Open development story data")
+        .accessibilityHint("Shows locally stored story entries in a table.")
+    }
+    #endif
     
     @ViewBuilder
     private var insightContent: some View {
