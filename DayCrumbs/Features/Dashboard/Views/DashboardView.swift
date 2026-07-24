@@ -41,6 +41,19 @@ struct DashboardView: View {
                 executeTranslationBatch: translationTaskHost.batchHandler
             )
         )
+
+        let pickerFont = UIFont.systemFont(ofSize: 17, weight: .semibold)
+        let appearance = UISegmentedControl.appearance()
+        appearance.selectedSegmentTintColor = UIColor(AppColour.btnKuning)
+        appearance.backgroundColor = UIColor(AppColour.btnKuning.opacity(0.2))
+        appearance.setTitleTextAttributes(
+            [.foregroundColor: UIColor(AppColour.txtCoklat), .font: pickerFont],
+            for: .selected
+        )
+        appearance.setTitleTextAttributes(
+            [.foregroundColor: UIColor(AppColour.txtCoklat), .font: pickerFont],
+            for: .normal
+        )
     }
     
     var body: some View {
@@ -209,40 +222,24 @@ struct DashboardView: View {
     }
     
     private var timeRangePicker: some View {
-        HStack(spacing: 0) {
-            ForEach(TimeRange.allCases, id: \.self) { range in
-                Button {
-                    Task {
-                        await viewModel.selectTimeRange(range)
-                    }
-                } label: {
-                    Text(range.rawValue)
-                        .font(.system(.headline, design: .rounded).weight(.semibold))
-                        .foregroundStyle(AppColour.txtCoklat)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .contentShape(Rectangle()) // <--- TAMBAHKAN BARIS INI
-                        .background {
-                            if viewModel.selectedTimeRange == range {
-                                Capsule()
-                                    .fill(AppColour.btnKuning)
-                                    .accessibilityHidden(true)
-                            }
-                        }
+        Picker("Time range", selection: Binding(
+            get: { viewModel.selectedTimeRange },
+            set: { newRange in
+                Task {
+                    await viewModel.selectTimeRange(newRange)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(range.rawValue) range")
-                .accessibilityAddTraits(
-                    viewModel.selectedTimeRange == range ? .isSelected : []
-                )
-                .accessibilityHint(timeRangeAccessibilityHint(for: range))
+            }
+        )) {
+            ForEach(TimeRange.allCases, id: \.self) { range in
+                Text(range.rawValue)
+                    .tag(range)
+                    .accessibilityLabel("\(range.rawValue) range")
+                    .accessibilityHint(timeRangeAccessibilityHint(for: range))
             }
         }
-        .padding(2)
-        .background {
-            Capsule()
-                .fill(AppColour.btnKuning.opacity(0.18))
-                .accessibilityHidden(true)
-        }
+        .pickerStyle(.segmented)
+        .controlSize(.extraLarge)
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
     }
     
@@ -703,9 +700,8 @@ struct DashboardView: View {
     
 }
 
-//#Preview {
-//    NavigationStack {
-//        DashboardView()
-//    }
-//    .environment(StoryFlowCoordinator())
-//}
+/*
+#Preview {
+
+}
+*/
