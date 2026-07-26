@@ -10,6 +10,7 @@ struct DashboardView: View {
 
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(StoryFlowCoordinator.self) private var storyFlow
     
     @AccessibilityFocusState private var accessibilityFocus: DashboardAccessibilityFocus?
@@ -141,7 +142,9 @@ struct DashboardView: View {
     @ViewBuilder
     private func dashboardContent(in size: CGSize) -> some View {
         Group {
-            if size.width >= 900 {
+            if dynamicTypeSize.isAccessibilitySize {
+                accessibilityDashboard(in: size)
+            } else if size.width >= 900 {
                 wideDashboard(in: size)
             } else {
                 compactDashboard(in: size)
@@ -188,6 +191,27 @@ struct DashboardView: View {
         .padding(.top, topInset)
         .padding(.horizontal, horizontalInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func accessibilityDashboard(in size: CGSize) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 32) {
+                insightSection
+
+                timeRangePicker
+
+                moodChart(height: max(420, size.height * 0.48))
+                    // The chart already has a complete spoken descriptor. Capping
+                    // its visual labels prevents axes from consuming the plot.
+                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+
+                commonTriggersCard(height: nil)
+
+                addStoryButton
+            }
+            .padding(.horizontal, max(24, size.width * 0.05))
+            .padding(.vertical, 32)
+        }
     }
     
     private func compactDashboard(in size: CGSize) -> some View {
@@ -467,7 +491,7 @@ struct DashboardView: View {
         }
     }
     
-    private func commonTriggersCard(height: CGFloat) -> some View {
+    private func commonTriggersCard(height: CGFloat?) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Common Triggers")
                 .font(.system(.title3, design: .rounded).weight(.bold))
@@ -485,38 +509,14 @@ struct DashboardView: View {
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("No repeated triggers yet.")
             } else {
-                ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(spacing: 14) {
-                        ForEach(viewModel.commonTriggers, id: \.self) { trigger in
-                            Button {
-                                triggerFocusReturnTarget = trigger
-                                viewModel.selectTrigger(trigger)
-                            } label: {
-                                Text(trigger)
-                                    .font(.system(.body, design: .rounded))
-                                    .foregroundStyle(AppColour.txtCoklat)
-                                    .lineLimit(1)
-                                    .frame(maxWidth: .infinity, minHeight: 44)
-                                    .padding(.horizontal, 12)
-                                    .overlay {
-                                        Capsule()
-                                            .stroke(AppColour.btnKuning, lineWidth: 1.5)
-                                            .accessibilityHidden(true)
-                                    }
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("\(trigger), common trigger")
-                            .accessibilityHint(
-                                "Shows explanation, evidence, and recommended activities."
-                            )
-                            .accessibilityFocused(
-                                $accessibilityFocus,
-                                equals: .trigger(trigger)
-                            )
-                        }
+                if dynamicTypeSize.isAccessibilitySize {
+                    triggerButtons
+                } else {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        triggerButtons
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             
             if viewModel.commonTriggers.isEmpty {
@@ -535,6 +535,40 @@ struct DashboardView: View {
         // Exclude the card wrapper as a readable leaf without hiding its
         // heading, empty message, or trigger buttons from VoiceOver.
         .accessibilityElement(children: .contain)
+    }
+
+    private var triggerButtons: some View {
+        LazyVStack(spacing: 14) {
+            ForEach(viewModel.commonTriggers, id: \.self) { trigger in
+                Button {
+                    triggerFocusReturnTarget = trigger
+                    viewModel.selectTrigger(trigger)
+                } label: {
+                    Text(trigger)
+                        .font(.system(.body, design: .rounded))
+                        .foregroundStyle(AppColour.txtCoklat)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 10 : 0)
+                        .overlay {
+                            Capsule()
+                                .stroke(AppColour.btnKuning, lineWidth: 1.5)
+                                .accessibilityHidden(true)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(trigger), common trigger")
+                .accessibilityHint(
+                    "Shows explanation, evidence, and recommended activities."
+                )
+                .accessibilityFocused(
+                    $accessibilityFocus,
+                    equals: .trigger(trigger)
+                )
+            }
+        }
     }
     
     /// Moves VoiceOver only when trigger detail is presented or dismissed.
@@ -601,13 +635,21 @@ struct DashboardView: View {
         NavigationLink {
             DevelopmentStoryDataView(modelContext: modelContext)
         } label: {
-            Label("Story Data", systemImage: "tablecells")
-                .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                .foregroundStyle(AppColour.txtCoklat)
-                .padding(.horizontal, 14)
-                .frame(minHeight: 44)
-                .background(.regularMaterial)
-                .clipShape(Capsule())
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    Image(systemName: "tablecells")
+                        .font(.title2.weight(.semibold))
+                        .frame(width: 52, height: 52)
+                } else {
+                    Label("Story Data", systemImage: "tablecells")
+                        .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                }
+            }
+            .foregroundStyle(AppColour.txtCoklat)
+            .background(.regularMaterial)
+            .clipShape(Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Open development story data")
