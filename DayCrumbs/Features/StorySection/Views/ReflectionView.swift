@@ -214,20 +214,20 @@ struct ReflectionView: View {
                 .accessibilityLabel("End-of-day reflection")
                 .accessibilityHint("Required. Describe the day before finishing the session.")
             
-            Button {
-                // Voice-to-text will be added after the MVP.
-            } label: {
-                Image(systemName: "mic")
-                    .font(.system(.caption, design: .rounded).weight(.medium))
-                    .foregroundStyle(AppColour.txtCoklat)
-                    .frame(width: 28, height: 28)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Voice input")
-            .accessibilityHint("Voice-to-text is coming after the MVP.")
-            .padding(.trailing, 10)
-            .padding(.bottom, 8)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+//            Button {
+//                // Voice-to-text will be added after the MVP.
+//            } label: {
+//                Image(systemName: "mic")
+//                    .font(.system(.caption, design: .rounded).weight(.medium))
+//                    .foregroundStyle(AppColour.txtCoklat)
+//                    .frame(width: 28, height: 28)
+//            }
+//            .buttonStyle(.plain)
+//            .accessibilityLabel("Voice input")
+//            .accessibilityHint("Voice-to-text is coming after the MVP.")
+//            .padding(.trailing, 10)
+//            .padding(.bottom, 8)
+//            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

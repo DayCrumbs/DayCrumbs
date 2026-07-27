@@ -329,17 +329,17 @@ struct ReasonView: View {
                         "\(viewModel.discussionCharacterCount) of \(viewModel.discussionCharacterLimit) characters"
                     )
 
-                Button {
-                    // Voice-to-text will be added after the MVP.
-                } label: {
-                    Image(systemName: "mic")
-                        .font(.system(.body, design: .rounded).weight(.medium))
-                        .foregroundStyle(AppColour.txtCoklat)
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Voice input")
-                .accessibilityHint("Voice-to-text is coming after the MVP.")
+//                Button {
+//                    // Voice-to-text will be added after the MVP.
+//                } label: {
+//                    Image(systemName: "mic")
+//                        .font(.system(.body, design: .rounded).weight(.medium))
+//                        .foregroundStyle(AppColour.txtCoklat)
+//                        .frame(width: 28, height: 28)
+//                }
+//                .buttonStyle(.plain)
+//                .accessibilityLabel("Voice input")
+//                .accessibilityHint("Voice-to-text is coming after the MVP.")
             }
             .padding(.trailing, 14)
             .padding(.bottom, 10)
