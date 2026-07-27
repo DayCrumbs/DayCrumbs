@@ -14,6 +14,9 @@ struct StoryFlowAlertAction {
 
 /// A small, blocking confirmation dialog shared by the story flow.
 struct StoryFlowAlert: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @AccessibilityFocusState private var isTitleFocused: Bool
+
     let title: String
     let message: String?
     let actions: [StoryFlowAlertAction]
@@ -28,6 +31,7 @@ struct StoryFlowAlert: View {
                     alignment: message == nil ? .center : .leading
                 )
                 .accessibilityAddTraits(.isHeader)
+                .accessibilityFocused($isTitleFocused)
 
             if let message {
                 Text(message)
@@ -39,19 +43,34 @@ struct StoryFlowAlert: View {
             actionButtons
                 .padding(.top, 8)
         }
-        .padding(24)
-        .frame(maxWidth: 330, alignment: .leading)
+        .padding(dynamicTypeSize.isAccessibilitySize ? 20 : 24)
+        .frame(
+            maxWidth: dynamicTypeSize.isAccessibilitySize ? 480 : 330,
+            alignment: .leading
+        )
         .background(AppColour.bgPutih)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
+        .onAppear {
+            Task { @MainActor in
+                await Task.yield()
+                isTitleFocused = true
+            }
+        }
     }
 
     @ViewBuilder
     private var actionButtons: some View {
         if actions.count == 1, let action = actions.first {
             alertButton(for: action)
+        } else if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: 10) {
+                ForEach(actions.indices, id: \.self) { index in
+                    alertButton(for: actions[index])
+                }
+            }
         } else {
             HStack(spacing: 10) {
                 ForEach(actions.indices, id: \.self) { index in
@@ -67,6 +86,7 @@ struct StoryFlowAlert: View {
                 .font(.system(.headline, design: .rounded).weight(.semibold))
                 .foregroundStyle(foregroundColour(for: action.style))
                 .frame(maxWidth: .infinity, minHeight: 48)
+                .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 6 : 0)
                 .background(backgroundColour(for: action.style))
                 .clipShape(Capsule())
         }

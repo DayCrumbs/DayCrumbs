@@ -3,6 +3,7 @@ import UIKit
 
 struct ReasonView: View {
     @Environment(StoryFlowCoordinator.self) private var storyFlow
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
@@ -45,7 +46,8 @@ struct ReasonView: View {
                 .accessibilityHidden(true)
 
                 Group {
-                    if proxy.size.width >= 760 {
+                    if proxy.size.width >= 760
+                        && !dynamicTypeSize.isAccessibilitySize {
                         wideContent(in: proxy.size)
                     } else {
                         compactContent(in: proxy.size)
@@ -60,6 +62,7 @@ struct ReasonView: View {
                 .padding(.leading, 32)
                 .disabled(isCharacterLimitAlertPresented)
                 .accessibilityHidden(isCharacterLimitAlertPresented)
+                .accessibilityHint("Returns to mood selection.")
 
                 if isCharacterLimitAlertPresented {
                     characterLimitAlert
@@ -146,7 +149,11 @@ struct ReasonView: View {
     private func compactContent(in size: CGSize) -> some View {
         let cardHeight = isKeyboardVisible
             ? min(390, max(280, size.height - 44))
-            : 390
+            : (
+                dynamicTypeSize.isAccessibilitySize
+                    ? max(560, size.height * 0.68)
+                    : 390
+            )
         let cardWidth = min(680, max(size.width * 0.70, size.width - 48))
 
         return ScrollView {
@@ -198,11 +205,13 @@ struct ReasonView: View {
                 .foregroundStyle(AppColour.txtCoklat)
                 .accessibilityAddTraits(.isHeader)
 
-            Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
-                .font(.system(.body, design: .rounded))
-                .foregroundStyle(AppColour.txtCoklat)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+            if !isKeyboardVisible {
+                Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
+                    .font(.system(.body, design: .rounded))
+                    .foregroundStyle(AppColour.txtCoklat)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             discussionEditor
 
@@ -236,7 +245,7 @@ struct ReasonView: View {
                     : "Write a discussion before saving. You can also skip this step."
             )
         }
-        .padding(24)
+        .padding(dynamicTypeSize.isAccessibilitySize ? 20 : 24)
         .background(AppColour.cardKuning)
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
     }

@@ -74,7 +74,7 @@ struct TriggerAlertView: View {
                             .clipShape(Capsule())
                     }
                     .accessibilityLabel("Done")
-                    .accessibilityHint("Closes trigger details.")
+                    .accessibilityHint("Closes emotion cause details.")
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)

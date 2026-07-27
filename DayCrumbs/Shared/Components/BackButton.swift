@@ -50,6 +50,7 @@ struct CircularBackButton: View {
                 .accessibilityHidden(true)
         }
         .accessibilityLabel("Back")
+        .accessibilityHint("Returns to the previous screen.")
     }
 }
 

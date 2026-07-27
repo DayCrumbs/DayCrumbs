@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PickPlaceView: View {
     @Environment(StoryFlowCoordinator.self) private var storyFlow
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let selectedSession: Sessions
 
@@ -25,6 +26,9 @@ struct PickPlaceView: View {
                         text: "Let's tell today's story together!\nWhere did your activity happen?"
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityHint(
+                        "You are adding a story to the \(selectedSession.title.lowercased()) session."
+                    )
                     
                     SelectionSlider(
                         title: "Choose the place where it happened",
@@ -39,7 +43,10 @@ struct PickPlaceView: View {
                         },
                         itemImageName: viewModel.placeImageName(for:)
                     )
-                    .frame(height: proxy.size.height * 0.26)
+                    .frame(
+                        height: proxy.size.height
+                            * (dynamicTypeSize.isAccessibilitySize ? 0.30 : 0.26)
+                    )
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 .accessibilityHidden(isDiscardConfirmationPresented)
@@ -51,6 +58,7 @@ struct PickPlaceView: View {
                 .padding(.leading, 32)
                 .disabled(isDiscardConfirmationPresented)
                 .accessibilityHidden(isDiscardConfirmationPresented)
+                .accessibilityHint("Asks before discarding this story.")
 
                 if isDiscardConfirmationPresented {
                     discardStoryAlert

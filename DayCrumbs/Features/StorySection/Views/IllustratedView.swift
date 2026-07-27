@@ -2,6 +2,7 @@ import SwiftUI
 
 struct IllustratedView: View {
     @Environment(StoryFlowCoordinator.self) private var storyFlow
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
@@ -9,6 +10,7 @@ struct IllustratedView: View {
     let selectedMood: Moods
 
     @State private var viewModel = IllustratedViewModel()
+    @AccessibilityFocusState private var isContinuationTitleFocused: Bool
 
     var body: some View {
         GeometryReader { proxy in
@@ -16,6 +18,13 @@ struct IllustratedView: View {
                 StorySelectionBackground(imageNames: illustratedBackgroundImageNames)
                     .ignoresSafeArea()
                     .accessibilityHidden(true)
+
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(illustrationAccessibilityLabel)
+                    .accessibilityAddTraits(.isImage)
+                    .accessibilityHidden(viewModel.isShowingContinuationCard)
 
                 if viewModel.isShowingContinuationCard {
                     BlurredStorySelectionBackground(imageNames: illustratedBackgroundImageNames)
@@ -29,9 +38,11 @@ struct IllustratedView: View {
                         .onTapGesture { }
                         .accessibilityHidden(true)
 
-                    continuationCard
+                    continuationCard(in: proxy.size)
                         .frame(
-                            width: min(proxy.size.width * 0.58, 620),
+                            width: dynamicTypeSize.isAccessibilitySize
+                                ? min(proxy.size.width - 48, 680)
+                                : min(proxy.size.width * 0.58, 620),
                             alignment: .center
                         )
                         .frame(
@@ -59,10 +70,18 @@ struct IllustratedView: View {
                 .padding(.leading, 32)
                 .disabled(viewModel.isShowingContinuationCard)
                 .accessibilityHidden(viewModel.isShowingContinuationCard)
+                .accessibilityHint("Returns to the discussion.")
             }
             .animation(.easeInOut(duration: 0.22), value: viewModel.isShowingContinuationCard)
         }
         .navigationBarBackButtonHidden(true)
+        .onChange(of: viewModel.isShowingContinuationCard) { _, isPresented in
+            guard isPresented else { return }
+            Task { @MainActor in
+                await Task.yield()
+                isContinuationTitleFocused = true
+            }
+        }
     }
 
     private var illustratedBackgroundImageNames: [String] {
@@ -71,6 +90,20 @@ struct IllustratedView: View {
             activity: selectedActivity,
             gender: storyFlow.childGender
         )
+    }
+
+    private var illustrationAccessibilityLabel: String {
+        "Story illustration. \(formattedStoryValue(selectedActivity.rawValue)) at \(formattedStoryValue(selectedPlace.rawValue)), with a \(selectedMood.rawValue) mood."
+    }
+
+    private func formattedStoryValue(_ value: String) -> String {
+        value
+            .replacingOccurrences(
+                of: "([A-Z])",
+                with: " $1",
+                options: .regularExpression
+            )
+            .capitalized
     }
 
     private var continueButton: some View {
@@ -94,17 +127,21 @@ struct IllustratedView: View {
         .accessibilityHint("Shows options to add another story or finish the session.")
     }
 
-    private var continuationCard: some View {
-        VStack(spacing: 24) {
+    private var continuationCardContent: some View {
+        VStack(spacing: dynamicTypeSize.isAccessibilitySize ? 20 : 24) {
             Text("Did anything else happen this \(Text(selectedSession.title.lowercased()).underline())?")
                 .font(.system(.title2, design: .rounded).weight(.bold))
                 .foregroundStyle(AppColour.txtCoklat)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityFocused($isContinuationTitleFocused)
 
             Text("You can add another activity or finish the session.")
                 .font(.system(.title3, design: .rounded))
                 .foregroundStyle(AppColour.txtCoklat)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
 
             VStack(spacing: 14) {
                 continuationActionButton(title: "Add Another Story", isPrimary: true) {
@@ -120,7 +157,22 @@ struct IllustratedView: View {
                 }
             }
         }
-        .padding(48)
+    }
+
+    @ViewBuilder
+    private func continuationCard(in size: CGSize) -> some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                ScrollView {
+                    continuationCardContent
+                        .padding(30)
+                }
+                .frame(maxHeight: max(280, size.height - 48))
+            } else {
+                continuationCardContent
+                    .padding(48)
+            }
+        }
         .background(AppColour.cardKuning)
         .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
         .accessibilityElement(children: .contain)

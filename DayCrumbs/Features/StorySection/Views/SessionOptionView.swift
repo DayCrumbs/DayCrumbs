@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SessionOptionView: View {
     @Environment(StoryFlowCoordinator.self) private var storyFlow
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         GeometryReader { proxy in
@@ -9,7 +10,8 @@ struct SessionOptionView: View {
                 AppColour.bgPutih
                     .ignoresSafeArea()
 
-                if proxy.size.width >= 760 {
+                if proxy.size.width >= 760
+                    && !dynamicTypeSize.isAccessibilitySize {
                     wideContent(in: proxy.size)
                 } else {
                     compactContent(in: proxy.size)
@@ -20,6 +22,7 @@ struct SessionOptionView: View {
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
+                .accessibilityHint("Returns to the dashboard.")
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -53,6 +56,7 @@ struct SessionOptionView: View {
                     x: -characterWidth * 0.21,
                     y: max(0, size.height - characterHeight - 10)
                 )
+                .accessibilityHidden(true)
 
             VStack(spacing: size.height * 0.023) {
                 HStack(spacing: gridGap) {
@@ -89,17 +93,19 @@ struct SessionOptionView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: min(size.width * 0.58, 320))
+                    .accessibilityHidden(true)
 
                 LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 18),
-                        GridItem(.flexible(), spacing: 18)
-                    ],
+                    columns: sessionGridColumns,
                     spacing: 18
                 ) {
                     ForEach(Sessions.allCases, id: \.self) { session in
                         sessionCard(for: session)
-                            .frame(height: 210)
+                            .frame(
+                                height: dynamicTypeSize.isAccessibilitySize
+                                    ? 260
+                                    : 210
+                            )
                     }
                 }
             }
@@ -107,6 +113,17 @@ struct SessionOptionView: View {
             .padding(.top, 112)
             .padding(.bottom, 32)
         }
+    }
+
+    private var sessionGridColumns: [GridItem] {
+        if dynamicTypeSize.isAccessibilitySize {
+            return [GridItem(.flexible())]
+        }
+
+        return [
+            GridItem(.flexible(), spacing: 18),
+            GridItem(.flexible(), spacing: 18)
+        ]
     }
 
     private func sessionCard(for session: Sessions) -> some View {
@@ -123,6 +140,8 @@ private struct SessionSelectionCard: View {
     @ScaledMetric(relativeTo: .title2) private var titleSize: CGFloat = 36
 
     var body: some View {
+        let responsiveTitleSize = min(44, max(24, titleSize))
+
         Button(action: action) {
             GeometryReader { proxy in
                 let horizontalInset: CGFloat = 6
@@ -141,7 +160,13 @@ private struct SessionSelectionCard: View {
                         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
 
                     Text(session.title)
-                        .font(.system(size: titleSize, design: .rounded).weight(.bold))
+                        .font(
+                            .system(
+                                size: responsiveTitleSize,
+                                design: .rounded
+                            )
+                            .weight(.bold)
+                        )
                         .foregroundStyle(AppColour.txtCoklat)
                         .lineLimit(1)
                         .minimumScaleFactor(0.55)

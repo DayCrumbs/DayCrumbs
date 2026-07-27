@@ -3,6 +3,7 @@ import UIKit
 
 struct ReflectionView: View {
     @Environment(StoryFlowCoordinator.self) private var storyFlow
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
@@ -41,7 +42,8 @@ struct ReflectionView: View {
                     .accessibilityHidden(true)
                 
                 Group {
-                    if proxy.size.width >= 760 {
+                    if proxy.size.width >= 760
+                        && !dynamicTypeSize.isAccessibilitySize {
                         wideContent(in: proxy.size)
                     } else {
                         compactContent(in: proxy.size)
@@ -101,7 +103,11 @@ struct ReflectionView: View {
         let illustrationWidth = isKeyboardVisible ? 0 : min(250, size.width * 0.64)
         let cardHeight = isKeyboardVisible
             ? min(390, max(280, size.height - 36))
-            : 370
+            : (
+                dynamicTypeSize.isAccessibilitySize
+                    ? max(560, size.height * 0.68)
+                    : 370
+            )
         let cardWidth = min(580, max(size.width * 0.82, size.width - 48))
 
         return ScrollView {
@@ -140,11 +146,13 @@ struct ReflectionView: View {
                     .foregroundStyle(AppColour.txtCoklat)
                     .accessibilityAddTraits(.isHeader)
                 
-                Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
-                    .font(.system(.body, design: .rounded))
-                    .foregroundStyle(AppColour.txtCoklat)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
+                if !isKeyboardVisible {
+                    Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
+                        .font(.system(.body, design: .rounded))
+                        .foregroundStyle(AppColour.txtCoklat)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 
                 reflectionEditor
             }
@@ -159,6 +167,7 @@ struct ReflectionView: View {
                 .scaleEffect(0.7)
                 .disabled(viewModel.isDiscardConfirmationPresented)
                 .accessibilityHidden(viewModel.isDiscardConfirmationPresented)
+                .accessibilityHint("Asks before discarding this reflection.")
                 
                 Spacer()
                 
@@ -219,7 +228,7 @@ struct ReflectionView: View {
             Image(systemName: "checkmark")
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(AppColour.txtPutih)
-                .frame(width: 34, height: 34)
+                .frame(width: 44, height: 44)
                 .background (
                     AppColour.btnCoklat
                         .opacity(viewModel.isReflectionReady ? 1.0 : 0.45)
