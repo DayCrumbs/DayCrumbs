@@ -5,17 +5,14 @@ import Observation
 final class ReasonViewModel {
     let discussionCharacterLimit = 1_000
 
-    var discussionText = "" {
-        didSet {
-            if discussionText.count > discussionCharacterLimit {
-                discussionText = String(discussionText.prefix(discussionCharacterLimit))
-            }
-        }
-    }
+    var discussionText = ""
+    var isCharacterLimitAlertPresented = false
     var navigationRoute: StoryFlowRoute?
-    
+
+    private var hasReachedCharacterLimit = false
+
     init(initialText: String = "") {
-        self.discussionText = initialText
+        restoreDiscussionText(initialText)
     }
 
     var discussionCharacterCount: Int {
@@ -24,6 +21,27 @@ final class ReasonViewModel {
 
     var isDiscussionReady: Bool {
         !discussionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    func updateDiscussionText(_ text: String) {
+        let limitedText = String(text.prefix(discussionCharacterLimit))
+        let hasReachedLimit = limitedText.count >= discussionCharacterLimit
+
+        if hasReachedLimit && !hasReachedCharacterLimit {
+            isCharacterLimitAlertPresented = true
+        }
+
+        discussionText = limitedText
+        hasReachedCharacterLimit = hasReachedLimit
+    }
+
+    func restoreDiscussionText(_ text: String) {
+        discussionText = String(text.prefix(discussionCharacterLimit))
+        hasReachedCharacterLimit = discussionText.count >= discussionCharacterLimit
+    }
+
+    func dismissCharacterLimitAlert() {
+        isCharacterLimitAlertPresented = false
     }
 
     func reasonQuestionAccessibilityLabel(for mood: Moods) -> String {

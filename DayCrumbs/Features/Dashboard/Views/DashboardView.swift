@@ -627,7 +627,19 @@ struct DashboardView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .disabled(storyFlow.isStoryCompletedToday)
+        .opacity(storyFlow.isStoryCompletedToday ? 0.45 : 1)
         .accessibilityLabel("Add story")
+        .accessibilityValue(
+            storyFlow.isStoryCompletedToday
+                ? "Unavailable"
+                : "Available"
+        )
+        .accessibilityHint(
+            storyFlow.isStoryCompletedToday
+                ? "Today's story is complete after the end-of-day reflection."
+                : "Starts a new story."
+        )
     }
 
     #if DEBUG

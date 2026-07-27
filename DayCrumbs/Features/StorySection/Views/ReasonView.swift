@@ -10,6 +10,7 @@ struct ReasonView: View {
     let selectedMood: Moods
     @State private var viewModel: ReasonViewModel
     @State private var isKeyboardVisible = false
+    @FocusState private var isDiscussionFocused: Bool
 
     init(
         selectedSession: Sessions,
@@ -28,6 +29,8 @@ struct ReasonView: View {
 
     var body: some View {
         GeometryReader { proxy in
+            let isCharacterLimitAlertPresented = viewModel.isCharacterLimitAlertPresented
+
             ZStack(alignment: .topLeading) {
                 BlurredStorySelectionBackground(
                     imageNames: [
@@ -41,24 +44,43 @@ struct ReasonView: View {
                 .ignoresSafeArea()
                 .accessibilityHidden(true)
 
-                if proxy.size.width >= 760 {
-                    wideContent(in: proxy.size)
-                } else {
-                    compactContent(in: proxy.size)
+                Group {
+                    if proxy.size.width >= 760 {
+                        wideContent(in: proxy.size)
+                    } else {
+                        compactContent(in: proxy.size)
+                    }
                 }
+                .accessibilityHidden(isCharacterLimitAlertPresented)
 
                 CircularBackButton(style: .yellowBtn) {
                     storyFlow.goBack()
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
+                .disabled(isCharacterLimitAlertPresented)
+                .accessibilityHidden(isCharacterLimitAlertPresented)
+
+                if isCharacterLimitAlertPresented {
+                    characterLimitAlert
+                        .frame(
+                            width: proxy.size.width,
+                            height: proxy.size.height,
+                            alignment: .center
+                        )
+                        .transition(.scale.combined(with: .opacity))
+                }
             }
             .animation(.easeInOut(duration: 0.22), value: isKeyboardVisible)
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: isCharacterLimitAlertPresented
+            )
         }
         .navigationBarBackButtonHidden(true)
         .onAppear {
             if viewModel.discussionText.isEmpty && !storyFlow.cachedDiscussionText.isEmpty {
-                viewModel.discussionText = storyFlow.cachedDiscussionText
+                viewModel.restoreDiscussionText(storyFlow.cachedDiscussionText)
             }
         }
         .onChange(of: viewModel.discussionText) { _, newValue in
@@ -69,6 +91,11 @@ struct ReasonView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             isKeyboardVisible = false
+        }
+        .onChange(of: viewModel.isCharacterLimitAlertPresented) { _, isPresented in
+            if isPresented {
+                isDiscussionFocused = false
+            }
         }
     }
 
@@ -228,7 +255,7 @@ struct ReasonView: View {
                     .allowsHitTesting(false)
             }
 
-            TextEditor(text: $viewModel.discussionText)
+            TextEditor(text: discussionTextBinding)
                 .font(.system(.body, design: .rounded))
                 .foregroundStyle(AppColour.txtCoklat)
                 .scrollContentBackground(.hidden)
@@ -236,6 +263,7 @@ struct ReasonView: View {
                 .padding(.horizontal, 10)
                 .padding(.top, 8)
                 .padding(.bottom, 38)
+                .focused($isDiscussionFocused)
                 .accessibilityLabel(
                     "Write discussion, \(viewModel.discussionCharacterCount) of \(viewModel.discussionCharacterLimit) characters"
                 )
@@ -300,6 +328,35 @@ struct ReasonView: View {
 
     private var reasonQuestionAccessibilityLabel: String {
         viewModel.reasonQuestionAccessibilityLabel(for: selectedMood)
+    }
+
+    private var discussionTextBinding: Binding<String> {
+        Binding(
+            get: { viewModel.discussionText },
+            set: { viewModel.updateDiscussionText($0) }
+        )
+    }
+
+    private var characterLimitAlert: some View {
+        ZStack {
+            Color.black.opacity(0.38)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { }
+                .accessibilityHidden(true)
+
+            StoryFlowAlert(
+                title: "Character Limit Reached",
+                message: nil,
+                actions: [
+                    StoryFlowAlertAction(
+                        title: "OK",
+                        style: .emphasized,
+                        action: viewModel.dismissCharacterLimitAlert
+                    )
+                ]
+            )
+        }
     }
 }
 

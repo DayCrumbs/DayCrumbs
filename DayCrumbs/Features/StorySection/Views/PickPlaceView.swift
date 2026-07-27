@@ -9,9 +9,12 @@ struct PickPlaceView: View {
     
     var body: some View {
         GeometryReader { proxy in
+            let isDiscardConfirmationPresented = viewModel.isDiscardConfirmationPresented
+
             ZStack(alignment: .topLeading) {
                 sessionBackground(in: proxy.size)
                     .ignoresSafeArea()
+                    .accessibilityHidden(true)
                 
                 VStack(spacing: 0) {
                     CharacterBubble(
@@ -39,13 +42,30 @@ struct PickPlaceView: View {
                     .frame(height: proxy.size.height * 0.26)
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height)
+                .accessibilityHidden(isDiscardConfirmationPresented)
                 
                 CircularBackButton() {
-                    storyFlow.goBack()
+                    viewModel.showDiscardConfirmation()
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
+                .disabled(isDiscardConfirmationPresented)
+                .accessibilityHidden(isDiscardConfirmationPresented)
+
+                if isDiscardConfirmationPresented {
+                    discardStoryAlert
+                        .frame(
+                            width: proxy.size.width,
+                            height: proxy.size.height,
+                            alignment: .center
+                        )
+                        .transition(.scale.combined(with: .opacity))
+                }
             }
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: isDiscardConfirmationPresented
+            )
         }
         .navigationBarBackButtonHidden(true)
     }
@@ -58,6 +78,33 @@ struct PickPlaceView: View {
             .frame(width: size.width, height: size.height)
             .clipped()
             .blur(radius: 12)
+    }
+
+    private var discardStoryAlert: some View {
+        ZStack {
+            Color.black.opacity(0.38)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { }
+                .accessibilityHidden(true)
+
+            StoryFlowAlert(
+                title: "Discard Story?",
+                message: "If you go back now, your story progress will be discarded.",
+                actions: [
+                    StoryFlowAlertAction(
+                        title: "Discard",
+                        style: .destructive,
+                        action: storyFlow.discardStoryAndReturnToSessionOption
+                    ),
+                    StoryFlowAlertAction(
+                        title: "Cancel",
+                        style: .emphasized,
+                        action: viewModel.dismissDiscardConfirmation
+                    )
+                ]
+            )
+        }
     }
 }
 

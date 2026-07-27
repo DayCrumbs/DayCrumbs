@@ -3,6 +3,7 @@ import SwiftData
 
 @MainActor
 protocol StoryFlowRepositoryProtocol {
+    func hasCompletedStoryToday(for profile: ChildProfile) throws -> Bool
     func saveActivity(
         for profile: ChildProfile,
         session: Sessions,
@@ -25,6 +26,16 @@ final class StoryFlowRepository: StoryFlowRepositoryProtocol {
     init(modelContext: ModelContext, calendar: Calendar = .current) {
         self.modelContext = modelContext
         self.calendar = calendar
+    }
+
+    func hasCompletedStoryToday(for profile: ChildProfile) throws -> Bool {
+        let descriptor = FetchDescriptor<DailySession>()
+
+        return try modelContext.fetch(descriptor).contains { dailySession in
+            dailySession.childProfile?.persistentModelID == profile.persistentModelID &&
+            calendar.isDate(dailySession.startedAt, inSameDayAs: .now) &&
+            dailySession.isCompleted
+        }
     }
 
     func saveActivity(

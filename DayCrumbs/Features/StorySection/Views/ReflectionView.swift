@@ -25,6 +25,8 @@ struct ReflectionView: View {
     
     var body: some View {
         GeometryReader { proxy in
+            let isDiscardConfirmationPresented = viewModel.isDiscardConfirmationPresented
+
             ZStack {
                 BlurredStorySelectionBackground(
                     imageNames: [
@@ -38,13 +40,30 @@ struct ReflectionView: View {
                     .ignoresSafeArea()
                     .accessibilityHidden(true)
                 
-                if proxy.size.width >= 760 {
-                    wideContent(in: proxy.size)
-                } else {
-                    compactContent(in: proxy.size)
+                Group {
+                    if proxy.size.width >= 760 {
+                        wideContent(in: proxy.size)
+                    } else {
+                        compactContent(in: proxy.size)
+                    }
+                }
+                .accessibilityHidden(isDiscardConfirmationPresented)
+
+                if isDiscardConfirmationPresented {
+                    discardDiscussionAlert
+                        .frame(
+                            width: proxy.size.width,
+                            height: proxy.size.height,
+                            alignment: .center
+                        )
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
             .animation(.easeInOut(duration: 0.22), value: isKeyboardVisible)
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: isDiscardConfirmationPresented
+            )
         }
         .navigationBarBackButtonHidden(true)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
@@ -135,9 +154,11 @@ struct ReflectionView: View {
             
             HStack {
                 CircularBackButton(style: .brownBtn) {
-                    storyFlow.goBack()
+                    viewModel.showDiscardConfirmation()
                 }
                 .scaleEffect(0.7)
+                .disabled(viewModel.isDiscardConfirmationPresented)
+                .accessibilityHidden(viewModel.isDiscardConfirmationPresented)
                 
                 Spacer()
                 
@@ -222,6 +243,33 @@ struct ReflectionView: View {
     
     private func saveReflectionAndFinish() {
         storyFlow.finishReflection(viewModel.reflectionText)
+    }
+
+    private var discardDiscussionAlert: some View {
+        ZStack {
+            Color.black.opacity(0.38)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { }
+                .accessibilityHidden(true)
+
+            StoryFlowAlert(
+                title: "Discard Discussion?",
+                message: "If you go back now, your discussion will be discarded.",
+                actions: [
+                    StoryFlowAlertAction(
+                        title: "Discard",
+                        style: .destructive,
+                        action: storyFlow.discardReflectionAndReturnToIllustrated
+                    ),
+                    StoryFlowAlertAction(
+                        title: "Cancel",
+                        style: .emphasized,
+                        action: viewModel.dismissDiscardConfirmation
+                    )
+                ]
+            )
+        }
     }
 }
 

@@ -23,13 +23,11 @@ struct IllustratedView: View {
                         .accessibilityHidden(true)
                         .transition(.opacity)
 
-                    Color.clear
-                        .contentShape(Rectangle())
+                    Color.black.opacity(0.32)
                         .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture { }
                         .accessibilityHidden(true)
-                        .onTapGesture {
-                            viewModel.dismissContinuationCard()
-                        }
 
                     continuationCard
                         .frame(
@@ -59,6 +57,8 @@ struct IllustratedView: View {
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
+                .disabled(viewModel.isShowingContinuationCard)
+                .accessibilityHidden(viewModel.isShowingContinuationCard)
             }
             .animation(.easeInOut(duration: 0.22), value: viewModel.isShowingContinuationCard)
         }
@@ -91,7 +91,7 @@ struct IllustratedView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Continue story")
-        .accessibilityHint("Shows options for another activity, another session, or finishing the session.")
+        .accessibilityHint("Shows options to add another story or finish the session.")
     }
 
     private var continuationCard: some View {
@@ -101,24 +101,22 @@ struct IllustratedView: View {
                 .foregroundStyle(AppColour.txtCoklat)
                 .multilineTextAlignment(.center)
 
-            Text("You can add another activity or continue to the next session.")
+            Text("You can add another activity or finish the session.")
                 .font(.system(.title3, design: .rounded))
                 .foregroundStyle(AppColour.txtCoklat)
                 .multilineTextAlignment(.center)
 
             VStack(spacing: 14) {
-                continuationActionButton(title: "Add Another Activity") {
-                    storyFlow.addAnotherActivity()
+                continuationActionButton(title: "Add Another Story", isPrimary: true) {
+                    storyFlow.addAnotherStory()
                 }
 
-                if selectedSession != .night {
-                    continuationActionButton(title: "Continue to Another Session") {
-                        storyFlow.continueToAnotherSession()
-                    }
-                }
-
-                continuationActionButton(title: "Finish Session") {
+                continuationActionButton(title: "Finish Story") {
                     storyFlow.finishSession()
+                }
+
+                continuationActionButton(title: "Cancel") {
+                    viewModel.dismissContinuationCard()
                 }
             }
         }
@@ -132,6 +130,7 @@ struct IllustratedView: View {
 
     private func continuationActionButton(
         title: String,
+        isPrimary: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -139,7 +138,7 @@ struct IllustratedView: View {
                 .font(.system(.headline, design: .rounded).weight(.semibold))
                 .foregroundStyle(AppColour.txtPutih)
                 .frame(maxWidth: .infinity, minHeight: 54)
-                .background(AppColour.btnCoklat)
+                .background(AppColour.btnCoklat.opacity(isPrimary ? 1 : 0.58))
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)

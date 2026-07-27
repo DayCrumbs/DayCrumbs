@@ -110,10 +110,7 @@ struct SessionOptionView: View {
     }
 
     private func sessionCard(for session: Sessions) -> some View {
-        SessionSelectionCard(
-            session: session,
-            isDisabled: storyFlow.isSessionDisabled(session)
-        ) {
+        SessionSelectionCard(session: session) {
             storyFlow.selectSession(session)
         }
     }
@@ -121,7 +118,6 @@ struct SessionOptionView: View {
 
 private struct SessionSelectionCard: View {
     let session: Sessions
-    let isDisabled: Bool
     let action: () -> Void
 
     @ScaledMetric(relativeTo: .title2) private var titleSize: CGFloat = 36
@@ -161,15 +157,8 @@ private struct SessionSelectionCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
         }
         .buttonStyle(.plain)
-        .disabled(isDisabled)
-        .opacity(isDisabled ? 0.42 : 1)
         .accessibilityLabel("Choose \(session.title) session")
-        .accessibilityValue(isDisabled ? "Unavailable" : "Available")
-        .accessibilityHint(
-            isDisabled
-                ? "This session has already been completed in the current story flow."
-                : "Starts a story for the \(session.title.lowercased()) session."
-        )
+        .accessibilityHint("Starts a story for the \(session.title.lowercased()) session.")
     }
 }
 
