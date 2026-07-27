@@ -3,6 +3,7 @@ import UIKit
 
 struct ReasonView: View {
     @Environment(StoryFlowCoordinator.self) private var storyFlow
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
@@ -10,6 +11,7 @@ struct ReasonView: View {
     let selectedMood: Moods
     @State private var viewModel: ReasonViewModel
     @State private var isKeyboardVisible = false
+    @FocusState private var isDiscussionFocused: Bool
 
     init(
         selectedSession: Sessions,
@@ -28,6 +30,8 @@ struct ReasonView: View {
 
     var body: some View {
         GeometryReader { proxy in
+            let isCharacterLimitAlertPresented = viewModel.isCharacterLimitAlertPresented
+
             ZStack(alignment: .topLeading) {
                 BlurredStorySelectionBackground(
                     imageNames: [
@@ -41,24 +45,45 @@ struct ReasonView: View {
                 .ignoresSafeArea()
                 .accessibilityHidden(true)
 
-                if proxy.size.width >= 760 {
-                    wideContent(in: proxy.size)
-                } else {
-                    compactContent(in: proxy.size)
+                Group {
+                    if proxy.size.width >= 760
+                        && !dynamicTypeSize.isAccessibilitySize {
+                        wideContent(in: proxy.size)
+                    } else {
+                        compactContent(in: proxy.size)
+                    }
                 }
+                .accessibilityHidden(isCharacterLimitAlertPresented)
 
                 CircularBackButton(style: .yellowBtn) {
                     storyFlow.goBack()
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
+                .disabled(isCharacterLimitAlertPresented)
+                .accessibilityHidden(isCharacterLimitAlertPresented)
+                .accessibilityHint("Returns to mood selection.")
+
+                if isCharacterLimitAlertPresented {
+                    characterLimitAlert
+                        .frame(
+                            width: proxy.size.width,
+                            height: proxy.size.height,
+                            alignment: .center
+                        )
+                        .transition(.scale.combined(with: .opacity))
+                }
             }
             .animation(.easeInOut(duration: 0.22), value: isKeyboardVisible)
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: isCharacterLimitAlertPresented
+            )
         }
         .navigationBarBackButtonHidden(true)
         .onAppear {
             if viewModel.discussionText.isEmpty && !storyFlow.cachedDiscussionText.isEmpty {
-                viewModel.discussionText = storyFlow.cachedDiscussionText
+                viewModel.restoreDiscussionText(storyFlow.cachedDiscussionText)
             }
         }
         .onChange(of: viewModel.discussionText) { _, newValue in
@@ -69,6 +94,11 @@ struct ReasonView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             isKeyboardVisible = false
+        }
+        .onChange(of: viewModel.isCharacterLimitAlertPresented) { _, isPresented in
+            if isPresented {
+                isDiscussionFocused = false
+            }
         }
     }
 
@@ -119,7 +149,11 @@ struct ReasonView: View {
     private func compactContent(in size: CGSize) -> some View {
         let cardHeight = isKeyboardVisible
             ? min(390, max(280, size.height - 44))
-            : 390
+            : (
+                dynamicTypeSize.isAccessibilitySize
+                    ? max(560, size.height * 0.68)
+                    : 390
+            )
         let cardWidth = min(680, max(size.width * 0.70, size.width - 48))
 
         return ScrollView {
@@ -171,11 +205,13 @@ struct ReasonView: View {
                 .foregroundStyle(AppColour.txtCoklat)
                 .accessibilityAddTraits(.isHeader)
 
-            Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
-                .font(.system(.body, design: .rounded))
-                .foregroundStyle(AppColour.txtCoklat)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+            if !isKeyboardVisible {
+                Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
+                    .font(.system(.body, design: .rounded))
+                    .foregroundStyle(AppColour.txtCoklat)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             discussionEditor
 
@@ -190,9 +226,9 @@ struct ReasonView: View {
             } label: {
                 Text("Save Discussion")
                     .font(.system(.headline, design: .rounded).weight(.semibold))
-                    .foregroundStyle(AppColour.txtCoklat)
+                    .foregroundStyle(AppColour.txtPutih)
                     .frame(maxWidth: .infinity, minHeight: 46)
-                    .background(AppColour.bgPutih)
+                    .background(AppColour.btnCoklat)
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
@@ -209,7 +245,7 @@ struct ReasonView: View {
                     : "Write a discussion before saving. You can also skip this step."
             )
         }
-        .padding(24)
+        .padding(dynamicTypeSize.isAccessibilitySize ? 20 : 24)
         .background(AppColour.cardKuning)
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
     }
@@ -228,7 +264,7 @@ struct ReasonView: View {
                     .allowsHitTesting(false)
             }
 
-            TextEditor(text: $viewModel.discussionText)
+            TextEditor(text: discussionTextBinding)
                 .font(.system(.body, design: .rounded))
                 .foregroundStyle(AppColour.txtCoklat)
                 .scrollContentBackground(.hidden)
@@ -236,6 +272,7 @@ struct ReasonView: View {
                 .padding(.horizontal, 10)
                 .padding(.top, 8)
                 .padding(.bottom, 38)
+                .focused($isDiscussionFocused)
                 .accessibilityLabel(
                     "Write discussion, \(viewModel.discussionCharacterCount) of \(viewModel.discussionCharacterLimit) characters"
                 )
@@ -286,7 +323,7 @@ struct ReasonView: View {
                 .font(.system(.headline, design: .rounded).weight(.semibold))
                 .foregroundStyle(AppColour.txtCoklat)
                 .frame(maxWidth: .infinity, minHeight: 46)
-                .background(AppColour.bgPutih)
+                .background(AppColour.btnPutih)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -300,6 +337,35 @@ struct ReasonView: View {
 
     private var reasonQuestionAccessibilityLabel: String {
         viewModel.reasonQuestionAccessibilityLabel(for: selectedMood)
+    }
+
+    private var discussionTextBinding: Binding<String> {
+        Binding(
+            get: { viewModel.discussionText },
+            set: { viewModel.updateDiscussionText($0) }
+        )
+    }
+
+    private var characterLimitAlert: some View {
+        ZStack {
+            Color.black.opacity(0.38)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { }
+                .accessibilityHidden(true)
+
+            StoryFlowAlert(
+                title: "Character Limit Reached",
+                message: nil,
+                actions: [
+                    StoryFlowAlertAction(
+                        title: "OK",
+                        style: .emphasized,
+                        action: viewModel.dismissCharacterLimitAlert
+                    )
+                ]
+            )
+        }
     }
 }
 

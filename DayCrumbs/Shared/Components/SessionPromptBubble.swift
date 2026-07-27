@@ -8,22 +8,31 @@ struct SessionPromptBubble: View {
     @ScaledMetric(relativeTo: .title2) private var textSize: CGFloat = 30
 
     var body: some View {
+        let responsiveTextSize = min(36, max(20, textSize))
+
         Image("MiniBubbleAsset")
             .resizable()
             .scaledToFit()
             .overlay {
                 GeometryReader { proxy in
                     Text(text)
-                        .font(.system(size: textSize, design: .rounded).weight(.bold))
+                        .font(
+                            .system(
+                                size: responsiveTextSize,
+                                design: .rounded
+                            )
+                            .weight(.bold)
+                        )
                         .foregroundStyle(AppColour.txtCoklat)
                         .multilineTextAlignment(.center)
                         .lineSpacing(3)
-                        .minimumScaleFactor(0.55)
+                        .minimumScaleFactor(20 / responsiveTextSize)
                         .lineLimit(5)
                         .frame(
                             width: proxy.size.width * 0.74,
                             height: proxy.size.height * 0.36
                         )
+                        .clipped()
                         .position(
                             x: proxy.size.width * 0.52,
                             y: proxy.size.height * 0.33
@@ -32,6 +41,7 @@ struct SessionPromptBubble: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(text)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 

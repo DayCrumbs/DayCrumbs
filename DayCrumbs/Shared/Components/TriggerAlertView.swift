@@ -67,14 +67,14 @@ struct TriggerAlertView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(
-                                AppColour.btnKuning
+                                AppColour.btnCoklat
                                     .accessibilityHidden(true)
                             )
-                            .foregroundColor(AppColour.txtCoklat)
+                            .foregroundColor(AppColour.txtPutih)
                             .clipShape(Capsule())
                     }
                     .accessibilityLabel("Done")
-                    .accessibilityHint("Closes trigger details.")
+                    .accessibilityHint("Closes emotion cause details.")
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)

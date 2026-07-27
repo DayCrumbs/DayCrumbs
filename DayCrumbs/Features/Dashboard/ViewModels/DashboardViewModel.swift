@@ -97,6 +97,32 @@ final class DashboardViewModel {
     var englishFallbackLabel: String? {
         englishFallback?.displayLabel
     }
+
+    /// A concise, English date label matching the rolling range used by the chart.
+    var selectedDateRangeLabel: String {
+        let today = calendar.startOfDay(for: now())
+        guard let startDate = calendar.date(
+            byAdding: .day,
+            value: -(selectedTimeRange.dayCount - 1),
+            to: today
+        ) else {
+            return formattedDashboardDate(today, includesYear: false)
+        }
+
+        let spansYears = calendar.component(.year, from: startDate)
+            != calendar.component(.year, from: today)
+        let endLabel = formattedDashboardDate(today, includesYear: spansYears)
+
+        guard selectedTimeRange != .day else {
+            return endLabel
+        }
+
+        let startLabel = formattedDashboardDate(
+            startDate,
+            includesYear: spansYears
+        )
+        return "\(startLabel) – \(endLabel)"
+    }
     
     /// Fetches once for this ViewModel lifecycle and automatically generates Day.
     func start() async {
@@ -204,6 +230,18 @@ final class DashboardViewModel {
     
     func dismissTrigger() {
         selectedTriggerDetail = nil
+    }
+
+    private func formattedDashboardDate(
+        _ date: Date,
+        includesYear: Bool
+    ) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = includesYear ? "EEE, d MMM yyyy" : "EEE, d MMM"
+        return formatter.string(from: date)
     }
     
     /// Cancels app-owned work when the stable Dashboard root leaves the foreground.

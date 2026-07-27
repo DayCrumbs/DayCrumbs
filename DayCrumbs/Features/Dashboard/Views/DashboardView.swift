@@ -43,7 +43,11 @@ struct DashboardView: View {
             )
         )
 
-        let pickerFont = UIFont.systemFont(ofSize: 17, weight: .semibold)
+        let basePickerFont = UIFont.systemFont(ofSize: 17, weight: .semibold)
+        let pickerFont = UIFontMetrics(forTextStyle: .body).scaledFont(
+            for: basePickerFont,
+            maximumPointSize: 28
+        )
         let appearance = UISegmentedControl.appearance()
         appearance.selectedSegmentTintColor = UIColor(AppColour.btnKuning)
         appearance.backgroundColor = UIColor(AppColour.btnKuning.opacity(0.2))
@@ -163,8 +167,6 @@ struct DashboardView: View {
         let triggerColumnWidth = contentWidth * 0.30
         let columnSpacing = contentWidth * 0.047
         let chartWidth = max(0, contentWidth - triggerColumnWidth - columnSpacing)
-        let triggerCardHeight = chartHeight * 0.72
-        let triggerButtonSpacing = max(24, size.height * 0.035)
         
         return VStack(alignment: .leading, spacing: 0) {
             insightSection
@@ -177,11 +179,12 @@ struct DashboardView: View {
                 moodChart(height: chartHeight)
                     .frame(width: chartWidth, height: chartHeight)
                 
-                VStack(spacing: 0) {
-                    commonTriggersCard(height: triggerCardHeight)
-                    
-                    Spacer(minLength: triggerButtonSpacing)
-                    
+                VStack(spacing: 16) {
+                    dateRangeCard
+
+                    emotionCausesCard(height: nil)
+                        .frame(maxHeight: .infinity)
+
                     addStoryButton
                 }
                 .frame(width: triggerColumnWidth, height: chartHeight)
@@ -205,7 +208,9 @@ struct DashboardView: View {
                     // its visual labels prevents axes from consuming the plot.
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
 
-                commonTriggersCard(height: nil)
+                dateRangeCard
+
+                emotionCausesCard(height: nil)
 
                 addStoryButton
             }
@@ -223,7 +228,9 @@ struct DashboardView: View {
                 
                 moodChart(height: max(300, size.height * 0.42))
                 
-                commonTriggersCard(height: 330)
+                dateRangeCard
+
+                emotionCausesCard(height: 330)
                     .padding(.bottom, 12)
                 
                 addStoryButton
@@ -243,6 +250,28 @@ struct DashboardView: View {
                 .font(.system(.title2, design: .rounded))
                 .foregroundStyle(AppColour.txtCoklat)
         }
+    }
+
+    private var dateRangeCard: some View {
+        Text(viewModel.selectedDateRangeLabel)
+            .font(.system(.title3, design: .rounded).weight(.bold))
+            .foregroundStyle(AppColour.txtCoklat)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, minHeight: 58)
+            .padding(.horizontal, 18)
+            .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 14 : 8)
+            .background(
+                AppColour.btnKuning
+                    .opacity(0.16)
+                    .accessibilityHidden(true)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+                "\(viewModel.selectedTimeRange.rawValue) chart date range, \(viewModel.selectedDateRangeLabel)"
+            )
+            .accessibilityAddTraits(.isHeader)
     }
     
     private var timeRangePicker: some View {
@@ -443,7 +472,7 @@ struct DashboardView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(mood.accessibilityLabel) colour")
+                .accessibilityLabel("\(mood.accessibilityLabel) mood indicator")
                 .accessibilityHint(
                     isMoodSelected(mood)
                         ? "Hides count for \(mood.accessibilityLabel)."
@@ -491,9 +520,9 @@ struct DashboardView: View {
         }
     }
     
-    private func commonTriggersCard(height: CGFloat?) -> some View {
+    private func emotionCausesCard(height: CGFloat?) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Common Triggers")
+            Text("Emotion Causes")
                 .font(.system(.title3, design: .rounded).weight(.bold))
                 .foregroundStyle(AppColour.txtCoklat)
                 .accessibilityAddTraits(.isHeader)
@@ -503,11 +532,11 @@ struct DashboardView: View {
                 )
             
             if viewModel.commonTriggers.isEmpty {
-                Text("No repeated triggers yet.")
+                Text("No emotion causes yet.")
                     .font(.system(.body, design: .rounded))
                     .foregroundStyle(AppColour.txtCoklat.opacity(0.75))
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("No repeated triggers yet.")
+                    .accessibilityLabel("No emotion causes yet.")
             } else {
                 if dynamicTypeSize.isAccessibilitySize {
                     triggerButtons
@@ -559,7 +588,7 @@ struct DashboardView: View {
                         }
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("\(trigger), common trigger")
+                .accessibilityLabel("\(trigger), emotion cause")
                 .accessibilityHint(
                     "Shows explanation, evidence, and recommended activities."
                 )
@@ -618,16 +647,27 @@ struct DashboardView: View {
                     .accessibilityHidden(true)
             }
             .font(.system(.headline, design: .rounded).weight(.bold))
-            .foregroundStyle(AppColour.txtCoklat)
+            .foregroundStyle(AppColour.txtPutih)
             .frame(maxWidth: .infinity, minHeight: 51)
             .background(
-                AppColour.btnKuning
+                AppColour.btnCoklat
                     .accessibilityHidden(true)
             )
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .disabled(storyFlow.isStoryCompletedToday)
         .accessibilityLabel("Add story")
+        .accessibilityValue(
+            storyFlow.isStoryCompletedToday
+                ? "Unavailable"
+                : "Available"
+        )
+        .accessibilityHint(
+            storyFlow.isStoryCompletedToday
+                ? "Today's story is complete after the end-of-day reflection."
+                : "Starts a new story."
+        )
     }
 
     #if DEBUG
@@ -671,10 +711,18 @@ struct DashboardView: View {
             .accessibilityElement(children: .combine)
             
         case .loaded:
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text(viewModel.summaryText)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(insightAccessibilityLabel)
+
+                Text("This summary is AI-generated from recent activity logs and reflections. Use it as a helpful guide and review it alongside your own observations.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(AppColour.txtCoklat.opacity(0.78))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(
+                        "AI-generated summary notice. This summary is generated from recent activity logs and reflections. Use it as a helpful guide and review it alongside your own observations."
+                    )
                 
                 if let fallbackLabel = viewModel.englishFallbackLabel {
                     HStack(spacing: 10) {

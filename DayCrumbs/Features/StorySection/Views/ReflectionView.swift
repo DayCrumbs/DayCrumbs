@@ -3,6 +3,7 @@ import UIKit
 
 struct ReflectionView: View {
     @Environment(StoryFlowCoordinator.self) private var storyFlow
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
@@ -25,6 +26,8 @@ struct ReflectionView: View {
     
     var body: some View {
         GeometryReader { proxy in
+            let isDiscardConfirmationPresented = viewModel.isDiscardConfirmationPresented
+
             ZStack {
                 BlurredStorySelectionBackground(
                     imageNames: [
@@ -38,13 +41,31 @@ struct ReflectionView: View {
                     .ignoresSafeArea()
                     .accessibilityHidden(true)
                 
-                if proxy.size.width >= 760 {
-                    wideContent(in: proxy.size)
-                } else {
-                    compactContent(in: proxy.size)
+                Group {
+                    if proxy.size.width >= 760
+                        && !dynamicTypeSize.isAccessibilitySize {
+                        wideContent(in: proxy.size)
+                    } else {
+                        compactContent(in: proxy.size)
+                    }
+                }
+                .accessibilityHidden(isDiscardConfirmationPresented)
+
+                if isDiscardConfirmationPresented {
+                    discardDiscussionAlert
+                        .frame(
+                            width: proxy.size.width,
+                            height: proxy.size.height,
+                            alignment: .center
+                        )
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
             .animation(.easeInOut(duration: 0.22), value: isKeyboardVisible)
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: isDiscardConfirmationPresented
+            )
         }
         .navigationBarBackButtonHidden(true)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
@@ -82,7 +103,11 @@ struct ReflectionView: View {
         let illustrationWidth = isKeyboardVisible ? 0 : min(250, size.width * 0.64)
         let cardHeight = isKeyboardVisible
             ? min(390, max(280, size.height - 36))
-            : 370
+            : (
+                dynamicTypeSize.isAccessibilitySize
+                    ? max(560, size.height * 0.68)
+                    : 370
+            )
         let cardWidth = min(580, max(size.width * 0.82, size.width - 48))
 
         return ScrollView {
@@ -121,11 +146,13 @@ struct ReflectionView: View {
                     .foregroundStyle(AppColour.txtCoklat)
                     .accessibilityAddTraits(.isHeader)
                 
-                Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
-                    .font(.system(.body, design: .rounded))
-                    .foregroundStyle(AppColour.txtCoklat)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
+                if !isKeyboardVisible {
+                    Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
+                        .font(.system(.body, design: .rounded))
+                        .foregroundStyle(AppColour.txtCoklat)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 
                 reflectionEditor
             }
@@ -134,10 +161,13 @@ struct ReflectionView: View {
             .padding(.bottom, 26)
             
             HStack {
-                CircularBackButton(style: .whiteBtn) {
-                    storyFlow.goBack()
+                CircularBackButton(style: .brownBtn) {
+                    viewModel.showDiscardConfirmation()
                 }
                 .scaleEffect(0.7)
+                .disabled(viewModel.isDiscardConfirmationPresented)
+                .accessibilityHidden(viewModel.isDiscardConfirmationPresented)
+                .accessibilityHint("Asks before discarding this reflection.")
                 
                 Spacer()
                 
@@ -197,14 +227,13 @@ struct ReflectionView: View {
         Button(action: saveReflectionAndFinish) {
             Image(systemName: "checkmark")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(viewModel.isReflectionReady ? AppColour.txtCoklat : AppColour.txtCoklat.opacity(0.35))
-                .frame(width: 34, height: 34)
-                .background(AppColour.bgPutih)
+                .foregroundStyle(AppColour.txtPutih)
+                .frame(width: 44, height: 44)
+                .background (
+                    AppColour.btnCoklat
+                        .opacity(viewModel.isReflectionReady ? 1.0 : 0.45)
+                )
                 .clipShape(Circle())
-                .overlay {
-                    Circle()
-                    .stroke(AppColour.txtCoklat.opacity(viewModel.isReflectionReady ? 0.8 : 0.3), lineWidth: 2)
-                }
         }
         .buttonStyle(.plain)
         .disabled(!viewModel.isReflectionReady)
@@ -223,6 +252,33 @@ struct ReflectionView: View {
     
     private func saveReflectionAndFinish() {
         storyFlow.finishReflection(viewModel.reflectionText)
+    }
+
+    private var discardDiscussionAlert: some View {
+        ZStack {
+            Color.black.opacity(0.38)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { }
+                .accessibilityHidden(true)
+
+            StoryFlowAlert(
+                title: "Discard Discussion?",
+                message: "If you go back now, your discussion will be discarded.",
+                actions: [
+                    StoryFlowAlertAction(
+                        title: "Discard",
+                        style: .destructive,
+                        action: storyFlow.discardReflectionAndReturnToIllustrated
+                    ),
+                    StoryFlowAlertAction(
+                        title: "Cancel",
+                        style: .emphasized,
+                        action: viewModel.dismissDiscardConfirmation
+                    )
+                ]
+            )
+        }
     }
 }
 

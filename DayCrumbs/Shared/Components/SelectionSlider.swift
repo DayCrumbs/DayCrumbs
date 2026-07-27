@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SelectionSlider<T: Hashable>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let title: String
     let items: [T]
     @Binding var selectedItem: T?
@@ -9,12 +11,24 @@ struct SelectionSlider<T: Hashable>: View {
     let onAddCustom: () -> Void
     var onSelectItem: ((T) -> Void)? = nil
     var itemImageName: ((T) -> String?)? = nil
+    var itemImageNames: ((T) -> [String])? = nil
+
+    @ScaledMetric(relativeTo: .title3) private var preferredTitleSize: CGFloat = 22
+    @ScaledMetric(relativeTo: .headline) private var preferredOptionSize: CGFloat = 17
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: dynamicTypeSize.isAccessibilitySize ? 14 : 20) {
             Text(title)
-                .font(.system(size: 22, design: .rounded))
+                .font(
+                    .system(
+                        size: min(30, max(18, preferredTitleSize)),
+                        design: .rounded
+                    )
+                )
                 .foregroundColor(AppColour.txtCoklat)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 24)
                 .accessibilityAddTraits(.isHeader)
 
             GeometryReader { proxy in
@@ -23,9 +37,18 @@ struct SelectionSlider<T: Hashable>: View {
                 let availableWidth = finitePositive(proxy.size.width)
                 let horizontalPadding = availableWidth * 0.05
                 let cardSpacing = availableWidth * 0.045
+                let visibleCardCount: CGFloat =
+                    dynamicTypeSize.isAccessibilitySize && availableWidth < 700
+                        ? 2
+                        : 4
                 let cardWidth = max(
                     1,
-                    (availableWidth - (horizontalPadding * 2) - (cardSpacing * 3)) / 4
+                    (
+                        availableWidth
+                            - (horizontalPadding * 2)
+                            - (cardSpacing * (visibleCardCount - 1))
+                    )
+                        / visibleCardCount
                 )
                 let cardHeight = cardWidth * 0.52
 
@@ -85,15 +108,34 @@ struct SelectionSlider<T: Hashable>: View {
         }) {
             VStack(spacing: 6) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 2)
+                    RoundedRectangle(cornerRadius: 30)
                         .fill(AppColour.cardKuning.opacity(selectedItem == item ? 1.0 : 0.72))
 
-                    if let imageName = itemImageName?(item), !imageName.isEmpty {
+                    if let imageNames = itemImageNames?(item), !imageNames.isEmpty {
+                        ZStack {
+                            ForEach(
+                                Array(imageNames.enumerated()),
+                                id: \.offset
+                            ) { _, imageName in
+                                Image(imageName)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(
+                                        width: width,
+                                        height: height,
+                                        alignment: .bottom
+                                    )
+                            }
+                        }
+                        .frame(width: width, height: height)
+                        .clipShape(RoundedRectangle(cornerRadius: 30))
+                        .accessibilityHidden(true)
+                    } else if let imageName = itemImageName?(item), !imageName.isEmpty {
                         Image(imageName)
                             .resizable()
                             .scaledToFill()
                             .frame(width: width, height: height)
-                            .clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: 30))
                             .accessibilityHidden(true)
                     }
 
@@ -106,16 +148,31 @@ struct SelectionSlider<T: Hashable>: View {
                 .frame(width: width, height: height)
 
                 Text(formatEnumText(itemName(item)))
-                    .font(.system(.headline, design: .rounded).weight(.semibold))
+                    .font(
+                        .system(
+                            size: min(24, max(16, preferredOptionSize)),
+                            design: .rounded
+                        )
+                        .weight(.semibold)
+                    )
                     .foregroundColor(AppColour.txtCoklat)
-                    .lineLimit(1)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.7)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(width: width)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(formatEnumText(itemName(item)))
-        .accessibilityHint("Select this option.")
+        .accessibilityHint(
+            selectedItem == item
+                ? "This option is selected."
+                : "Selects this option and continues."
+        )
+        .accessibilityAddTraits(
+            selectedItem == item ? .isSelected : []
+        )
     }
 
     private func formatEnumText(_ text: String) -> String {

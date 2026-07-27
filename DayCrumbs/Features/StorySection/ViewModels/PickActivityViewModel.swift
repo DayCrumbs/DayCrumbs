@@ -22,10 +22,14 @@ final class PickActivityViewModel {
         navigationRoute = .pickMood(session, place, activity)
     }
 
-    func activityImageName(
+    func activityImageNames(
         for activity: Activity.BuiltInActivity,
+        place: Place.BuiltInPlace,
         gender: ChildGender = .girl
-    ) -> String {
-        StorySelectionAsset.sliderImageName(for: activity, gender: gender)
+    ) -> [String] {
+        [
+            StorySelectionAsset.imageName(for: place),
+            StorySelectionAsset.backgroundImageName(for: activity, gender: gender)
+        ]
     }
 }

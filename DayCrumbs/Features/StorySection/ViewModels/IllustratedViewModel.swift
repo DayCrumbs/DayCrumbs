@@ -3,7 +3,6 @@ import Observation
 @Observable
 final class IllustratedViewModel {
     var isShowingContinuationCard = false
-    var navigationRoute: StoryFlowRoute?
 
     func showContinuationCard() {
         isShowingContinuationCard = true
@@ -24,31 +23,14 @@ final class IllustratedViewModel {
         ]
     }
 
-    func addAnotherActivity(in session: Sessions) {
-        navigationRoute = .pickPlace(session)
-    }
-
-    func continueToAnotherSession() {
-        navigationRoute = .sessionOption
-    }
-
-    func finishSession(
-        session: Sessions,
-        place: Place.BuiltInPlace,
-        activity: Activity.BuiltInActivity,
-        mood: Moods
-    ) {
-        navigationRoute = .reflection(session, place, activity, mood)
-    }
-
     func continuationAccessibilityHint(for title: String) -> String {
         switch title {
-        case "Add Another Activity":
-            return "Starts another activity in the current session."
-        case "Continue to Another Session":
-            return "Returns to the session selection screen."
+        case "Add Another Story":
+            return "Saves this activity and returns to session selection."
+        case "Finish Story":
+            return "Saves this activity and opens the end-of-day reflection."
         default:
-            return "Opens the end-of-day reflection."
+            return "Closes these story options."
         }
     }
 }
