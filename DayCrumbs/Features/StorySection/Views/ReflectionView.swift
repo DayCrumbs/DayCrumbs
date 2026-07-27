@@ -52,6 +52,8 @@ struct ReflectionView: View {
                 .accessibilityHidden(isDiscardConfirmationPresented)
 
                 if isDiscardConfirmationPresented {
+                    StoryFlowBlockingOverlay()
+
                     discardDiscussionAlert
                         .frame(
                             width: proxy.size.width,
@@ -162,12 +164,19 @@ struct ReflectionView: View {
             
             HStack {
                 CircularBackButton(style: .brownBtn) {
-                    viewModel.showDiscardConfirmation()
+                    if viewModel.isReflectionReady {
+                        viewModel.showDiscardConfirmation()
+                    } else {
+                        storyFlow.discardReflectionAndReturnToIllustrated()
+                    }
                 }
-                .scaleEffect(0.7)
                 .disabled(viewModel.isDiscardConfirmationPresented)
                 .accessibilityHidden(viewModel.isDiscardConfirmationPresented)
-                .accessibilityHint("Asks before discarding this reflection.")
+                .accessibilityHint(
+                    viewModel.isReflectionReady
+                        ? "Asks before discarding this reflection."
+                        : "Returns to the illustration."
+                )
                 
                 Spacer()
                 
@@ -187,7 +196,7 @@ struct ReflectionView: View {
             
             if viewModel.reflectionText.isEmpty {
                 Text("e.g. Today, she was mostly happy because she got to spend time with her dad who's usually busy at work. But, she had difficulty doing a part of her homework in the evening. Her dad came to help and her mood eventually returned to normal.")
-                    .font(.system(.caption, design: .rounded))
+                    .font(.system(.body, design: .rounded))
                     .foregroundStyle(AppColour.txtCoklat.opacity(0.45))
                     .padding(.horizontal, 14)
                     .padding(.top, 14)
@@ -205,20 +214,20 @@ struct ReflectionView: View {
                 .accessibilityLabel("End-of-day reflection")
                 .accessibilityHint("Required. Describe the day before finishing the session.")
             
-            Button {
-                // Voice-to-text will be added after the MVP.
-            } label: {
-                Image(systemName: "mic")
-                    .font(.system(.caption, design: .rounded).weight(.medium))
-                    .foregroundStyle(AppColour.txtCoklat)
-                    .frame(width: 28, height: 28)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Voice input")
-            .accessibilityHint("Voice-to-text is coming after the MVP.")
-            .padding(.trailing, 10)
-            .padding(.bottom, 8)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+//            Button {
+//                // Voice-to-text will be added after the MVP.
+//            } label: {
+//                Image(systemName: "mic")
+//                    .font(.system(.caption, design: .rounded).weight(.medium))
+//                    .foregroundStyle(AppColour.txtCoklat)
+//                    .frame(width: 28, height: 28)
+//            }
+//            .buttonStyle(.plain)
+//            .accessibilityLabel("Voice input")
+//            .accessibilityHint("Voice-to-text is coming after the MVP.")
+//            .padding(.trailing, 10)
+//            .padding(.bottom, 8)
+//            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -255,30 +264,22 @@ struct ReflectionView: View {
     }
 
     private var discardDiscussionAlert: some View {
-        ZStack {
-            Color.black.opacity(0.38)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { }
-                .accessibilityHidden(true)
-
-            StoryFlowAlert(
-                title: "Discard Discussion?",
-                message: "If you go back now, your discussion will be discarded.",
-                actions: [
-                    StoryFlowAlertAction(
-                        title: "Discard",
-                        style: .destructive,
-                        action: storyFlow.discardReflectionAndReturnToIllustrated
-                    ),
-                    StoryFlowAlertAction(
-                        title: "Cancel",
-                        style: .emphasized,
-                        action: viewModel.dismissDiscardConfirmation
-                    )
-                ]
-            )
-        }
+        StoryFlowAlert(
+            title: "Discard Discussion?",
+            message: "If you go back now, your discussion will be discarded.",
+            actions: [
+                StoryFlowAlertAction(
+                    title: "Discard",
+                    style: .destructive,
+                    action: storyFlow.discardReflectionAndReturnToIllustrated
+                ),
+                StoryFlowAlertAction(
+                    title: "Cancel",
+                    style: .emphasized,
+                    action: viewModel.dismissDiscardConfirmation
+                )
+            ]
+        )
     }
 }
 

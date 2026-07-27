@@ -138,12 +138,6 @@ struct SelectionSlider<T: Hashable>: View {
                             .clipShape(RoundedRectangle(cornerRadius: 30))
                             .accessibilityHidden(true)
                     }
-
-                    RoundedRectangle(cornerRadius: 2)
-                        .stroke(
-                            AppColour.txtCoklat,
-                            lineWidth: selectedItem == item ? 2.5 : 0
-                        )
                 }
                 .frame(width: width, height: height)
 

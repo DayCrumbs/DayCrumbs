@@ -26,6 +26,23 @@ extension Moods {
         }
     }
 
+    func clothedExpressionImageName(for gender: ChildGender) -> String {
+        switch (self, gender) {
+        case (.angry, .girl): return "ExpressionAngryFace_Girl_PakeBaju"
+        case (.disgust, .girl): return "ExpressionDisgustFace_Girl_PakeBaju"
+        case (.fear, .girl): return "ExpressionFearFace_Girl_PakeBaju"
+        case (.happy, .girl): return "ExpressionHappyFace_Girl_PakeBaju"
+        case (.sad, .girl): return "ExpressionSadFace_Girl_PakeBaju"
+        case (.surprise, .girl): return "ExpressionSurpriseFace_Girl_PakeBaju"
+        case (.angry, .boy): return "ExpressionAngryFace_Boy_PakeBaju"
+        case (.disgust, .boy): return "ExpressionDisgustFace_Boy_PakeBaju"
+        case (.fear, .boy): return "ExpressionFearFace_Boy_PakeBaju"
+        case (.happy, .boy): return "ExpressionHappyFace_Boy_PakeBaju"
+        case (.sad, .boy): return "ExpressionSadFace_Boy_PakeBaju"
+        case (.surprise, .boy): return "ExpressionSurpriseFace_Boy_PakeBaju"
+        }
+    }
+
     /// Maps the chart's internal visual score to the existing mood vocabulary.
     nonisolated static func dashboardMood(forScore score: Int) -> Moods {
         switch score {

@@ -11,7 +11,6 @@ final class PickPlaceViewModel {
 
     var selectedPlace: Place.BuiltInPlace?
     var navigationRoute: StoryFlowRoute?
-    var isDiscardConfirmationPresented = false
 
     func handlePlaceSelection(_ place: Place.BuiltInPlace, in session: Sessions) {
         navigationRoute = .pickActivity(session, place)
@@ -24,13 +23,5 @@ final class PickPlaceViewModel {
         case .school: return "Place_School"
         case .publicPlace: return "Place_PublicArea"
         }
-    }
-
-    func showDiscardConfirmation() {
-        isDiscardConfirmationPresented = true
-    }
-
-    func dismissDiscardConfirmation() {
-        isDiscardConfirmationPresented = false
     }
 }

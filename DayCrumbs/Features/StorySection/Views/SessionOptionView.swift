@@ -95,17 +95,29 @@ struct SessionOptionView: View {
                     .frame(width: min(size.width * 0.58, 320))
                     .accessibilityHidden(true)
 
-                LazyVGrid(
-                    columns: sessionGridColumns,
-                    spacing: 18
-                ) {
-                    ForEach(Sessions.allCases, id: \.self) { session in
-                        sessionCard(for: session)
-                            .frame(
-                                height: dynamicTypeSize.isAccessibilitySize
-                                    ? 260
-                                    : 210
-                            )
+                if dynamicTypeSize.isAccessibilitySize {
+                    LazyVStack(spacing: 18) {
+                        ForEach(Sessions.allCases, id: \.self) { session in
+                            sessionCard(for: session)
+                                .frame(height: 260)
+                                .contentShape(
+                                    RoundedRectangle(
+                                        cornerRadius: 36,
+                                        style: .continuous
+                                    )
+                                )
+                                .clipped()
+                        }
+                    }
+                } else {
+                    LazyVGrid(
+                        columns: sessionGridColumns,
+                        spacing: 18
+                    ) {
+                        ForEach(Sessions.allCases, id: \.self) { session in
+                            sessionCard(for: session)
+                                .frame(height: 210)
+                        }
                     }
                 }
             }
@@ -116,10 +128,6 @@ struct SessionOptionView: View {
     }
 
     private var sessionGridColumns: [GridItem] {
-        if dynamicTypeSize.isAccessibilitySize {
-            return [GridItem(.flexible())]
-        }
-
         return [
             GridItem(.flexible(), spacing: 18),
             GridItem(.flexible(), spacing: 18)
@@ -182,6 +190,9 @@ private struct SessionSelectionCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
         }
         .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
+        .clipped()
         .accessibilityLabel("Choose \(session.title) session")
         .accessibilityHint("Starts a story for the \(session.title.lowercased()) session.")
     }

@@ -26,17 +26,22 @@ struct IllustratedView: View {
                     .accessibilityAddTraits(.isImage)
                     .accessibilityHidden(viewModel.isShowingContinuationCard)
 
+                CircularBackButton(style: .yellowBtn) {
+                    storyFlow.goBack()
+                }
+                .padding(.top, 24)
+                .padding(.leading, 32)
+                .disabled(viewModel.isShowingContinuationCard)
+                .accessibilityHidden(viewModel.isShowingContinuationCard)
+                .accessibilityHint("Returns to the discussion.")
+
                 if viewModel.isShowingContinuationCard {
                     BlurredStorySelectionBackground(imageNames: illustratedBackgroundImageNames)
                         .ignoresSafeArea()
                         .accessibilityHidden(true)
-                        .transition(.opacity)
+                        .transition(.identity)
 
-                    Color.black.opacity(0.32)
-                        .ignoresSafeArea()
-                        .contentShape(Rectangle())
-                        .onTapGesture { }
-                        .accessibilityHidden(true)
+                    StoryFlowBlockingOverlay(opacity: 0.32)
 
                     continuationCard(in: proxy.size)
                         .frame(
@@ -62,15 +67,6 @@ struct IllustratedView: View {
                         )
                         .transition(.opacity)
                 }
-
-                CircularBackButton(style: .yellowBtn) {
-                    storyFlow.goBack()
-                }
-                .padding(.top, 24)
-                .padding(.leading, 32)
-                .disabled(viewModel.isShowingContinuationCard)
-                .accessibilityHidden(viewModel.isShowingContinuationCard)
-                .accessibilityHint("Returns to the discussion.")
             }
             .animation(.easeInOut(duration: 0.22), value: viewModel.isShowingContinuationCard)
         }

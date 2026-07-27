@@ -7,6 +7,7 @@ final class ReasonViewModel {
 
     var discussionText = ""
     var isCharacterLimitAlertPresented = false
+    var isDiscardConfirmationPresented = false
     var navigationRoute: StoryFlowRoute?
 
     private var hasReachedCharacterLimit = false
@@ -42,6 +43,21 @@ final class ReasonViewModel {
 
     func dismissCharacterLimitAlert() {
         isCharacterLimitAlertPresented = false
+    }
+
+    func showDiscardConfirmation() {
+        isDiscardConfirmationPresented = true
+    }
+
+    func dismissDiscardConfirmation() {
+        isDiscardConfirmationPresented = false
+    }
+
+    func discardDiscussion() {
+        discussionText = ""
+        hasReachedCharacterLimit = false
+        isCharacterLimitAlertPresented = false
+        isDiscardConfirmationPresented = false
     }
 
     func reasonQuestionAccessibilityLabel(for mood: Moods) -> String {

@@ -42,10 +42,7 @@ struct PickMoodView: View {
                 .accessibilityHint("Returns to activity selection.")
                 
                 if let moodAlert = viewModel.moodAlert {
-                    Color.black.opacity(0.18)
-                        .ignoresSafeArea()
-                        .accessibilityHidden(true)
-                        .transition(.opacity)
+                    StoryFlowBlockingOverlay(opacity: 0.18)
                     
                     MoodAlertView(
                         mood: moodAlert,
@@ -76,7 +73,7 @@ struct PickMoodView: View {
                     .frame(width: size.width * 0.47)
 
                 moodGrid
-                    .offset(y: -84)
+                    .offset(y: -200)
                     .padding(.bottom, -84)
                     .frame(width: size.width * 0.47)
 
@@ -175,7 +172,7 @@ private struct MoodExpressionButton: View {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(AppColour.bgPutih)
                     
-                    Image(mood.expressionImageName(for: gender))
+                    Image(mood.clothedExpressionImageName(for: gender))
                         .resizable()
                         .scaledToFit()
                         .padding(.top, 12)

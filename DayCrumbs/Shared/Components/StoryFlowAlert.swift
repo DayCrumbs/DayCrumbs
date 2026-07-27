@@ -12,6 +12,22 @@ struct StoryFlowAlertAction {
     let action: () -> Void
 }
 
+/// A non-dismissible dimming layer that blocks interaction with content behind
+/// story-flow dialogs. The identity transition keeps the dimming layer from
+/// growing or fading in with the dialog card.
+struct StoryFlowBlockingOverlay: View {
+    var opacity: Double = 0.38
+
+    var body: some View {
+        Color.black.opacity(opacity)
+            .ignoresSafeArea()
+            .contentShape(Rectangle())
+            .onTapGesture { }
+            .accessibilityHidden(true)
+            .transition(.identity)
+    }
+}
+
 /// A small, blocking confirmation dialog shared by the story flow.
 struct StoryFlowAlert: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
