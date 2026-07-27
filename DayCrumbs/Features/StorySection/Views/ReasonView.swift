@@ -31,6 +31,9 @@ struct ReasonView: View {
     var body: some View {
         GeometryReader { proxy in
             let isCharacterLimitAlertPresented = viewModel.isCharacterLimitAlertPresented
+            let isDiscardConfirmationPresented = viewModel.isDiscardConfirmationPresented
+            let isBlockingAlertPresented =
+                isCharacterLimitAlertPresented || isDiscardConfirmationPresented
 
             ZStack(alignment: .topLeading) {
                 BlurredStorySelectionBackground(
@@ -53,19 +56,42 @@ struct ReasonView: View {
                         compactContent(in: proxy.size)
                     }
                 }
-                .accessibilityHidden(isCharacterLimitAlertPresented)
+                .accessibilityHidden(isBlockingAlertPresented)
 
                 CircularBackButton(style: .yellowBtn) {
-                    storyFlow.goBack()
+                    isDiscussionFocused = false
+                    if viewModel.isDiscussionReady {
+                        viewModel.showDiscardConfirmation()
+                    } else {
+                        storyFlow.goBack()
+                    }
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
-                .disabled(isCharacterLimitAlertPresented)
-                .accessibilityHidden(isCharacterLimitAlertPresented)
-                .accessibilityHint("Returns to mood selection.")
+                .disabled(isBlockingAlertPresented)
+                .accessibilityHidden(isBlockingAlertPresented)
+                .accessibilityHint(
+                    viewModel.isDiscussionReady
+                        ? "Asks before discarding this discussion."
+                        : "Returns to mood selection."
+                )
+
+                if isBlockingAlertPresented {
+                    StoryFlowBlockingOverlay()
+                }
 
                 if isCharacterLimitAlertPresented {
                     characterLimitAlert
+                        .frame(
+                            width: proxy.size.width,
+                            height: proxy.size.height,
+                            alignment: .center
+                        )
+                        .transition(.scale.combined(with: .opacity))
+                }
+
+                if isDiscardConfirmationPresented {
+                    discardDiscussionAlert
                         .frame(
                             width: proxy.size.width,
                             height: proxy.size.height,
@@ -78,6 +104,10 @@ struct ReasonView: View {
             .animation(
                 .easeInOut(duration: 0.2),
                 value: isCharacterLimitAlertPresented
+            )
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: isDiscardConfirmationPresented
             )
         }
         .navigationBarBackButtonHidden(true)
@@ -100,6 +130,11 @@ struct ReasonView: View {
                 isDiscussionFocused = false
             }
         }
+        .onChange(of: viewModel.isDiscardConfirmationPresented) { _, isPresented in
+            if isPresented {
+                isDiscussionFocused = false
+            }
+        }
     }
 
     private func wideContent(in size: CGSize) -> some View {
@@ -114,7 +149,11 @@ struct ReasonView: View {
             : size.width * 0.49
         let cardOffsetY = isKeyboardVisible
             ? max(0, (size.height - cardHeight) / 2) - min(30, size.height * 0.06)
-            : size.height * 0.51
+            : max(120, size.height * 0.60 - 200)
+        let skipOffsetY = min(
+            size.height - 58,
+            cardOffsetY + cardHeight + 16
+        )
 
         return ZStack(alignment: .topLeading) {
             QuestionCharacterBubble(
@@ -138,7 +177,7 @@ struct ReasonView: View {
 
             skipButton
                 .frame(width: max(118, size.width * 0.11))
-                .offset(x: size.width * 0.81, y: size.height * 0.92)
+                .offset(x: size.width * 0.81, y: skipOffsetY)
                 .opacity(isKeyboardVisible ? 0 : 1)
                 .allowsHitTesting(!isKeyboardVisible)
                 .accessibilityHidden(isKeyboardVisible)
@@ -347,25 +386,42 @@ struct ReasonView: View {
     }
 
     private var characterLimitAlert: some View {
-        ZStack {
-            Color.black.opacity(0.38)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { }
-                .accessibilityHidden(true)
+        StoryFlowAlert(
+            title: "Character Limit Reached",
+            message: nil,
+            actions: [
+                StoryFlowAlertAction(
+                    title: "OK",
+                    style: .emphasized,
+                    action: viewModel.dismissCharacterLimitAlert
+                )
+            ]
+        )
+    }
 
-            StoryFlowAlert(
-                title: "Character Limit Reached",
-                message: nil,
-                actions: [
-                    StoryFlowAlertAction(
-                        title: "OK",
-                        style: .emphasized,
-                        action: viewModel.dismissCharacterLimitAlert
-                    )
-                ]
-            )
-        }
+    private var discardDiscussionAlert: some View {
+        StoryFlowAlert(
+            title: "Discard Discussion?",
+            message: "If you go back now, your discussion will be discarded.",
+            actions: [
+                StoryFlowAlertAction(
+                    title: "Discard",
+                    style: .destructive,
+                    action: discardDiscussionAndGoBack
+                ),
+                StoryFlowAlertAction(
+                    title: "Cancel",
+                    style: .emphasized,
+                    action: viewModel.dismissDiscardConfirmation
+                )
+            ]
+        )
+    }
+
+    private func discardDiscussionAndGoBack() {
+        viewModel.discardDiscussion()
+        storyFlow.updateDiscussionCache("")
+        storyFlow.goBack()
     }
 }
 

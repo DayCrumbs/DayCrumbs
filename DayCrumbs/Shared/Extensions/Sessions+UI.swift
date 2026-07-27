@@ -27,4 +27,13 @@ extension Sessions {
         case .night: return "Session_Night"
         }
     }
+
+    var backgroundImageName: String {
+        switch self {
+        case .morning: return "Background_Session_Morning"
+        case .afternoon: return "Background_Session_Afternoon"
+        case .evening: return "Background_Session_Evening"
+        case .night: return "Background_Session_Night"
+        }
+    }
 }

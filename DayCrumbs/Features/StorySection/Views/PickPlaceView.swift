@@ -10,8 +10,6 @@ struct PickPlaceView: View {
     
     var body: some View {
         GeometryReader { proxy in
-            let isDiscardConfirmationPresented = viewModel.isDiscardConfirmationPresented
-
             ZStack(alignment: .topLeading) {
                 sessionBackground(in: proxy.size)
                     .ignoresSafeArea()
@@ -49,70 +47,26 @@ struct PickPlaceView: View {
                     )
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height)
-                .accessibilityHidden(isDiscardConfirmationPresented)
                 
                 CircularBackButton() {
-                    viewModel.showDiscardConfirmation()
+                    storyFlow.discardStoryAndReturnToSessionOption()
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
-                .disabled(isDiscardConfirmationPresented)
-                .accessibilityHidden(isDiscardConfirmationPresented)
-                .accessibilityHint("Asks before discarding this story.")
-
-                if isDiscardConfirmationPresented {
-                    discardStoryAlert
-                        .frame(
-                            width: proxy.size.width,
-                            height: proxy.size.height,
-                            alignment: .center
-                        )
-                        .transition(.scale.combined(with: .opacity))
-                }
+                .accessibilityHint("Discards this story and returns to session selection.")
             }
-            .animation(
-                .easeInOut(duration: 0.2),
-                value: isDiscardConfirmationPresented
-            )
         }
         .navigationBarBackButtonHidden(true)
     }
 
     private func sessionBackground(in size: CGSize) -> some View {
-        Image(selectedSession.imageName)
+        Image(selectedSession.backgroundImageName)
             .resizable()
             .scaledToFill()
             .frame(width: size.width * 1.08, height: size.height * 1.08)
             .frame(width: size.width, height: size.height)
             .clipped()
             .blur(radius: 12)
-    }
-
-    private var discardStoryAlert: some View {
-        ZStack {
-            Color.black.opacity(0.38)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { }
-                .accessibilityHidden(true)
-
-            StoryFlowAlert(
-                title: "Discard Story?",
-                message: "If you go back now, your story progress will be discarded.",
-                actions: [
-                    StoryFlowAlertAction(
-                        title: "Discard",
-                        style: .destructive,
-                        action: storyFlow.discardStoryAndReturnToSessionOption
-                    ),
-                    StoryFlowAlertAction(
-                        title: "Cancel",
-                        style: .emphasized,
-                        action: viewModel.dismissDiscardConfirmation
-                    )
-                ]
-            )
-        }
     }
 }
 
