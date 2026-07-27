@@ -5,7 +5,7 @@ import Observation
 final class ReasonViewModel {
     let discussionCharacterLimit = 1_000
 
-    var discussionText = ""
+    private(set) var discussionText = ""
     var isCharacterLimitAlertPresented = false
     var isDiscardConfirmationPresented = false
     var navigationRoute: StoryFlowRoute?
