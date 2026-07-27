@@ -46,10 +46,12 @@ struct StorySectionViewModelTests {
     func discussionValidationAndCharacterLimit() {
         let viewModel = ReasonViewModel()
 
-        viewModel.discussionText = "   \n"
+        viewModel.updateDiscussionText("   \n")
         #expect(!viewModel.isDiscussionReady)
 
-        viewModel.discussionText = String(repeating: "a", count: 1_001)
+        viewModel.updateDiscussionText(
+            String(repeating: "a", count: 1_001)
+        )
         #expect(viewModel.discussionCharacterCount == 1_000)
         #expect(viewModel.isDiscussionReady)
     }
