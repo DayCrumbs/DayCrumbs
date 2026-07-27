@@ -41,7 +41,7 @@ struct MoodAlertView: View {
         VStack(alignment: .leading, spacing: 22) {
             
             // --- BAGIAN GAMBAR WAJAH ANAK ---
-            Image(mood.expressionImageName(for: gender))
+            Image(mood.clothedExpressionImageName(for: gender))
                 .resizable()
                 .scaledToFit()
                 .frame(height: dynamicTypeSize.isAccessibilitySize ? 120 : 160)

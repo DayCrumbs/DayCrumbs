@@ -172,7 +172,7 @@ private struct MoodExpressionButton: View {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(AppColour.bgPutih)
                     
-                    Image(mood.expressionImageName(for: gender))
+                    Image(mood.clothedExpressionImageName(for: gender))
                         .resizable()
                         .scaledToFit()
                         .padding(.top, 12)
