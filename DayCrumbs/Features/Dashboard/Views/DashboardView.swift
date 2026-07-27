@@ -310,7 +310,7 @@ struct DashboardView: View {
     
     private func moodChart(height: CGFloat) -> some View {
         HStack(alignment: .center, spacing: 14) {
-            moodChartLegend
+            moodChartLegend(chartHeight: height)
             
             Chart(viewModel.currentMoodBarData) { segment in
                 BarMark(
@@ -321,11 +321,20 @@ struct DashboardView: View {
                 )
                 .foregroundStyle(moodBarColour(for: segment.mood))
                 .cornerRadius(4)
+                .compositingLayer { mark in
+                    mark
+                        .shadow(color: moodChartOutlineColour, radius: 0, x: 1, y: 0)
+                        .shadow(color: moodChartOutlineColour, radius: 0, x: -1, y: 0)
+                        .shadow(color: moodChartOutlineColour, radius: 0, x: 0, y: 1)
+                        .shadow(color: moodChartOutlineColour, radius: 0, x: 0, y: -1)
+                }
                 .annotation(position: .overlay) {
                     if shouldShowCount(for: segment) {
                         Text("\(segment.count)")
-                            .font(.system(.caption2, design: .rounded).weight(.bold))
+                            .font(moodCountFont(for: segment, chartHeight: height))
                             .foregroundStyle(AppColour.txtCoklat)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                             .accessibilityHidden(true)
                             .transition(.opacity)
                     }
@@ -340,7 +349,7 @@ struct DashboardView: View {
                 AxisMarks { _ in
                     AxisTick(stroke: StrokeStyle(lineWidth: 1))
                         .foregroundStyle(AppColour.txtCoklat.opacity(0.65))
-                    AxisValueLabel()
+                    AxisValueLabel(verticalSpacing: 14)
                         .font(.system(.headline, design: .rounded).weight(.bold))
                         .foregroundStyle(AppColour.txtCoklat)
                 }
@@ -354,6 +363,18 @@ struct DashboardView: View {
             
             .chartPlotStyle { plotArea in
                 plotArea
+                    .overlay(alignment: .leading) {
+                        Rectangle()
+                            .fill(moodChartOutlineColour)
+                            .frame(width: 1.5)
+                            .accessibilityHidden(true)
+                    }
+                    .overlay(alignment: .bottom) {
+                        Rectangle()
+                            .fill(moodChartOutlineColour)
+                            .frame(height: 1.5)
+                            .accessibilityHidden(true)
+                    }
                     .padding(.top, 6)
                     .padding(.bottom, 10)
             }
@@ -383,6 +404,27 @@ struct DashboardView: View {
             )
         }
         .frame(height: height)
+    }
+
+    private func moodCountFont(
+        for segment: MoodBarChartSegment,
+        chartHeight: CGFloat
+    ) -> Font {
+        let estimatedPlotHeight = max(1, chartHeight - 70)
+        let segmentFraction = CGFloat(segment.count)
+            / CGFloat(max(1, moodChartMaximumCount))
+        let estimatedSegmentHeight = estimatedPlotHeight * segmentFraction
+
+        let textStyle: Font.TextStyle
+        if chartHeight >= 600, estimatedSegmentHeight >= 120 {
+            textStyle = .title2
+        } else if chartHeight >= 440, estimatedSegmentHeight >= 72 {
+            textStyle = .title3
+        } else {
+            textStyle = .headline
+        }
+
+        return .system(textStyle, design: .rounded).weight(.bold)
     }
 
     private func selectMood(
@@ -442,8 +484,12 @@ struct DashboardView: View {
         }
     }
     
-    private var moodChartLegend: some View {
-        VStack(alignment: .trailing, spacing: 14) {
+    private func moodChartLegend(chartHeight: CGFloat) -> some View {
+        let baseIconSize = min(max(chartHeight / 9, 42), 64)
+        let rowIconSize = baseIconSize * moodLegendMaximumScale
+        let colourSize = min(max(baseIconSize * 0.36, 18), 24)
+
+        return VStack(alignment: .trailing, spacing: 10) {
             ForEach(moodLegendOrder, id: \.self) { mood in
                 Button {
                     toggleMoodSegments(mood)
@@ -452,12 +498,32 @@ struct DashboardView: View {
                         Image(mood.expressionImageName(for: storyFlow.childGender))
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 48, height: 48)
+                            .frame(
+                                width: moodLegendImageSize(
+                                    for: mood,
+                                    baseSize: baseIconSize
+                                ),
+                                height: moodLegendImageSize(
+                                    for: mood,
+                                    baseSize: baseIconSize
+                                )
+                            )
+                            .offset(
+                                x: moodLegendImageHorizontalOffset(
+                                    for: mood,
+                                    baseSize: baseIconSize
+                                )
+                            )
+                            .frame(width: rowIconSize, height: rowIconSize)
                             .accessibilityHidden(true)
 
                         Circle()
                             .fill(moodBarColour(for: mood))
-                            .frame(width: 18, height: 18)
+                            .frame(width: colourSize, height: colourSize)
+                            .overlay {
+                                Circle()
+                                    .stroke(moodChartOutlineColour, lineWidth: 1.5)
+                            }
                             .accessibilityHidden(true)
                     }
                     .padding(.vertical, 6)
@@ -466,6 +532,13 @@ struct DashboardView: View {
                         if isMoodSelected(mood) {
                             RoundedRectangle(cornerRadius: 10)
                                 .fill(moodBarColour(for: mood).opacity(0.18))
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .overlay {
+                        if isMoodSelected(mood) {
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(moodChartOutlineColour, lineWidth: 2)
                                 .accessibilityHidden(true)
                         }
                     }
@@ -482,6 +555,46 @@ struct DashboardView: View {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    private func moodLegendImageSize(
+        for mood: Moods,
+        baseSize: CGFloat
+    ) -> CGFloat {
+        baseSize * moodLegendImageScale(for: mood)
+    }
+
+    private func moodLegendImageScale(for mood: Moods) -> CGFloat {
+        switch (storyFlow.childGender, mood) {
+        case (.girl, .surprise):
+            1.55
+        case (.girl, .angry):
+            1.04
+        case (.boy, .surprise):
+            1.10
+        case (.boy, .angry):
+            1.18
+        default:
+            1
+        }
+    }
+
+    private func moodLegendImageHorizontalOffset(
+        for mood: Moods,
+        baseSize: CGFloat
+    ) -> CGFloat {
+        switch (storyFlow.childGender, mood) {
+        case (.girl, .surprise):
+            -baseSize * 0.16
+        default:
+            0
+        }
+    }
+
+    private var moodLegendMaximumScale: CGFloat {
+        moodLegendOrder
+            .map(moodLegendImageScale(for:))
+            .max() ?? 1
     }
 
     private func toggleMoodSegments(_ mood: Moods) {
@@ -518,6 +631,10 @@ struct DashboardView: View {
         case .fear: AppColour.barFearful
         case .disgust: AppColour.barDisgusted
         }
+    }
+
+    private var moodChartOutlineColour: Color {
+        AppColour.txtCoklat.opacity(0.82)
     }
     
     private func emotionCausesCard(height: CGFloat?) -> some View {
