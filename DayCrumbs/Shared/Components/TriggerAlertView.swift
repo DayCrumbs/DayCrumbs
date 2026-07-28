@@ -11,6 +11,7 @@ struct TriggerAlertView: View {
     let detail: TriggerDetail
     let onDismiss: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AccessibilityFocusState.Binding private var accessibilityFocus:
         DashboardAccessibilityFocus?
 
@@ -66,14 +67,14 @@ struct TriggerAlertView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(
-                                AppColour.btnKuning
+                                AppColour.btnCoklat
                                     .accessibilityHidden(true)
                             )
-                            .foregroundColor(AppColour.txtCoklat)
+                            .foregroundColor(AppColour.txtPutih)
                             .clipShape(Capsule())
                     }
                     .accessibilityLabel("Done")
-                    .accessibilityHint("Closes trigger details.")
+                    .accessibilityHint("Closes emotion cause details.")
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)
@@ -84,7 +85,11 @@ struct TriggerAlertView: View {
             // Modifier untuk bentuk modal dipindah ke VStack terluar
             .background(AppColour.bgPutih.accessibilityHidden(true))
             .clipShape(RoundedRectangle(cornerRadius: 24))
-            .frame(maxWidth: 440, maxHeight: 680)
+            .frame(
+                maxWidth: dynamicTypeSize.isAccessibilitySize ? 680 : 440,
+                maxHeight: dynamicTypeSize.isAccessibilitySize ? .infinity : 680
+            )
+            .padding(dynamicTypeSize.isAccessibilitySize ? 24 : 0)
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
         }
@@ -153,7 +158,23 @@ struct TriggerAlertView: View {
                 .foregroundColor(AppColour.txtCoklat.opacity(0.7))
                 .accessibilityAddTraits(.isHeader)
 
-            HStack(spacing: 8) {
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 8) {
+                        sourceLabels
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        sourceLabels
+                    }
+                }
+            }
+            .foregroundColor(AppColour.txtCoklat)
+        }
+    }
+
+    @ViewBuilder
+    private var sourceLabels: some View {
                 ForEach(detail.sourceLabels, id: \.self) { source in
                     Text(source.rawValue)
                         .font(.system(.caption, design: .rounded).bold())
@@ -167,9 +188,6 @@ struct TriggerAlertView: View {
                         .clipShape(Capsule())
                         .accessibilityLabel(source.rawValue)
                 }
-            }
-            .foregroundColor(AppColour.txtCoklat)
-        }
     }
 
     private func sectionHeader(title: String, systemImage: String) -> some View {

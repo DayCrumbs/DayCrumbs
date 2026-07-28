@@ -4,8 +4,13 @@ import SwiftUI
 import SwiftData
 
 struct DashboardView: View {
+    #if DEBUG
+    private let showsDevelopmentDataButton = true
+    #endif
+
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(StoryFlowCoordinator.self) private var storyFlow
     
     @AccessibilityFocusState private var accessibilityFocus: DashboardAccessibilityFocus?
@@ -15,6 +20,18 @@ struct DashboardView: View {
     /// Remembers which trigger opened the detail so modal dismissal can restore
     /// VoiceOver to the originating chip in the next presentation step.
     @State private var triggerFocusReturnTarget: String?
+
+    /// Tracks which bar segments show their count annotation.
+    /// `.none` means all counts are hidden.
+    /// `.segment(id)` shows only that specific segment (from bar tap).
+    /// `.mood(mood)` shows all segments of that mood (from legend tap).
+    @State private var chartSelection: ChartSelection = .none
+
+    private enum ChartSelection: Equatable {
+        case none
+        case segment(String)
+        case mood(Moods)
+    }
     
     init(modelContext: ModelContext) {
         let translationTaskHost = AppleTranslationTaskHost()
@@ -24,6 +41,23 @@ struct DashboardView: View {
                 entrySource: StoryEntrySource(modelContext: modelContext),
                 executeTranslationBatch: translationTaskHost.batchHandler
             )
+        )
+
+        let basePickerFont = UIFont.systemFont(ofSize: 17, weight: .semibold)
+        let pickerFont = UIFontMetrics(forTextStyle: .body).scaledFont(
+            for: basePickerFont,
+            maximumPointSize: 28
+        )
+        let appearance = UISegmentedControl.appearance()
+        appearance.selectedSegmentTintColor = UIColor(AppColour.btnKuning)
+        appearance.backgroundColor = UIColor(AppColour.btnKuning.opacity(0.2))
+        appearance.setTitleTextAttributes(
+            [.foregroundColor: UIColor(AppColour.txtCoklat), .font: pickerFont],
+            for: .selected
+        )
+        appearance.setTitleTextAttributes(
+            [.foregroundColor: UIColor(AppColour.txtCoklat), .font: pickerFont],
+            for: .normal
         )
     }
     
@@ -37,6 +71,16 @@ struct DashboardView: View {
                 .accessibilityHidden(true)
         )
         .toolbar(.hidden, for: .navigationBar)
+        #if DEBUG
+        .overlay(alignment: .topTrailing) {
+            if showsDevelopmentDataButton {
+                developmentDataButton
+                    .padding(.top, 12)
+                    .padding(.trailing, 16)
+                    .accessibilityHidden(viewModel.selectedTriggerDetail != nil)
+            }
+        }
+        #endif
         .appleTranslationTaskHost(translationTaskHost)
         .onChange(of: viewModel.state) { _, newState in
             postAccessibilityAnnouncement(for: newState)
@@ -102,7 +146,9 @@ struct DashboardView: View {
     @ViewBuilder
     private func dashboardContent(in size: CGSize) -> some View {
         Group {
-            if size.width >= 900 {
+            if dynamicTypeSize.isAccessibilitySize {
+                accessibilityDashboard(in: size)
+            } else if size.width >= 900 {
                 wideDashboard(in: size)
             } else {
                 compactDashboard(in: size)
@@ -121,8 +167,6 @@ struct DashboardView: View {
         let triggerColumnWidth = contentWidth * 0.30
         let columnSpacing = contentWidth * 0.047
         let chartWidth = max(0, contentWidth - triggerColumnWidth - columnSpacing)
-        let triggerCardHeight = chartHeight * 0.72
-        let triggerButtonSpacing = max(24, size.height * 0.035)
         
         return VStack(alignment: .leading, spacing: 0) {
             insightSection
@@ -135,11 +179,12 @@ struct DashboardView: View {
                 moodChart(height: chartHeight)
                     .frame(width: chartWidth, height: chartHeight)
                 
-                VStack(spacing: 0) {
-                    commonTriggersCard(height: triggerCardHeight)
-                    
-                    Spacer(minLength: triggerButtonSpacing)
-                    
+                VStack(spacing: 16) {
+                    dateRangeCard
+
+                    emotionCausesCard(height: nil)
+                        .frame(maxHeight: .infinity)
+
                     addStoryButton
                 }
                 .frame(width: triggerColumnWidth, height: chartHeight)
@@ -149,6 +194,29 @@ struct DashboardView: View {
         .padding(.top, topInset)
         .padding(.horizontal, horizontalInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func accessibilityDashboard(in size: CGSize) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 32) {
+                insightSection
+
+                timeRangePicker
+
+                moodChart(height: max(420, size.height * 0.48))
+                    // The chart already has a complete spoken descriptor. Capping
+                    // its visual labels prevents axes from consuming the plot.
+                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+
+                dateRangeCard
+
+                emotionCausesCard(height: nil)
+
+                addStoryButton
+            }
+            .padding(.horizontal, max(24, size.width * 0.05))
+            .padding(.vertical, 32)
+        }
     }
     
     private func compactDashboard(in size: CGSize) -> some View {
@@ -160,7 +228,9 @@ struct DashboardView: View {
                 
                 moodChart(height: max(300, size.height * 0.42))
                 
-                commonTriggersCard(height: 330)
+                dateRangeCard
+
+                emotionCausesCard(height: 330)
                     .padding(.bottom, 12)
                 
                 addStoryButton
@@ -181,42 +251,48 @@ struct DashboardView: View {
                 .foregroundStyle(AppColour.txtCoklat)
         }
     }
+
+    private var dateRangeCard: some View {
+        Text(viewModel.selectedDateRangeLabel)
+            .font(.system(.title3, design: .rounded).weight(.bold))
+            .foregroundStyle(AppColour.txtCoklat)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, minHeight: 58)
+            .padding(.horizontal, 18)
+            .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 14 : 8)
+            .background(
+                AppColour.btnKuning
+                    .opacity(0.16)
+                    .accessibilityHidden(true)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+                "\(viewModel.selectedTimeRange.rawValue) chart date range, \(viewModel.selectedDateRangeLabel)"
+            )
+            .accessibilityAddTraits(.isHeader)
+    }
     
     private var timeRangePicker: some View {
-        HStack(spacing: 0) {
-            ForEach(TimeRange.allCases, id: \.self) { range in
-                Button {
-                    Task {
-                        await viewModel.selectTimeRange(range)
-                    }
-                } label: {
-                    Text(range.rawValue)
-                        .font(.system(.headline, design: .rounded).weight(.semibold))
-                        .foregroundStyle(AppColour.txtCoklat)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .contentShape(Rectangle()) // <--- TAMBAHKAN BARIS INI
-                        .background {
-                            if viewModel.selectedTimeRange == range {
-                                Capsule()
-                                    .fill(AppColour.btnKuning)
-                                    .accessibilityHidden(true)
-                            }
-                        }
+        Picker("Time range", selection: Binding(
+            get: { viewModel.selectedTimeRange },
+            set: { newRange in
+                Task {
+                    await viewModel.selectTimeRange(newRange)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(range.rawValue) range")
-                .accessibilityAddTraits(
-                    viewModel.selectedTimeRange == range ? .isSelected : []
-                )
-                .accessibilityHint(timeRangeAccessibilityHint(for: range))
+            }
+        )) {
+            ForEach(TimeRange.allCases, id: \.self) { range in
+                Text(range.rawValue)
+                    .tag(range)
+                    .accessibilityLabel("\(range.rawValue) range")
+                    .accessibilityHint(timeRangeAccessibilityHint(for: range))
             }
         }
-        .padding(2)
-        .background {
-            Capsule()
-                .fill(AppColour.btnKuning.opacity(0.18))
-                .accessibilityHidden(true)
-        }
+        .pickerStyle(.segmented)
+        .controlSize(.extraLarge)
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
     }
     
@@ -234,7 +310,7 @@ struct DashboardView: View {
     
     private func moodChart(height: CGFloat) -> some View {
         HStack(alignment: .center, spacing: 14) {
-            moodChartLegend
+            moodChartLegend(chartHeight: height)
             
             Chart(viewModel.currentMoodBarData) { segment in
                 BarMark(
@@ -245,23 +321,35 @@ struct DashboardView: View {
                 )
                 .foregroundStyle(moodBarColour(for: segment.mood))
                 .cornerRadius(4)
+                .compositingLayer { mark in
+                    mark
+                        .shadow(color: moodChartOutlineColour, radius: 0, x: 1, y: 0)
+                        .shadow(color: moodChartOutlineColour, radius: 0, x: -1, y: 0)
+                        .shadow(color: moodChartOutlineColour, radius: 0, x: 0, y: 1)
+                        .shadow(color: moodChartOutlineColour, radius: 0, x: 0, y: -1)
+                }
                 .annotation(position: .overlay) {
-                    Text("\(segment.count)")
-                        .font(.system(.caption2, design: .rounded).weight(.bold))
-                        .foregroundStyle(AppColour.txtCoklat)
-                        .accessibilityHidden(true)
+                    if shouldShowCount(for: segment) {
+                        Text("\(segment.count)")
+                            .font(moodCountFont(for: segment, chartHeight: height))
+                            .foregroundStyle(AppColour.txtCoklat)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .accessibilityHidden(true)
+                            .transition(.opacity)
+                    }
                 }
             }
             .chartLegend(.hidden)
             .chartYScale(
                 domain: 0...moodChartMaximumCount,
-                range: .plotDimension(startPadding: 20)
+                range: .plotDimension(startPadding: 1)
             )
             .chartXAxis {
                 AxisMarks { _ in
                     AxisTick(stroke: StrokeStyle(lineWidth: 1))
                         .foregroundStyle(AppColour.txtCoklat.opacity(0.65))
-                    AxisValueLabel()
+                    AxisValueLabel(verticalSpacing: 14)
                         .font(.system(.headline, design: .rounded).weight(.bold))
                         .foregroundStyle(AppColour.txtCoklat)
                 }
@@ -275,8 +363,35 @@ struct DashboardView: View {
             
             .chartPlotStyle { plotArea in
                 plotArea
+                    .overlay(alignment: .leading) {
+                        Rectangle()
+                            .fill(moodChartOutlineColour)
+                            .frame(width: 1.5)
+                            .accessibilityHidden(true)
+                    }
+                    .overlay(alignment: .bottom) {
+                        Rectangle()
+                            .fill(moodChartOutlineColour)
+                            .frame(height: 1.5)
+                            .accessibilityHidden(true)
+                    }
                     .padding(.top, 6)
                     .padding(.bottom, 10)
+            }
+            .chartOverlay { chartProxy in
+                GeometryReader { geometryProxy in
+                    Rectangle()
+                        .fill(.clear)
+                        .contentShape(Rectangle())
+                        .onTapGesture { location in
+                            selectMood(
+                                at: location,
+                                chartProxy: chartProxy,
+                                geometryProxy: geometryProxy
+                            )
+                        }
+                        .accessibilityHidden(true)
+                }
             }
             .transaction { transaction in
                 transaction.animation = nil
@@ -290,27 +405,210 @@ struct DashboardView: View {
         }
         .frame(height: height)
     }
+
+    private func moodCountFont(
+        for segment: MoodBarChartSegment,
+        chartHeight: CGFloat
+    ) -> Font {
+        let estimatedPlotHeight = max(1, chartHeight - 70)
+        let segmentFraction = CGFloat(segment.count)
+            / CGFloat(max(1, moodChartMaximumCount))
+        let estimatedSegmentHeight = estimatedPlotHeight * segmentFraction
+
+        let textStyle: Font.TextStyle
+        if chartHeight >= 600, estimatedSegmentHeight >= 120 {
+            textStyle = .title2
+        } else if chartHeight >= 440, estimatedSegmentHeight >= 72 {
+            textStyle = .title3
+        } else {
+            textStyle = .headline
+        }
+
+        return .system(textStyle, design: .rounded).weight(.bold)
+    }
+
+    private func selectMood(
+        at location: CGPoint,
+        chartProxy: ChartProxy,
+        geometryProxy: GeometryProxy
+    ) {
+        guard let plotFrameAnchor = chartProxy.plotFrame else { return }
+
+        let plotFrame = geometryProxy[plotFrameAnchor]
+        guard plotFrame.contains(location) else { return }
+
+        let plotLocation = CGPoint(
+            x: location.x - plotFrame.minX,
+            y: location.y - plotFrame.minY
+        )
+        guard
+            let timeLabel: String = chartProxy.value(atX: plotLocation.x),
+            let count: Double = chartProxy.value(atY: plotLocation.y),
+            let barCenterX = chartProxy.position(forX: timeLabel)
+        else {
+            return
+        }
+
+        let categoryWidth = plotFrame.width
+            / CGFloat(max(1, Set(viewModel.currentMoodBarData.map(\.timeLabel)).count))
+        let barHalfWidth = categoryWidth * 0.55 / 2
+        guard abs(plotLocation.x - barCenterX) <= barHalfWidth else { return }
+
+        let segments = viewModel.currentMoodBarData.filter {
+            $0.timeLabel == timeLabel
+        }
+        var cumulativeCount = 0.0
+        let tappedSegment = segments.first { segment in
+            cumulativeCount += Double(segment.count)
+            return count <= cumulativeCount
+        }
+
+        guard let tappedSegment else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if chartSelection == .segment(tappedSegment.id) {
+                chartSelection = .none
+            } else {
+                chartSelection = .segment(tappedSegment.id)
+            }
+        }
+    }
+
+    private func shouldShowCount(for segment: MoodBarChartSegment) -> Bool {
+        switch chartSelection {
+        case .none:
+            return false
+        case .segment(let id):
+            return segment.id == id
+        case .mood(let mood):
+            return segment.mood == mood
+        }
+    }
     
-    private var moodChartLegend: some View {
-        VStack(alignment: .trailing, spacing: 12) {
+    private func moodChartLegend(chartHeight: CGFloat) -> some View {
+        let baseIconSize = min(max(chartHeight / 9, 42), 64)
+        let rowIconSize = baseIconSize * moodLegendMaximumScale
+        let colourSize = min(max(baseIconSize * 0.36, 18), 24)
+
+        return VStack(alignment: .trailing, spacing: 10) {
             ForEach(moodLegendOrder, id: \.self) { mood in
-                HStack(spacing: 8) {
-                    Image(mood.expressionImageName(for: storyFlow.childGender))
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 38, height: 38)
-                        .accessibilityHidden(true)
-                    
-                    Circle()
-                        .fill(moodBarColour(for: mood))
-                        .frame(width: 14, height: 14)
-                        .accessibilityHidden(true)
+                Button {
+                    toggleMoodSegments(mood)
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(mood.expressionImageName(for: storyFlow.childGender))
+                            .resizable()
+                            .scaledToFit()
+                            .frame(
+                                width: moodLegendImageSize(
+                                    for: mood,
+                                    baseSize: baseIconSize
+                                ),
+                                height: moodLegendImageSize(
+                                    for: mood,
+                                    baseSize: baseIconSize
+                                )
+                            )
+                            .offset(
+                                x: moodLegendImageHorizontalOffset(
+                                    for: mood,
+                                    baseSize: baseIconSize
+                                )
+                            )
+                            .frame(width: rowIconSize, height: rowIconSize)
+                            .accessibilityHidden(true)
+
+                        Circle()
+                            .fill(moodBarColour(for: mood))
+                            .frame(width: colourSize, height: colourSize)
+                            .overlay {
+                                Circle()
+                                    .stroke(moodChartOutlineColour, lineWidth: 1.5)
+                            }
+                            .accessibilityHidden(true)
+                    }
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 8)
+                    .background {
+                        if isMoodSelected(mood) {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(moodBarColour(for: mood).opacity(0.18))
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .overlay {
+                        if isMoodSelected(mood) {
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(moodChartOutlineColour, lineWidth: 2)
+                                .accessibilityHidden(true)
+                        }
+                    }
                 }
+                .buttonStyle(.plain)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(mood.accessibilityLabel) colour")
+                .accessibilityLabel("\(mood.accessibilityLabel) mood indicator")
+                .accessibilityHint(
+                    isMoodSelected(mood)
+                        ? "Hides count for \(mood.accessibilityLabel)."
+                        : "Shows count for \(mood.accessibilityLabel) on the chart."
+                )
+                .accessibilityAddTraits(.isButton)
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    private func moodLegendImageSize(
+        for mood: Moods,
+        baseSize: CGFloat
+    ) -> CGFloat {
+        baseSize * moodLegendImageScale(for: mood)
+    }
+
+    private func moodLegendImageScale(for mood: Moods) -> CGFloat {
+        switch (storyFlow.childGender, mood) {
+        case (.girl, .surprise):
+            1.55
+        case (.girl, .angry):
+            1.04
+        case (.boy, .surprise):
+            1.10
+        case (.boy, .angry):
+            1.18
+        default:
+            1
+        }
+    }
+
+    private func moodLegendImageHorizontalOffset(
+        for mood: Moods,
+        baseSize: CGFloat
+    ) -> CGFloat {
+        switch (storyFlow.childGender, mood) {
+        case (.girl, .surprise):
+            -baseSize * 0.16
+        default:
+            0
+        }
+    }
+
+    private var moodLegendMaximumScale: CGFloat {
+        moodLegendOrder
+            .map(moodLegendImageScale(for:))
+            .max() ?? 1
+    }
+
+    private func toggleMoodSegments(_ mood: Moods) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if chartSelection == .mood(mood) {
+                chartSelection = .none
+            } else {
+                chartSelection = .mood(mood)
+            }
+        }
+    }
+
+    private func isMoodSelected(_ mood: Moods) -> Bool {
+        chartSelection == .mood(mood)
     }
     
     private var moodLegendOrder: [Moods] {
@@ -334,10 +632,14 @@ struct DashboardView: View {
         case .disgust: AppColour.barDisgusted
         }
     }
+
+    private var moodChartOutlineColour: Color {
+        AppColour.txtCoklat.opacity(0.82)
+    }
     
-    private func commonTriggersCard(height: CGFloat) -> some View {
+    private func emotionCausesCard(height: CGFloat?) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Common Triggers")
+            Text("Emotion Causes")
                 .font(.system(.title3, design: .rounded).weight(.bold))
                 .foregroundStyle(AppColour.txtCoklat)
                 .accessibilityAddTraits(.isHeader)
@@ -347,44 +649,20 @@ struct DashboardView: View {
                 )
             
             if viewModel.commonTriggers.isEmpty {
-                Text("No repeated triggers yet.")
+                Text("No emotion causes yet.")
                     .font(.system(.body, design: .rounded))
                     .foregroundStyle(AppColour.txtCoklat.opacity(0.75))
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("No repeated triggers yet.")
+                    .accessibilityLabel("No emotion causes yet.")
             } else {
-                ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(spacing: 14) {
-                        ForEach(viewModel.commonTriggers, id: \.self) { trigger in
-                            Button {
-                                triggerFocusReturnTarget = trigger
-                                viewModel.selectTrigger(trigger)
-                            } label: {
-                                Text(trigger)
-                                    .font(.system(.body, design: .rounded))
-                                    .foregroundStyle(AppColour.txtCoklat)
-                                    .lineLimit(1)
-                                    .frame(maxWidth: .infinity, minHeight: 44)
-                                    .padding(.horizontal, 12)
-                                    .overlay {
-                                        Capsule()
-                                            .stroke(AppColour.btnKuning, lineWidth: 1.5)
-                                            .accessibilityHidden(true)
-                                    }
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("\(trigger), common trigger")
-                            .accessibilityHint(
-                                "Shows explanation, evidence, and recommended activities."
-                            )
-                            .accessibilityFocused(
-                                $accessibilityFocus,
-                                equals: .trigger(trigger)
-                            )
-                        }
+                if dynamicTypeSize.isAccessibilitySize {
+                    triggerButtons
+                } else {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        triggerButtons
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             
             if viewModel.commonTriggers.isEmpty {
@@ -403,6 +681,40 @@ struct DashboardView: View {
         // Exclude the card wrapper as a readable leaf without hiding its
         // heading, empty message, or trigger buttons from VoiceOver.
         .accessibilityElement(children: .contain)
+    }
+
+    private var triggerButtons: some View {
+        LazyVStack(spacing: 14) {
+            ForEach(viewModel.commonTriggers, id: \.self) { trigger in
+                Button {
+                    triggerFocusReturnTarget = trigger
+                    viewModel.selectTrigger(trigger)
+                } label: {
+                    Text(trigger)
+                        .font(.system(.body, design: .rounded))
+                        .foregroundStyle(AppColour.txtCoklat)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 10 : 0)
+                        .overlay {
+                            Capsule()
+                                .stroke(AppColour.btnKuning, lineWidth: 1.5)
+                                .accessibilityHidden(true)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(trigger), emotion cause")
+                .accessibilityHint(
+                    "Shows explanation, evidence, and recommended activities."
+                )
+                .accessibilityFocused(
+                    $accessibilityFocus,
+                    equals: .trigger(trigger)
+                )
+            }
+        }
     }
     
     /// Moves VoiceOver only when trigger detail is presented or dismissed.
@@ -452,17 +764,55 @@ struct DashboardView: View {
                     .accessibilityHidden(true)
             }
             .font(.system(.headline, design: .rounded).weight(.bold))
-            .foregroundStyle(AppColour.txtCoklat)
+            .foregroundStyle(AppColour.txtPutih)
             .frame(maxWidth: .infinity, minHeight: 51)
             .background(
-                AppColour.btnKuning
+                AppColour.btnCoklat
                     .accessibilityHidden(true)
             )
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .disabled(storyFlow.isStoryCompletedToday)
         .accessibilityLabel("Add story")
+        .accessibilityValue(
+            storyFlow.isStoryCompletedToday
+                ? "Unavailable"
+                : "Available"
+        )
+        .accessibilityHint(
+            storyFlow.isStoryCompletedToday
+                ? "Today's story is complete after the end-of-day reflection."
+                : "Starts a new story."
+        )
     }
+
+    #if DEBUG
+    private var developmentDataButton: some View {
+        NavigationLink {
+            DevelopmentStoryDataView(modelContext: modelContext)
+        } label: {
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    Image(systemName: "tablecells")
+                        .font(.title2.weight(.semibold))
+                        .frame(width: 52, height: 52)
+                } else {
+                    Label("Story Data", systemImage: "tablecells")
+                        .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                }
+            }
+            .foregroundStyle(AppColour.txtCoklat)
+            .background(.regularMaterial)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Open development story data")
+        .accessibilityHint("Shows locally stored story entries in a table.")
+    }
+    #endif
     
     @ViewBuilder
     private var insightContent: some View {
@@ -478,10 +828,18 @@ struct DashboardView: View {
             .accessibilityElement(children: .combine)
             
         case .loaded:
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text(viewModel.summaryText)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(insightAccessibilityLabel)
+
+                Text("This summary is AI-generated from recent activity logs and reflections. Use it as a helpful guide and review it alongside your own observations.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(AppColour.txtCoklat.opacity(0.78))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(
+                        "AI-generated summary notice. This summary is generated from recent activity logs and reflections. Use it as a helpful guide and review it alongside your own observations."
+                    )
                 
                 if let fallbackLabel = viewModel.englishFallbackLabel {
                     HStack(spacing: 10) {
@@ -549,9 +907,8 @@ struct DashboardView: View {
     
 }
 
-//#Preview {
-//    NavigationStack {
-//        DashboardView()
-//    }
-//    .environment(StoryFlowCoordinator())
-//}
+/*
+#Preview {
+
+}
+*/

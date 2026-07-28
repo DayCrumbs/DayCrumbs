@@ -20,6 +20,7 @@ struct StorySelectionBackground: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
+            .accessibilityHidden(true)
         }
     }
 }
@@ -45,6 +46,7 @@ struct BlurredStorySelectionBackground: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
+            .accessibilityHidden(true)
         }
     }
 }

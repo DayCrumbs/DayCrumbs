@@ -3,28 +3,38 @@ import UIKit
 
 struct ReasonView: View {
     @Environment(StoryFlowCoordinator.self) private var storyFlow
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
     let selectedActivity: Activity.BuiltInActivity
     let selectedMood: Moods
-    @State private var viewModel = ReasonViewModel()
+    @State private var viewModel: ReasonViewModel
     @State private var isKeyboardVisible = false
+    @FocusState private var isDiscussionFocused: Bool
 
     init(
         selectedSession: Sessions,
         selectedPlace: Place.BuiltInPlace,
         selectedActivity: Activity.BuiltInActivity,
-        selectedMood: Moods
+        selectedMood: Moods,
+        initialText: String = ""
     ) {
         self.selectedSession = selectedSession
         self.selectedPlace = selectedPlace
         self.selectedActivity = selectedActivity
         self.selectedMood = selectedMood
+        
+        _viewModel = State(initialValue: ReasonViewModel(initialText: initialText))
     }
 
     var body: some View {
         GeometryReader { proxy in
+            let isCharacterLimitAlertPresented = viewModel.isCharacterLimitAlertPresented
+            let isDiscardConfirmationPresented = viewModel.isDiscardConfirmationPresented
+            let isBlockingAlertPresented =
+                isCharacterLimitAlertPresented || isDiscardConfirmationPresented
+
             ZStack(alignment: .topLeading) {
                 BlurredStorySelectionBackground(
                     imageNames: [
@@ -38,26 +48,92 @@ struct ReasonView: View {
                 .ignoresSafeArea()
                 .accessibilityHidden(true)
 
-                if proxy.size.width >= 760 {
-                    wideContent(in: proxy.size)
-                } else {
-                    compactContent(in: proxy.size)
+                Group {
+                    if proxy.size.width >= 760
+                        && !dynamicTypeSize.isAccessibilitySize {
+                        wideContent(in: proxy.size)
+                    } else {
+                        compactContent(in: proxy.size)
+                    }
                 }
+                .accessibilityHidden(isBlockingAlertPresented)
 
                 CircularBackButton(style: .yellowBtn) {
-                    storyFlow.goBack()
+                    isDiscussionFocused = false
+                    if viewModel.isDiscussionReady {
+                        viewModel.showDiscardConfirmation()
+                    } else {
+                        storyFlow.goBack()
+                    }
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
+                .disabled(isBlockingAlertPresented)
+                .accessibilityHidden(isBlockingAlertPresented)
+                .accessibilityHint(
+                    viewModel.isDiscussionReady
+                        ? "Asks before discarding this discussion."
+                        : "Returns to mood selection."
+                )
+
+                if isBlockingAlertPresented {
+                    StoryFlowBlockingOverlay()
+                }
+
+                if isCharacterLimitAlertPresented {
+                    characterLimitAlert
+                        .frame(
+                            width: proxy.size.width,
+                            height: proxy.size.height,
+                            alignment: .center
+                        )
+                        .transition(.scale.combined(with: .opacity))
+                }
+
+                if isDiscardConfirmationPresented {
+                    discardDiscussionAlert
+                        .frame(
+                            width: proxy.size.width,
+                            height: proxy.size.height,
+                            alignment: .center
+                        )
+                        .transition(.scale.combined(with: .opacity))
+                }
             }
             .animation(.easeInOut(duration: 0.22), value: isKeyboardVisible)
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: isCharacterLimitAlertPresented
+            )
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: isDiscardConfirmationPresented
+            )
         }
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            if viewModel.discussionText.isEmpty && !storyFlow.cachedDiscussionText.isEmpty {
+                viewModel.restoreDiscussionText(storyFlow.cachedDiscussionText)
+            }
+        }
+        .onChange(of: viewModel.discussionText) { _, newValue in
+            storyFlow.updateDiscussionCache(newValue)
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             isKeyboardVisible = true
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             isKeyboardVisible = false
+        }
+        .onChange(of: viewModel.isCharacterLimitAlertPresented) { _, isPresented in
+            if isPresented {
+                isDiscussionFocused = false
+            }
+        }
+        .onChange(of: viewModel.isDiscardConfirmationPresented) { _, isPresented in
+            if isPresented {
+                isDiscussionFocused = false
+            }
         }
     }
 
@@ -73,7 +149,11 @@ struct ReasonView: View {
             : size.width * 0.49
         let cardOffsetY = isKeyboardVisible
             ? max(0, (size.height - cardHeight) / 2) - min(30, size.height * 0.06)
-            : size.height * 0.51
+            : max(120, size.height * 0.60 - 200)
+        let skipOffsetY = min(
+            size.height - 58,
+            cardOffsetY + cardHeight + 16
+        )
 
         return ZStack(alignment: .topLeading) {
             QuestionCharacterBubble(
@@ -97,7 +177,7 @@ struct ReasonView: View {
 
             skipButton
                 .frame(width: max(118, size.width * 0.11))
-                .offset(x: size.width * 0.81, y: size.height * 0.92)
+                .offset(x: size.width * 0.81, y: skipOffsetY)
                 .opacity(isKeyboardVisible ? 0 : 1)
                 .allowsHitTesting(!isKeyboardVisible)
                 .accessibilityHidden(isKeyboardVisible)
@@ -108,7 +188,11 @@ struct ReasonView: View {
     private func compactContent(in size: CGSize) -> some View {
         let cardHeight = isKeyboardVisible
             ? min(390, max(280, size.height - 44))
-            : 390
+            : (
+                dynamicTypeSize.isAccessibilitySize
+                    ? max(560, size.height * 0.68)
+                    : 390
+            )
         let cardWidth = min(680, max(size.width * 0.70, size.width - 48))
 
         return ScrollView {
@@ -160,11 +244,13 @@ struct ReasonView: View {
                 .foregroundStyle(AppColour.txtCoklat)
                 .accessibilityAddTraits(.isHeader)
 
-            Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
-                .font(.system(.body, design: .rounded))
-                .foregroundStyle(AppColour.txtCoklat)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+            if !isKeyboardVisible {
+                Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
+                    .font(.system(.body, design: .rounded))
+                    .foregroundStyle(AppColour.txtCoklat)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             discussionEditor
 
@@ -179,9 +265,9 @@ struct ReasonView: View {
             } label: {
                 Text("Save Discussion")
                     .font(.system(.headline, design: .rounded).weight(.semibold))
-                    .foregroundStyle(AppColour.txtCoklat)
+                    .foregroundStyle(AppColour.txtPutih)
                     .frame(maxWidth: .infinity, minHeight: 46)
-                    .background(AppColour.bgPutih)
+                    .background(AppColour.btnCoklat)
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
@@ -198,7 +284,7 @@ struct ReasonView: View {
                     : "Write a discussion before saving. You can also skip this step."
             )
         }
-        .padding(24)
+        .padding(dynamicTypeSize.isAccessibilitySize ? 20 : 24)
         .background(AppColour.cardKuning)
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
     }
@@ -217,7 +303,7 @@ struct ReasonView: View {
                     .allowsHitTesting(false)
             }
 
-            TextEditor(text: $viewModel.discussionText)
+            TextEditor(text: discussionTextBinding)
                 .font(.system(.body, design: .rounded))
                 .foregroundStyle(AppColour.txtCoklat)
                 .scrollContentBackground(.hidden)
@@ -225,6 +311,7 @@ struct ReasonView: View {
                 .padding(.horizontal, 10)
                 .padding(.top, 8)
                 .padding(.bottom, 38)
+                .focused($isDiscussionFocused)
                 .accessibilityLabel(
                     "Write discussion, \(viewModel.discussionCharacterCount) of \(viewModel.discussionCharacterLimit) characters"
                 )
@@ -242,17 +329,17 @@ struct ReasonView: View {
                         "\(viewModel.discussionCharacterCount) of \(viewModel.discussionCharacterLimit) characters"
                     )
 
-                Button {
-                    // Voice-to-text will be added after the MVP.
-                } label: {
-                    Image(systemName: "mic")
-                        .font(.system(.body, design: .rounded).weight(.medium))
-                        .foregroundStyle(AppColour.txtCoklat)
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Voice input")
-                .accessibilityHint("Voice-to-text is coming after the MVP.")
+//                Button {
+//                    // Voice-to-text will be added after the MVP.
+//                } label: {
+//                    Image(systemName: "mic")
+//                        .font(.system(.body, design: .rounded).weight(.medium))
+//                        .foregroundStyle(AppColour.txtCoklat)
+//                        .frame(width: 28, height: 28)
+//                }
+//                .buttonStyle(.plain)
+//                .accessibilityLabel("Voice input")
+//                .accessibilityHint("Voice-to-text is coming after the MVP.")
             }
             .padding(.trailing, 14)
             .padding(.bottom, 10)
@@ -275,7 +362,7 @@ struct ReasonView: View {
                 .font(.system(.headline, design: .rounded).weight(.semibold))
                 .foregroundStyle(AppColour.txtCoklat)
                 .frame(maxWidth: .infinity, minHeight: 46)
-                .background(AppColour.bgPutih)
+                .background(AppColour.btnPutih)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -289,6 +376,52 @@ struct ReasonView: View {
 
     private var reasonQuestionAccessibilityLabel: String {
         viewModel.reasonQuestionAccessibilityLabel(for: selectedMood)
+    }
+
+    private var discussionTextBinding: Binding<String> {
+        Binding(
+            get: { viewModel.discussionText },
+            set: { viewModel.updateDiscussionText($0) }
+        )
+    }
+
+    private var characterLimitAlert: some View {
+        StoryFlowAlert(
+            title: "Character Limit Reached",
+            message: nil,
+            actions: [
+                StoryFlowAlertAction(
+                    title: "OK",
+                    style: .emphasized,
+                    action: viewModel.dismissCharacterLimitAlert
+                )
+            ]
+        )
+    }
+
+    private var discardDiscussionAlert: some View {
+        StoryFlowAlert(
+            title: "Discard Discussion?",
+            message: "If you go back now, your discussion will be discarded.",
+            actions: [
+                StoryFlowAlertAction(
+                    title: "Discard",
+                    style: .destructive,
+                    action: discardDiscussionAndGoBack
+                ),
+                StoryFlowAlertAction(
+                    title: "Cancel",
+                    style: .emphasized,
+                    action: viewModel.dismissDiscardConfirmation
+                )
+            ]
+        )
+    }
+
+    private func discardDiscussionAndGoBack() {
+        viewModel.discardDiscussion()
+        storyFlow.updateDiscussionCache("")
+        storyFlow.goBack()
     }
 }
 

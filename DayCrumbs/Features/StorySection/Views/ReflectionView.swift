@@ -3,6 +3,7 @@ import UIKit
 
 struct ReflectionView: View {
     @Environment(StoryFlowCoordinator.self) private var storyFlow
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     let selectedSession: Sessions
     let selectedPlace: Place.BuiltInPlace
@@ -25,6 +26,8 @@ struct ReflectionView: View {
     
     var body: some View {
         GeometryReader { proxy in
+            let isDiscardConfirmationPresented = viewModel.isDiscardConfirmationPresented
+
             ZStack {
                 BlurredStorySelectionBackground(
                     imageNames: [
@@ -38,13 +41,33 @@ struct ReflectionView: View {
                     .ignoresSafeArea()
                     .accessibilityHidden(true)
                 
-                if proxy.size.width >= 760 {
-                    wideContent(in: proxy.size)
-                } else {
-                    compactContent(in: proxy.size)
+                Group {
+                    if proxy.size.width >= 760
+                        && !dynamicTypeSize.isAccessibilitySize {
+                        wideContent(in: proxy.size)
+                    } else {
+                        compactContent(in: proxy.size)
+                    }
+                }
+                .accessibilityHidden(isDiscardConfirmationPresented)
+
+                if isDiscardConfirmationPresented {
+                    StoryFlowBlockingOverlay()
+
+                    discardDiscussionAlert
+                        .frame(
+                            width: proxy.size.width,
+                            height: proxy.size.height,
+                            alignment: .center
+                        )
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
             .animation(.easeInOut(duration: 0.22), value: isKeyboardVisible)
+            .animation(
+                .easeInOut(duration: 0.2),
+                value: isDiscardConfirmationPresented
+            )
         }
         .navigationBarBackButtonHidden(true)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
@@ -82,7 +105,11 @@ struct ReflectionView: View {
         let illustrationWidth = isKeyboardVisible ? 0 : min(250, size.width * 0.64)
         let cardHeight = isKeyboardVisible
             ? min(390, max(280, size.height - 36))
-            : 370
+            : (
+                dynamicTypeSize.isAccessibilitySize
+                    ? max(560, size.height * 0.68)
+                    : 370
+            )
         let cardWidth = min(580, max(size.width * 0.82, size.width - 48))
 
         return ScrollView {
@@ -121,11 +148,13 @@ struct ReflectionView: View {
                     .foregroundStyle(AppColour.txtCoklat)
                     .accessibilityAddTraits(.isHeader)
                 
-                Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
-                    .font(.system(.body, design: .rounded))
-                    .foregroundStyle(AppColour.txtCoklat)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
+                if !isKeyboardVisible {
+                    Text("Document your discussion to provide additional context that helps the app better understand and analyze your child's behavior.")
+                        .font(.system(.body, design: .rounded))
+                        .foregroundStyle(AppColour.txtCoklat)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 
                 reflectionEditor
             }
@@ -134,10 +163,20 @@ struct ReflectionView: View {
             .padding(.bottom, 26)
             
             HStack {
-                CircularBackButton(style: .whiteBtn) {
-                    storyFlow.goBack()
+                CircularBackButton(style: .brownBtn) {
+                    if viewModel.isReflectionReady {
+                        viewModel.showDiscardConfirmation()
+                    } else {
+                        storyFlow.discardReflectionAndReturnToIllustrated()
+                    }
                 }
-                .scaleEffect(0.7)
+                .disabled(viewModel.isDiscardConfirmationPresented)
+                .accessibilityHidden(viewModel.isDiscardConfirmationPresented)
+                .accessibilityHint(
+                    viewModel.isReflectionReady
+                        ? "Asks before discarding this reflection."
+                        : "Returns to the illustration."
+                )
                 
                 Spacer()
                 
@@ -157,7 +196,7 @@ struct ReflectionView: View {
             
             if viewModel.reflectionText.isEmpty {
                 Text("e.g. Today, she was mostly happy because she got to spend time with her dad who's usually busy at work. But, she had difficulty doing a part of her homework in the evening. Her dad came to help and her mood eventually returned to normal.")
-                    .font(.system(.caption, design: .rounded))
+                    .font(.system(.body, design: .rounded))
                     .foregroundStyle(AppColour.txtCoklat.opacity(0.45))
                     .padding(.horizontal, 14)
                     .padding(.top, 14)
@@ -175,20 +214,20 @@ struct ReflectionView: View {
                 .accessibilityLabel("End-of-day reflection")
                 .accessibilityHint("Required. Describe the day before finishing the session.")
             
-            Button {
-                // Voice-to-text will be added after the MVP.
-            } label: {
-                Image(systemName: "mic")
-                    .font(.system(.caption, design: .rounded).weight(.medium))
-                    .foregroundStyle(AppColour.txtCoklat)
-                    .frame(width: 28, height: 28)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Voice input")
-            .accessibilityHint("Voice-to-text is coming after the MVP.")
-            .padding(.trailing, 10)
-            .padding(.bottom, 8)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+//            Button {
+//                // Voice-to-text will be added after the MVP.
+//            } label: {
+//                Image(systemName: "mic")
+//                    .font(.system(.caption, design: .rounded).weight(.medium))
+//                    .foregroundStyle(AppColour.txtCoklat)
+//                    .frame(width: 28, height: 28)
+//            }
+//            .buttonStyle(.plain)
+//            .accessibilityLabel("Voice input")
+//            .accessibilityHint("Voice-to-text is coming after the MVP.")
+//            .padding(.trailing, 10)
+//            .padding(.bottom, 8)
+//            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -197,14 +236,13 @@ struct ReflectionView: View {
         Button(action: saveReflectionAndFinish) {
             Image(systemName: "checkmark")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(viewModel.isReflectionReady ? AppColour.txtCoklat : AppColour.txtCoklat.opacity(0.35))
-                .frame(width: 34, height: 34)
-                .background(AppColour.bgPutih)
+                .foregroundStyle(AppColour.txtPutih)
+                .frame(width: 44, height: 44)
+                .background (
+                    AppColour.btnCoklat
+                        .opacity(viewModel.isReflectionReady ? 1.0 : 0.45)
+                )
                 .clipShape(Circle())
-                .overlay {
-                    Circle()
-                    .stroke(AppColour.txtCoklat.opacity(viewModel.isReflectionReady ? 0.8 : 0.3), lineWidth: 2)
-                }
         }
         .buttonStyle(.plain)
         .disabled(!viewModel.isReflectionReady)
@@ -223,6 +261,25 @@ struct ReflectionView: View {
     
     private func saveReflectionAndFinish() {
         storyFlow.finishReflection(viewModel.reflectionText)
+    }
+
+    private var discardDiscussionAlert: some View {
+        StoryFlowAlert(
+            title: "Discard Discussion?",
+            message: "If you go back now, your discussion will be discarded.",
+            actions: [
+                StoryFlowAlertAction(
+                    title: "Discard",
+                    style: .destructive,
+                    action: storyFlow.discardReflectionAndReturnToIllustrated
+                ),
+                StoryFlowAlertAction(
+                    title: "Cancel",
+                    style: .emphasized,
+                    action: viewModel.dismissDiscardConfirmation
+                )
+            ]
+        )
     }
 }
 

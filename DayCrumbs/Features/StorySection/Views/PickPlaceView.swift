@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PickPlaceView: View {
     @Environment(StoryFlowCoordinator.self) private var storyFlow
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let selectedSession: Sessions
 
@@ -12,6 +13,7 @@ struct PickPlaceView: View {
             ZStack(alignment: .topLeading) {
                 sessionBackground(in: proxy.size)
                     .ignoresSafeArea()
+                    .accessibilityHidden(true)
                 
                 VStack(spacing: 0) {
                     CharacterBubble(
@@ -22,6 +24,9 @@ struct PickPlaceView: View {
                         text: "Let's tell today's story together!\nWhere did your activity happen?"
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityHint(
+                        "You are adding a story to the \(selectedSession.title.lowercased()) session."
+                    )
                     
                     SelectionSlider(
                         title: "Choose the place where it happened",
@@ -36,22 +41,26 @@ struct PickPlaceView: View {
                         },
                         itemImageName: viewModel.placeImageName(for:)
                     )
-                    .frame(height: proxy.size.height * 0.26)
+                    .frame(
+                        height: proxy.size.height
+                            * (dynamicTypeSize.isAccessibilitySize ? 0.30 : 0.26)
+                    )
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 
                 CircularBackButton() {
-                    storyFlow.goBack()
+                    storyFlow.discardStoryAndReturnToSessionOption()
                 }
                 .padding(.top, 24)
                 .padding(.leading, 32)
+                .accessibilityHint("Discards this story and returns to session selection.")
             }
         }
         .navigationBarBackButtonHidden(true)
     }
 
     private func sessionBackground(in size: CGSize) -> some View {
-        Image(selectedSession.imageName)
+        Image(selectedSession.backgroundImageName)
             .resizable()
             .scaledToFill()
             .frame(width: size.width * 1.08, height: size.height * 1.08)

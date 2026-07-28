@@ -9,6 +9,7 @@ import SwiftUI
 
 struct PickActivityView: View {
   @Environment(StoryFlowCoordinator.self) private var storyFlow
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   let selectedSession: Sessions
   let selectedPlace: Place.BuiltInPlace
@@ -21,6 +22,7 @@ struct PickActivityView: View {
                   imageNames: [StorySelectionAsset.imageName(for: selectedPlace)]
               )
                   .ignoresSafeArea()
+                  .accessibilityHidden(true)
               
               VStack(spacing: 0) {
                   CharacterBubble(
@@ -28,9 +30,12 @@ struct PickActivityView: View {
                           for: .activity,
                           gender: storyFlow.childGender
                       ),
-                      text: "Let's tell today's story together!\nWhat was your child doing?"
+                      text: "Awesome! Keep the story going.\nWhat were you doing here?"
                   )
                   .frame(maxWidth: .infinity, maxHeight: .infinity)
+                  .accessibilityHint(
+                      "Selected place: \(formattedStoryValue(selectedPlace.rawValue))."
+                  )
                   
                   SelectionSlider(
                       title: "Choose the activity where it happened",
@@ -47,14 +52,18 @@ struct PickActivityView: View {
                               place: selectedPlace
                           )
                       },
-                      itemImageName: {
-                          viewModel.activityImageName(
+                      itemImageNames: {
+                          viewModel.activityImageNames(
                               for: $0,
+                              place: selectedPlace,
                               gender: storyFlow.childGender
                           )
                       }
                   )
-                  .frame(height: proxy.size.height * 0.26)
+                  .frame(
+                      height: proxy.size.height
+                          * (dynamicTypeSize.isAccessibilitySize ? 0.30 : 0.26)
+                  )
               }
               .frame(width: proxy.size.width, height: proxy.size.height)
               
@@ -63,9 +72,20 @@ struct PickActivityView: View {
               }
               .padding(.top, 24)
               .padding(.leading, 32)
+              .accessibilityHint("Returns to place selection.")
           }
       }
       .navigationBarBackButtonHidden(true)
+  }
+
+  private func formattedStoryValue(_ value: String) -> String {
+      value
+          .replacingOccurrences(
+              of: "([A-Z])",
+              with: " $1",
+              options: .regularExpression
+          )
+          .capitalized
   }
 }
 

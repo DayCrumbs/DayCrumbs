@@ -23,8 +23,9 @@ final class StoryFlowCoordinator {
     var root: StoryFlowRoot = .loading
     var navigationPath: [StoryFlowRoute] = []
     var childGender: ChildGender = .girl
-    var disabledSessions: Set<Sessions> = []
+    var isStoryCompletedToday = false
     var errorMessage: String?
+    var cachedDiscussionText: String = ""
 
     private var childProfile: ChildProfile?
     private var repository: StoryFlowRepositoryProtocol?
@@ -35,12 +36,20 @@ final class StoryFlowCoordinator {
     func configure(using modelContext: ModelContext) {
         guard !isConfigured else { return }
 
-        repository = StoryFlowRepository(modelContext: modelContext)
+        let storyRepository = StoryFlowRepository(modelContext: modelContext)
+        repository = storyRepository
         let profileRepository = ChildProfileRepository(modelContext: modelContext)
 
         do {
             childProfile = try profileRepository.fetchActiveProfile()
             childGender = childProfile?.gender ?? .girl
+            if let childProfile {
+                isStoryCompletedToday = try storyRepository.hasCompletedStoryToday(
+                    for: childProfile
+                )
+            } else {
+                isStoryCompletedToday = false
+            }
             root = childProfile == nil ? .onboarding : .dashboard
             errorMessage = nil
         } catch {
@@ -65,9 +74,10 @@ final class StoryFlowCoordinator {
 
             childProfile = profile
             childGender = profile.gender
-            disabledSessions = []
+            isStoryCompletedToday = false
             currentActivityDraft = nil
             currentActivityIsPersisted = false
+            cachedDiscussionText = ""
             errorMessage = nil
             root = .dashboard
             navigationPath = [.sessionOption]
@@ -83,14 +93,18 @@ final class StoryFlowCoordinator {
             return
         }
 
+        guard !isStoryCompletedToday else { return }
+
         currentActivityDraft = nil
         currentActivityIsPersisted = false
+        cachedDiscussionText = ""
         navigationPath = [.sessionOption]
     }
 
     func returnToDashboard() {
         currentActivityDraft = nil
         currentActivityIsPersisted = false
+        cachedDiscussionText = ""
         navigationPath = []
         root = childProfile == nil ? .onboarding : .dashboard
     }
@@ -100,12 +114,7 @@ final class StoryFlowCoordinator {
         navigationPath.removeLast()
     }
 
-    func isSessionDisabled(_ session: Sessions) -> Bool {
-        disabledSessions.contains(session)
-    }
-
     func selectSession(_ session: Sessions) {
-        guard !isSessionDisabled(session) else { return }
         navigationPath = [.sessionOption, .pickPlace(session)]
     }
 
@@ -132,6 +141,10 @@ final class StoryFlowCoordinator {
     ) {
         navigationPath.append(.reason(session, place, activity, mood))
     }
+    
+    func updateDiscussionCache(_ text: String) {
+        cachedDiscussionText = text
+    }
 
     func continueFromReason(
         session: Sessions,
@@ -151,22 +164,24 @@ final class StoryFlowCoordinator {
         navigationPath.append(.illustrated(session, place, activity, mood))
     }
 
-    func addAnotherActivity() {
-        guard let draft = currentActivityDraft, commitCurrentActivity() else { return }
+    func addAnotherStory() {
+        guard commitCurrentActivity() else { return }
 
-        disabledSessions.formUnion(sessions(before: draft.session))
         currentActivityDraft = nil
         currentActivityIsPersisted = false
-        navigationPath = [.sessionOption, .pickPlace(draft.session)]
+        cachedDiscussionText = ""
+        navigationPath = [.sessionOption]
     }
 
-    func continueToAnotherSession() {
-        guard let draft = currentActivityDraft, commitCurrentActivity() else { return }
-
-        disabledSessions.formUnion(sessions(through: draft.session))
+    func discardStoryAndReturnToSessionOption() {
         currentActivityDraft = nil
         currentActivityIsPersisted = false
+        cachedDiscussionText = ""
         navigationPath = [.sessionOption]
+    }
+
+    func discardReflectionAndReturnToIllustrated() {
+        goBack()
     }
 
     func finishSession() {
@@ -193,9 +208,10 @@ final class StoryFlowCoordinator {
 
         do {
             try repository.saveEndOfDayReflection(reflection, for: childProfile)
-            disabledSessions = []
+            isStoryCompletedToday = true
             currentActivityDraft = nil
             currentActivityIsPersisted = false
+            cachedDiscussionText = ""
             errorMessage = nil
             navigationPath = []
             root = .dashboard
@@ -236,19 +252,4 @@ final class StoryFlowCoordinator {
         }
     }
 
-    private func sessions(before session: Sessions) -> [Sessions] {
-        guard let selectedIndex = Sessions.allCases.firstIndex(of: session) else {
-            return []
-        }
-
-        return Array(Sessions.allCases.prefix(selectedIndex))
-    }
-
-    private func sessions(through session: Sessions) -> [Sessions] {
-        guard let selectedIndex = Sessions.allCases.firstIndex(of: session) else {
-            return []
-        }
-
-        return Array(Sessions.allCases.prefix(through: selectedIndex))
-    }
 }

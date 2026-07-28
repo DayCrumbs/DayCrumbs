@@ -32,7 +32,10 @@ struct ContentView: View {
             ZStack {
                 AppColour.bgPutih
                     .ignoresSafeArea()
+                    .accessibilityHidden(true)
                 ProgressView()
+                    .accessibilityLabel("Loading DayCrumbs")
+                    .accessibilityHint("Preparing your child profile and dashboard.")
             }
 
         case .onboarding:
