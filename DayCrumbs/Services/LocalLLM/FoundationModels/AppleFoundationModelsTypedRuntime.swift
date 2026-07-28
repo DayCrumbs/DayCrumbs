@@ -56,10 +56,8 @@ final class AppleFoundationModelsTypedRuntime: AppleTypedInsightGeneratingRuntim
     private static let instructions = """
     \(AnalyticsSystemPrompt.text)
 
-    Apple typed-output rules:
-    - Write every generated field in English. A separate on-device layer localizes it later.
-    - Follow the provided typed schema. Do not return JSON, Markdown, or surrounding chat text.
-    - When the context contains only one or very few observations, explicitly state that the insight is based on limited data. Do not claim a repeated pattern or trend.
+    Write every field in English for later on-device localization. Follow the typed \
+    schema without JSON, Markdown, or surrounding text.
     """
 
     private static func prompt(
@@ -67,10 +65,9 @@ final class AppleFoundationModelsTypedRuntime: AppleTypedInsightGeneratingRuntim
         for range: TimeRange
     ) -> String {
         """
-        Analyze only the following analytics context and produce the typed insight.
-
         \(AnalyticsSystemPrompt.scopeInstructions(for: range))
 
+        Analyze only this analytics context:
         \(context.text)
         """
     }

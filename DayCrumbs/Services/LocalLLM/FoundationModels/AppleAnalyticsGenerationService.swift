@@ -8,6 +8,7 @@ final class AppleAnalyticsGenerationService: AnalyticsInsightGenerating {
     private let runtime: any AppleTypedInsightGeneratingRuntime
     private let configuration: LocalLLMConfiguration
     private let contextBuilder: AnalyticsContextBuilder
+    private let groundingService = AppleAnalyticsInsightGroundingService()
     private var isGenerating = false
 
     init() {
@@ -108,7 +109,11 @@ final class AppleAnalyticsGenerationService: AnalyticsInsightGenerating {
                 for: range,
                 configuration: configuration
             )
-            let insight = try generated.validatedAnalyticsInsight()
+            let validatedInsight = try generated.validatedAnalyticsInsight()
+            let insight = groundingService.grounded(
+                validatedInsight,
+                in: inputTranslation.englishContext
+            )
             return AppleAnalyticsGenerationResult(
                 englishInsight: insight,
                 responseLanguage: inputTranslation.responseLanguage
