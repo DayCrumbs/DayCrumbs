@@ -100,17 +100,17 @@ private extension Moods {
     var alertDetails: [String] {
         switch self {
         case .angry:
-            return ["Frown or make a tight face.", "Speak loudly or cry.", "Clench their hands.", "Want more space.", "Need a calm moment."]
+            return ["Frown.", "Yell or speak loudly.", "Throw or hit things.", "Cry because they're upset.", "Need some quiet time."]
         case .disgust:
-            return ["Make a scrunched-up face.", "Pull away from something.", "Say something feels yucky.", "Cover their nose.", "Ask for help."]
+            return ["Wrinkle their nose.", "Turn away.", "Cover their nose.", "Not want to touch or eat it.", "Feel like they might throw up."]
         case .fear:
-            return ["Hold on tightly.", "Look for a familiar adult.", "Want to stay close.", "Cry or become quiet.", "Need reassurance."]
+            return ["Cry or cling to someone.", "Not want to be alone.", "Feel scared at night.", "Breathe faster.", "Have big, wide eyes."]
         case .happy:
-            return ["Smile a lot.", "Laugh or giggle.", "Clap their hands.", "Jump up and down.", "Want to play."]
+            return ["Smile and laugh.", "Enjoy spending time with others.", "Ask lots of questions.", "Feel excited to learn.", "Give hugs and show love."]
         case .sad:
-            return ["Have tears in their eyes.", "Speak more quietly.", "Want a hug or comfort.", "Need time to rest.", "Want someone nearby."]
+            return ["Cry or frown.", "Be very quiet.", "Want to be alone.", "Miss someone or something.", "Need comfort from a grown-up."]
         case .surprise:
-            return ["Open their eyes or mouth wide.", "Pause and look closely.", "Laugh or gasp.", "Ask what happened.", "Want to talk about it."]
+            return ["Open their eyes wide.", "Open their mouth and gasp.", "Laugh or smile if it's a fun surprise.", "Step back if it's a scary surprise.", "Want to see or know more."]
         }
     }
 }
