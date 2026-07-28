@@ -178,6 +178,33 @@ struct AnalyticsContextBuilderTests {
         #expect(context.text.contains("afterActivityNote: absent"))
     }
 
+    @Test("Model-facing context preserves the date but omits incidental clock time")
+    func textOmitsClockTime() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let recordedAt = try #require(
+            calendar.date(
+                from: DateComponents(
+                    year: 2026,
+                    month: 7,
+                    day: 28,
+                    hour: 6,
+                    minute: 53
+                )
+            )
+        )
+        let profile = ChildProfile(name: "Ari", age: 3, gender: .boy)
+        let session = makeSession(profile: profile, startedAt: recordedAt)
+        let entry = makeEntry(in: session, recordedAt: recordedAt)
+
+        let context = try AnalyticsContextBuilder().build(from: [entry])
+
+        #expect(context.text.contains("recordedDate: 2026-07-28"))
+        #expect(!context.text.contains("recordedAt"))
+        #expect(!context.text.contains("06:53"))
+        #expect(!context.text.contains("T06"))
+    }
+
     @Test("Missing reflections do not prevent context construction")
     func missingReflection() throws {
         let profile = ChildProfile(name: "Ari", age: 3, gender: .boy)

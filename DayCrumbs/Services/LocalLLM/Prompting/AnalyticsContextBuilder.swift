@@ -44,7 +44,7 @@ nonisolated struct AnalyticsContext: Equatable, Sendable {
 
         for (index, event) in events.enumerated() {
             lines.append("EVENT_\(index + 1)")
-            lines.append("recordedAt: \(Self.iso8601(event.recordedAt))")
+            lines.append("recordedDate: \(Self.calendarDate(event.recordedAt))")
             lines.append("session: \(event.session)")
             lines.append("mood: \(event.mood)")
             lines.append("activity: \(event.activity ?? "absent")")
@@ -55,17 +55,24 @@ nonisolated struct AnalyticsContext: Equatable, Sendable {
         lines.append("END_OF_DAY_REFLECTIONS: \(reflections.count)")
         for (index, reflection) in reflections.enumerated() {
             lines.append("REFLECTION_\(index + 1)")
-            lines.append("sessionStartedAt: \(Self.iso8601(reflection.sessionStartedAt))")
+            lines.append(
+                "sessionDate: \(Self.calendarDate(reflection.sessionStartedAt))"
+            )
             lines.append("content: \(reflection.content)")
         }
 
         return lines.joined(separator: "\n")
     }
 
-    private static func iso8601(_ date: Date) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    /// The model needs calendar-day grouping and chronology, not incidental
+    /// capture times. Omitting clock components prevents them from being
+    /// misrepresented as meaningful evidence.
+    private static func calendarDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = .current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = Calendar.current.timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: date)
     }
 }
