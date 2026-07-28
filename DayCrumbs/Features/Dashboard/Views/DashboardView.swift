@@ -564,31 +564,15 @@ struct DashboardView: View {
         baseSize * moodLegendImageScale(for: mood)
     }
 
-    private func moodLegendImageScale(for mood: Moods) -> CGFloat {
-        switch (storyFlow.childGender, mood) {
-        case (.girl, .surprise):
-            1.55
-        case (.girl, .angry):
-            1.04
-        case (.boy, .surprise):
-            1.10
-        case (.boy, .angry):
-            1.18
-        default:
-            1
-        }
+    private func moodLegendImageScale(for _: Moods) -> CGFloat {
+        1
     }
 
     private func moodLegendImageHorizontalOffset(
-        for mood: Moods,
-        baseSize: CGFloat
+        for _: Moods,
+        baseSize _: CGFloat
     ) -> CGFloat {
-        switch (storyFlow.childGender, mood) {
-        case (.girl, .surprise):
-            -baseSize * 0.16
-        default:
-            0
-        }
+        0
     }
 
     private var moodLegendMaximumScale: CGFloat {
