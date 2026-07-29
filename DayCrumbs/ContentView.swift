@@ -10,7 +10,9 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @State private var storyFlow = StoryFlowCoordinator()
+    @State private var backgroundMusicService = BackgroundMusicService()
 
     var body: some View {
         @Bindable var navigation = storyFlow
@@ -22,6 +24,17 @@ struct ContentView: View {
         .environment(storyFlow)
         .task {
             storyFlow.configure(using: modelContext)
+            backgroundMusicService.play()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .active:
+                backgroundMusicService.play()
+            case .inactive, .background:
+                backgroundMusicService.pause()
+            @unknown default:
+                backgroundMusicService.pause()
+            }
         }
     }
 
