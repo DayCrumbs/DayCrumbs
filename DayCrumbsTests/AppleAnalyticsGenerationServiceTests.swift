@@ -218,6 +218,112 @@ struct AppleAnalyticsGenerationServiceTests {
         #expect(runtime.contextEventCounts == [1])
     }
 
+    @Test("Broad emotion outcomes are removed before recommendation matching")
+    func removesEmotionRangeTrigger() async throws {
+        let generated = AppleGeneratedAnalyticsInsight(
+            summary: "The child's emotions varied across the supplied day.",
+            commonTriggers: [
+                AppleGeneratedCommonTrigger(
+                    title: "Mood range",
+                    explanation: "The child showed happiness, sadness, and anger."
+                ),
+                AppleGeneratedCommonTrigger(
+                    title: "Shared play",
+                    explanation: "Happiness was observed while playing."
+                ),
+            ],
+            observedPatterns: [
+                AppleGeneratedObservedPattern(
+                    title: "Emotional range",
+                    evidence: "Several different moods were logged.",
+                    linkedTrigger: "Mood range",
+                    contextTags: ["play", "house"]
+                ),
+                AppleGeneratedObservedPattern(
+                    title: "Enjoyed play",
+                    evidence: "Happiness appeared in two play observations.",
+                    linkedTrigger: "Shared play",
+                    contextTags: ["play", "house", "outdoor"]
+                ),
+            ],
+            parentReflectionPrompt: "What context would you like to observe?",
+            ethicalNote: "This private observation is not a diagnosis."
+        )
+        let runtime = RuntimeFake(behaviors: [.succeed(generated)])
+        let service = makeService(runtime: runtime)
+
+        let result = try await service.generateInsight(
+            from: makeVariedEmotionEntries(),
+            for: .day,
+            preparingInputWith: InputPreparationFake().handler
+        )
+
+        #expect(result.englishInsight.commonTriggers.map(\.title) == ["Shared play"])
+        #expect(
+            result.englishInsight.observedPatterns[0].linkedTrigger == nil
+        )
+        #expect(
+            result.englishInsight.observedPatterns[1].linkedTrigger == "Shared play"
+        )
+
+        let details = ParentRecommendationCatalog().triggerDetails(
+            for: result.englishInsight
+        )
+        #expect(details.map(\.title) == ["Shared play"])
+        #expect(details.first?.recommendationTitle == "Child-led shared play")
+    }
+
+    @Test("Arbitrary custom context is grounded from the current request")
+    func supportsUncataloguedCustomContext() {
+        let trigger = AnalyticsInsight.CommonTrigger(
+            title: "Clay sculpting",
+            explanation: "Happiness was observed during clay sculpting."
+        )
+        let insight = AnalyticsInsight(
+            summary: "One supplied observation connected clay sculpting with happiness.",
+            commonTriggers: [trigger],
+            observedPatterns: [
+                AnalyticsInsight.ObservedPattern(
+                    title: "Engaged with clay",
+                    evidence: "The child appeared happy while sculpting clay.",
+                    linkedTrigger: trigger.title,
+                    contextTags: ["Clay sculpting", "studio"]
+                ),
+            ],
+            parentReflectionPrompt: "What would you like to observe next?",
+            ethicalNote: "This private observation is not a diagnosis."
+        )
+        let context = AnalyticsContext(
+            child: AnalyticsContext.Child(
+                name: "Ari",
+                age: 4,
+                gender: ChildGender.boy.rawValue
+            ),
+            events: [
+                AnalyticsContext.Event(
+                    recordedAt: .now,
+                    session: Sessions.afternoon.rawValue,
+                    mood: Moods.happy.rawValue,
+                    activity: "Clay sculpting",
+                    place: "studio",
+                    afterActivityNote: "The child smiled and stayed engaged with the clay."
+                ),
+            ],
+            reflections: []
+        )
+
+        let result = AppleAnalyticsInsightGroundingService().grounded(
+            insight,
+            in: context
+        )
+        let recommendation = ParentRecommendationCatalog().triggerDetails(
+            for: result
+        )
+
+        #expect(result.commonTriggers.map(\.title) == ["Clay sculpting"])
+        #expect(recommendation.first?.recommendationTitle == "Observe and connect")
+    }
+
     private func makeService(
         runtime: RuntimeFake
     ) -> AppleAnalyticsGenerationService {
@@ -360,5 +466,48 @@ private func makeEntries(count: Int) -> [StoryEntry] {
     }
     session.entries = entries
     return entries
+}
+
+@MainActor
+private func makeVariedEmotionEntries() -> [StoryEntry] {
+    let profile = ChildProfile(name: "Ari", age: 4, gender: .boy)
+    let session = DailySession(startedAt: .now, childProfile: profile)
+    profile.dailySessions = [session]
+
+    let homePlay = StoryEntry(
+        session: .morning,
+        mood: .happy,
+        activity: .play,
+        place: .house,
+        afterActivityNotes: AfterActivityNotes(
+            text: "The child appeared happy during this play activity."
+        ),
+        recordedAt: .now,
+        dailySession: session
+    )
+    let outdoorPlay = StoryEntry(
+        session: .afternoon,
+        mood: .happy,
+        activity: .play,
+        place: .outdoor,
+        afterActivityNotes: AfterActivityNotes(
+            text: "The child appeared happy during another play activity."
+        ),
+        recordedAt: .now.addingTimeInterval(1),
+        dailySession: session
+    )
+    let hardStudy = StoryEntry(
+        session: .evening,
+        mood: .angry,
+        activity: .study,
+        place: .house,
+        afterActivityNotes: AfterActivityNotes(
+            text: "The child appeared angry during this separate activity."
+        ),
+        recordedAt: .now.addingTimeInterval(2),
+        dailySession: session
+    )
+    session.entries = [homePlay, outdoorPlay, hardStudy]
+    return session.entries
 }
 #endif

@@ -9,12 +9,14 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
         let keywords: [String]
         let requiredKeywordGroups: [[String]]
         let excludedKeywords: [String]
+        let triggerTitleExcludedKeywords: [String]
         let recommendation: ParentRecommendation
 
         init(
             keywords: [String],
             requiredKeywordGroups: [[String]] = [],
             excludedKeywords: [String] = [],
+            triggerTitleExcludedKeywords: [String] = [],
             recommendation: ParentRecommendation
         ) {
             self.keywords = keywords
@@ -22,6 +24,7 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
                 ? [keywords]
                 : requiredKeywordGroups
             self.excludedKeywords = excludedKeywords
+            self.triggerTitleExcludedKeywords = triggerTitleExcludedKeywords
             self.recommendation = recommendation
         }
     }
@@ -125,6 +128,13 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
         ) else {
             return 0
         }
+        guard entry.triggerTitleExcludedKeywords.isEmpty
+                || !Self.containsKeyword(
+                    in: trigger.title,
+                    keywords: entry.triggerTitleExcludedKeywords
+                ) else {
+            return 0
+        }
 
         var score = 0
 
@@ -187,7 +197,31 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
             .lowercased()
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty }
+            .map(canonicalToken)
             .joined(separator: " ")
+    }
+
+    /// Accepts ordinary model inflections while keeping recommendation copy local
+    /// and reviewed.
+    private static func canonicalToken(_ token: String) -> String {
+        switch token {
+        case "ate", "eaten", "eating":
+            "eat"
+        case "wakes", "waking", "woke", "awakened":
+            "wake"
+        case "played", "playing":
+            "play"
+        case "studied", "studies", "studying":
+            "study"
+        case "meals":
+            "meal"
+        case "foods":
+            "food"
+        case "vegetables":
+            "vegetable"
+        default:
+            token
+        }
     }
 }
 
@@ -263,9 +297,9 @@ private extension ParentRecommendationCatalog {
         // CDC: predictable structure, one clear direction, and limited choices.
         Entry(
             keywords: [
-                "transition", "routine", "get ready", "wake up", "morning",
+                "transition", "routine", "get ready", "wake", "wake up", "morning",
                 "change activity", "peralihan", "transisi", "rutinitas",
-                "bersiap", "bangun", "pagi", "ganti aktivitas",
+                "bersiap", "bangun", "terbangun", "pagi", "ganti aktivitas",
             ],
             recommendation: ParentRecommendation(
                 title: "A clear, predictable transition",
@@ -363,7 +397,8 @@ private extension ParentRecommendationCatalog {
                 "play", "shared play", "turn taking", "toy",
                 "bermain", "bermain bersama", "bergiliran", "mainan",
             ],
-            excludedKeywords: natureKeywords + outdoorMovementKeywords,
+            excludedKeywords: natureKeywords,
+            triggerTitleExcludedKeywords: outdoorMovementKeywords,
             recommendation: ParentRecommendation(
                 title: "Child-led shared play",
                 recommendedActivities: [
@@ -381,9 +416,11 @@ private extension ParentRecommendationCatalog {
         // AAP Committee on Nutrition guidance for low-pressure toddler meals.
         Entry(
             keywords: [
-                "eat", "meal", "mealtime", "food", "food refusal",
+                "eat", "meal", "mealtime", "food", "vegetable",
+                "food refusal",
                 "picky eating", "refused meal", "makan", "waktu makan",
-                "makanan", "menolak makan", "pilih pilih makanan",
+                "makanan", "sayur", "menolak makan",
+                "pilih pilih makanan",
             ],
             recommendation: ParentRecommendation(
                 title: "Low-pressure mealtime participation",

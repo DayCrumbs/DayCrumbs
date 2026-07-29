@@ -11,6 +11,7 @@ struct DashboardView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.appAudioService) private var appAudioService
     @Environment(StoryFlowCoordinator.self) private var storyFlow
     
     @AccessibilityFocusState private var accessibilityFocus: DashboardAccessibilityFocus?
@@ -71,6 +72,17 @@ struct DashboardView: View {
                 .accessibilityHidden(true)
         )
         .toolbar(.hidden, for: .navigationBar)
+        .overlay(alignment: .topLeading) {
+            AudioMuteButton(
+                isMuted: appAudioService?.isMuted ?? false
+            ) {
+                appAudioService?.toggleMute()
+            }
+            .disabled(appAudioService == nil)
+            .padding(.top, 12)
+            .padding(.leading, 16)
+            .accessibilityHidden(viewModel.selectedTriggerDetail != nil)
+        }
         #if DEBUG
         .overlay(alignment: .topTrailing) {
             if showsDevelopmentDataButton {
@@ -215,7 +227,8 @@ struct DashboardView: View {
                 addStoryButton
             }
             .padding(.horizontal, max(24, size.width * 0.05))
-            .padding(.vertical, 32)
+            .padding(.top, 72)
+            .padding(.bottom, 32)
         }
     }
     
@@ -235,7 +248,9 @@ struct DashboardView: View {
                 
                 addStoryButton
             }
-            .padding(24)
+            .padding(.horizontal, 24)
+            .padding(.top, 72)
+            .padding(.bottom, 24)
         }
     }
     
@@ -312,55 +327,76 @@ struct DashboardView: View {
         HStack(alignment: .center, spacing: 14) {
             moodChartLegend(chartHeight: height)
             
-            Chart(viewModel.currentMoodBarData) { segment in
-                BarMark(
-                    x: .value("Time", segment.timeLabel),
-                    y: .value("Mood count", segment.count),
-                    width: .ratio(0.55), // <--- TAMBAHKAN INI UNTUK MERAMPINGKAN BAR
-                    stacking: .standard
-                )
-                .foregroundStyle(moodBarColour(for: segment.mood))
-                .cornerRadius(4)
-                .compositingLayer { mark in
-                    mark
-                        .shadow(color: moodChartOutlineColour, radius: 0, x: 1, y: 0)
-                        .shadow(color: moodChartOutlineColour, radius: 0, x: -1, y: 0)
-                        .shadow(color: moodChartOutlineColour, radius: 0, x: 0, y: 1)
-                        .shadow(color: moodChartOutlineColour, radius: 0, x: 0, y: -1)
-                }
-                .annotation(position: .overlay) {
-                    if shouldShowCount(for: segment) {
-                        Text("\(segment.count)")
-                            .font(moodCountFont(for: segment, chartHeight: height))
-                            .foregroundStyle(AppColour.txtCoklat)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .accessibilityHidden(true)
-                            .transition(.opacity)
+            Chart {
+                ForEach(viewModel.currentMoodBarData) { segment in
+                    BarMark(
+                        x: .value("Time", segment.timeLabel),
+                        y: .value("Mood count", segment.count),
+                        width: .ratio(0.55),
+                        stacking: .standard
+                    )
+                    .foregroundStyle(moodBarColour(for: segment.mood))
+                    .cornerRadius(4)
+                    .compositingLayer { mark in
+                        mark
+                            .shadow(color: moodChartOutlineColour, radius: 0, x: 1, y: 0)
+                            .shadow(color: moodChartOutlineColour, radius: 0, x: -1, y: 0)
+                            .shadow(color: moodChartOutlineColour, radius: 0, x: 0, y: 1)
+                            .shadow(color: moodChartOutlineColour, radius: 0, x: 0, y: -1)
+                    }
+                    .annotation(position: .overlay) {
+                        if shouldShowCount(for: segment) {
+                            Text("\(segment.count)")
+                                .font(moodCountFont(for: segment, chartHeight: height))
+                                .foregroundStyle(AppColour.txtCoklat)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .accessibilityHidden(true)
+                                .transition(.opacity)
+                        }
                     }
                 }
+
+                // Keep the baseline in the same data coordinate system as the
+                // bars and grid. This avoids pixel offsets introduced by a
+                // separately padded plot-area overlay.
+                RuleMark(y: .value("Baseline", 0))
+                    .foregroundStyle(moodChartOutlineColour)
+                    .lineStyle(StrokeStyle(lineWidth: 1.5))
             }
             .chartLegend(.hidden)
             .chartYScale(
                 domain: 0...moodChartMaximumCount,
-                range: .plotDimension(startPadding: 1)
+                range: .plotDimension(startPadding: 0)
             )
             .chartXAxis {
-                AxisMarks { _ in
-                    AxisTick(stroke: StrokeStyle(lineWidth: 1))
-                        .foregroundStyle(AppColour.txtCoklat.opacity(0.65))
-                    AxisValueLabel(verticalSpacing: 14)
-                        .font(.system(.headline, design: .rounded).weight(.bold))
-                        .foregroundStyle(AppColour.txtCoklat)
+                AxisMarks(
+                    position: .bottom,
+                    values: moodChartTimeLabels
+                ) { value in
+                    AxisValueLabel(centered: true, verticalSpacing: 12) {
+                        if let label = value.as(String.self) {
+                            Text(label)
+                                .font(
+                                    .system(.headline, design: .rounded)
+                                    .weight(.bold)
+                                )
+                                .foregroundStyle(AppColour.txtCoklat)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.72)
+                        }
+                    }
                 }
             }
             .chartYAxis {
-                AxisMarks { _ in
+                AxisMarks(
+                    position: .leading,
+                    values: moodChartGridValues
+                ) { _ in
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
                         .foregroundStyle(AppColour.txtCoklat.opacity(0.22))
                 }
             }
-            
             .chartPlotStyle { plotArea in
                 plotArea
                     .overlay(alignment: .leading) {
@@ -369,14 +405,6 @@ struct DashboardView: View {
                             .frame(width: 1.5)
                             .accessibilityHidden(true)
                     }
-                    .overlay(alignment: .bottom) {
-                        Rectangle()
-                            .fill(moodChartOutlineColour)
-                            .frame(height: 1.5)
-                            .accessibilityHidden(true)
-                    }
-                    .padding(.top, 6)
-                    .padding(.bottom, 10)
             }
             .chartOverlay { chartProxy in
                 GeometryReader { geometryProxy in
@@ -564,31 +592,15 @@ struct DashboardView: View {
         baseSize * moodLegendImageScale(for: mood)
     }
 
-    private func moodLegendImageScale(for mood: Moods) -> CGFloat {
-        switch (storyFlow.childGender, mood) {
-        case (.girl, .surprise):
-            1.55
-        case (.girl, .angry):
-            1.04
-        case (.boy, .surprise):
-            1.10
-        case (.boy, .angry):
-            1.18
-        default:
-            1
-        }
+    private func moodLegendImageScale(for _: Moods) -> CGFloat {
+        1
     }
 
     private func moodLegendImageHorizontalOffset(
-        for mood: Moods,
-        baseSize: CGFloat
+        for _: Moods,
+        baseSize _: CGFloat
     ) -> CGFloat {
-        switch (storyFlow.childGender, mood) {
-        case (.girl, .surprise):
-            -baseSize * 0.16
-        default:
-            0
-        }
+        0
     }
 
     private var moodLegendMaximumScale: CGFloat {
@@ -620,6 +632,31 @@ struct DashboardView: View {
             .mapValues { segments in segments.reduce(0) { $0 + $1.count } }
         
         return max(1, totalsByTime.values.max() ?? 0)
+    }
+
+    private var moodChartTimeLabels: [String] {
+        var labels: [String] = []
+        for segment in viewModel.currentMoodBarData
+        where !labels.contains(segment.timeLabel) {
+            labels.append(segment.timeLabel)
+        }
+        return labels
+    }
+
+    /// Positive integer count lines only. Zero is represented by the solid
+    /// baseline RuleMark, so a dashed line can never compete with it.
+    private var moodChartGridValues: [Int] {
+        let maximum = moodChartMaximumCount
+        guard maximum > 1 else {
+            return []
+        }
+
+        let desiredLineCount = 4
+        let step = max(
+            1,
+            Int(ceil(Double(maximum) / Double(desiredLineCount)))
+        )
+        return Array(stride(from: step, to: maximum, by: step))
     }
     
     private func moodBarColour(for mood: Moods) -> Color {

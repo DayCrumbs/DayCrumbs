@@ -154,6 +154,27 @@ struct ParentRecommendationCatalogTests {
         #expect(!recommendation.recommendedActivities.joined().contains("puzzle"))
     }
 
+    @Test("A shared-play title takes priority over an outdoor context tag")
+    func prioritizesSharedPlayTitleOverOutdoorContext() {
+        let trigger = AnalyticsInsight.CommonTrigger(
+            title: "Shared play",
+            explanation: "Happiness was observed while playing."
+        )
+        let relatedPattern = AnalyticsInsight.ObservedPattern(
+            title: "Enjoyed play",
+            evidence: "Happiness appeared in two play observations.",
+            linkedTrigger: trigger.title,
+            contextTags: ["play", "house", "outdoor"]
+        )
+
+        let recommendation = catalog.recommendation(
+            for: trigger,
+            relatedPatterns: [relatedPattern]
+        )
+
+        #expect(recommendation.title == "Child-led shared play")
+    }
+
     @Test("Public-place observations no longer use the shared-play entry")
     func matchesPublicPlaceSeparately() {
         let trigger = AnalyticsInsight.CommonTrigger(
@@ -185,6 +206,48 @@ struct ParentRecommendationCatalogTests {
         #expect(recommendation.title == "Low-pressure mealtime participation")
         #expect(recommendation.sourceLabels == [.aap])
         #expect(recommendation.whatMayHelp[0].contains("Avoid arguing"))
+    }
+
+    @Test("Inflected eating context remains connected to mealtime guidance")
+    func matchesInflectedMealtimeContext() {
+        let trigger = AnalyticsInsight.CommonTrigger(
+            title: "Eating a meal",
+            explanation: "Disgust was observed during the meal."
+        )
+        let relatedPattern = AnalyticsInsight.ObservedPattern(
+            title: "Meal observation",
+            evidence: "One eating event included a disgust mood.",
+            linkedTrigger: trigger.title,
+            contextTags: ["eating", "meal"]
+        )
+
+        let recommendation = catalog.recommendation(
+            for: trigger,
+            relatedPatterns: [relatedPattern]
+        )
+
+        #expect(recommendation.title == "Low-pressure mealtime participation")
+    }
+
+    @Test("Waking context remains connected to transition guidance")
+    func matchesInflectedWakeContext() {
+        let trigger = AnalyticsInsight.CommonTrigger(
+            title: "Waking transition",
+            explanation: "Fear was observed after the child woke."
+        )
+        let relatedPattern = AnalyticsInsight.ObservedPattern(
+            title: "Wake-up observation",
+            evidence: "One wake-up event included a fear mood.",
+            linkedTrigger: trigger.title,
+            contextTags: ["waking", "house"]
+        )
+
+        let recommendation = catalog.recommendation(
+            for: trigger,
+            relatedPatterns: [relatedPattern]
+        )
+
+        #expect(recommendation.title == "A clear, predictable transition")
     }
 
     @Test("Unknown text receives the general curated fallback")

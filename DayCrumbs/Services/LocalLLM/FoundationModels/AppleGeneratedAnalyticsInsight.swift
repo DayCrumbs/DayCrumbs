@@ -11,8 +11,8 @@ struct AppleGeneratedAnalyticsInsight {
     var summary: String
 
     @Guide(
-        description: "Contextual trigger candidates explicitly reflected in the summary and supported by supplied rows. Never an activity or topic inventory. Use an empty array when the data cannot support a trigger relationship.",
-        .maximumCount(5)
+        description: "Specific contextual circumstances reflected in the summary. Never include varied emotions, emotional range, mixed moods, or an activity merely because it was frequent or enjoyable. Include a trigger only when parent text links the circumstance to a response, or the same context-response pair occurs in at least two events. Use an empty array when unsupported.",
+        .maximumCount(3)
     )
     var commonTriggers: [AppleGeneratedCommonTrigger]
 
@@ -32,10 +32,10 @@ struct AppleGeneratedAnalyticsInsight {
 @available(iOS 26.0, *)
 @Generable(description: "A possible contextual trigger reflected in the overall summary and supported by story rows.")
 struct AppleGeneratedCommonTrigger {
-    @Guide(description: "A short English label for the contextual circumstance tied to a mood or behavior response, not a standalone activity, place, or session.")
+    @Guide(description: "A short English circumstance label using the most specific nouns or actions in the supplied context. Never name a mood, mood variation, clock time, or generic session.")
     var title: String
 
-    @Guide(description: "A grounded English explanation naming the supplied circumstance and the mood or behavior response observed alongside it, consistent with the summary.")
+    @Guide(description: "A tentative English explanation naming both the eligible supplied circumstance and the response observed with it. Never claim that the circumstance caused the response.")
     var explanation: String
 }
 
@@ -45,14 +45,14 @@ struct AppleGeneratedObservedPattern {
     @Guide(description: "A short English evidence label, not a recommendation.")
     var title: String
 
-    @Guide(description: "Concrete English evidence tied to count, session, place, mood, time, activity, reflection, or note.")
+    @Guide(description: "Concrete English evidence tied to supplied counts, dates, sessions, places, moods, activities, reflections, or notes. Do not invent or report a clock time.")
     var evidence: String
 
     @Guide(description: "The exact related common-trigger title, or nil when none applies.")
     var linkedTrigger: String?
 
     @Guide(
-        description: "Short English tags copied or explicitly derived from supplied rows.",
+        description: "Short English terms copied from the supplied activity, place, session, parent-authored circumstance, or transition. Preserve the request's specific context together with canonical structured labels so reviewed recommendations can be matched.",
         .maximumCount(4)
     )
     var contextTags: [String]

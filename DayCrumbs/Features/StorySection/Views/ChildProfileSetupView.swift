@@ -232,6 +232,9 @@ struct ChildProfileSetupView: View {
         Button(action: {
             let repository = ChildProfileRepository(modelContext: modelContext)
             if viewModel.saveProfile(using: repository) {
+                AppIconManager.updateIcon(
+                    isBoy: viewModel.selectedGender == .boy
+                )
                 storyFlow.didSaveChildProfile(using: repository)
             }
         }) {
