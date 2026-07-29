@@ -49,6 +49,7 @@ struct CircularBackButton: View {
                 .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                 .accessibilityHidden(true)
         }
+        .buttonStyle(.soundEffectPlain(.backPress))
         .accessibilityLabel("Back")
         .accessibilityHint("Returns to the previous screen.")
     }
