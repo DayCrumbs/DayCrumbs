@@ -154,6 +154,27 @@ struct ParentRecommendationCatalogTests {
         #expect(!recommendation.recommendedActivities.joined().contains("puzzle"))
     }
 
+    @Test("A shared-play title takes priority over an outdoor context tag")
+    func prioritizesSharedPlayTitleOverOutdoorContext() {
+        let trigger = AnalyticsInsight.CommonTrigger(
+            title: "Shared play",
+            explanation: "Happiness was observed while playing."
+        )
+        let relatedPattern = AnalyticsInsight.ObservedPattern(
+            title: "Enjoyed play",
+            evidence: "Happiness appeared in two play observations.",
+            linkedTrigger: trigger.title,
+            contextTags: ["play", "house", "outdoor"]
+        )
+
+        let recommendation = catalog.recommendation(
+            for: trigger,
+            relatedPatterns: [relatedPattern]
+        )
+
+        #expect(recommendation.title == "Child-led shared play")
+    }
+
     @Test("Public-place observations no longer use the shared-play entry")
     func matchesPublicPlaceSeparately() {
         let trigger = AnalyticsInsight.CommonTrigger(
