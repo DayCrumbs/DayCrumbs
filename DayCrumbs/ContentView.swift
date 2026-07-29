@@ -13,6 +13,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var storyFlow = StoryFlowCoordinator()
     @State private var backgroundMusicService = BackgroundMusicService()
+    @State private var soundEffectService = SoundEffectService()
 
     var body: some View {
         @Bindable var navigation = storyFlow
@@ -22,6 +23,7 @@ struct ContentView: View {
                 .storyFlowNavigationDestinations()
         }
         .environment(storyFlow)
+        .environment(\.soundEffectService, soundEffectService)
         .task {
             storyFlow.configure(using: modelContext)
             backgroundMusicService.play()

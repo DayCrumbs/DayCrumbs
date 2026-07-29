@@ -7,7 +7,7 @@ import UIKit
 final class BackgroundMusicService {
     private enum AudioAsset {
         static let backgroundMusic = "WonderfulBackgroundMusic"
-        static let playbackVolume: Float = 0.2
+        static let playbackVolume: Float = 0.12
         static let fadeInDuration: TimeInterval = 1.5
     }
 
