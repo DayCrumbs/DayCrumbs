@@ -1,13 +1,13 @@
 import SwiftUI
 
-private struct SoundEffectServiceKey: EnvironmentKey {
-    static let defaultValue: SoundEffectService? = nil
+private struct AppAudioServiceKey: EnvironmentKey {
+    static let defaultValue: AppAudioService? = nil
 }
 
 extension EnvironmentValues {
-    var soundEffectService: SoundEffectService? {
-        get { self[SoundEffectServiceKey.self] }
-        set { self[SoundEffectServiceKey.self] = newValue }
+    var appAudioService: AppAudioService? {
+        get { self[AppAudioServiceKey.self] }
+        set { self[AppAudioServiceKey.self] = newValue }
     }
 }
 
@@ -26,7 +26,7 @@ struct SoundEffectButtonStyle<BaseStyle: PrimitiveButtonStyle>: PrimitiveButtonS
 }
 
 private struct SoundEffectButton<BaseStyle: PrimitiveButtonStyle>: View {
-    @Environment(\.soundEffectService) private var soundEffectService
+    @Environment(\.appAudioService) private var appAudioService
 
     let configuration: PrimitiveButtonStyleConfiguration
     let baseStyle: BaseStyle
@@ -34,7 +34,7 @@ private struct SoundEffectButton<BaseStyle: PrimitiveButtonStyle>: View {
 
     var body: some View {
         Button(role: configuration.role) {
-            soundEffectService?.play(effect)
+            appAudioService?.play(effect)
             configuration.trigger()
         } label: {
             configuration.label

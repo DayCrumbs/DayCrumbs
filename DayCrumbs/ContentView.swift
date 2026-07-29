@@ -12,8 +12,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @State private var storyFlow = StoryFlowCoordinator()
-    @State private var backgroundMusicService = BackgroundMusicService()
-    @State private var soundEffectService = SoundEffectService()
+    @State private var appAudioService = AppAudioService()
 
     var body: some View {
         @Bindable var navigation = storyFlow
@@ -23,19 +22,19 @@ struct ContentView: View {
                 .storyFlowNavigationDestinations()
         }
         .environment(storyFlow)
-        .environment(\.soundEffectService, soundEffectService)
+        .environment(\.appAudioService, appAudioService)
         .task {
             storyFlow.configure(using: modelContext)
-            backgroundMusicService.play()
+            appAudioService.playBackgroundMusic()
         }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .active:
-                backgroundMusicService.play()
+                appAudioService.playBackgroundMusic()
             case .inactive, .background:
-                backgroundMusicService.pause()
+                appAudioService.pauseBackgroundMusic()
             @unknown default:
-                backgroundMusicService.pause()
+                appAudioService.pauseBackgroundMusic()
             }
         }
     }
