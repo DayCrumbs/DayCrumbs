@@ -1,0 +1,40 @@
+{
+  "fill" : {
+    "solid" : "srgb:0.96078,0.78824,0.50196,1.00000"
+  },
+  "groups" : [
+    {
+      "blur-material" : null,
+      "hidden" : false,
+      "layers" : [
+        {
+          "hidden" : false,
+          "image-name" : "Test Icon 4-77.png",
+          "name" : "Test Icon 4-77",
+          "position" : {
+            "scale" : 0.5,
+            "translation-in-points" : [
+              0.6000000000000227,
+              26.0532117192829
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 1
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
