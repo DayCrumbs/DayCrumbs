@@ -11,6 +11,7 @@ struct DashboardView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.appAudioService) private var appAudioService
     @Environment(StoryFlowCoordinator.self) private var storyFlow
     
     @AccessibilityFocusState private var accessibilityFocus: DashboardAccessibilityFocus?
@@ -71,6 +72,17 @@ struct DashboardView: View {
                 .accessibilityHidden(true)
         )
         .toolbar(.hidden, for: .navigationBar)
+        .overlay(alignment: .topLeading) {
+            AudioMuteButton(
+                isMuted: appAudioService?.isMuted ?? false
+            ) {
+                appAudioService?.toggleMute()
+            }
+            .disabled(appAudioService == nil)
+            .padding(.top, 12)
+            .padding(.leading, 16)
+            .accessibilityHidden(viewModel.selectedTriggerDetail != nil)
+        }
         #if DEBUG
         .overlay(alignment: .topTrailing) {
             if showsDevelopmentDataButton {
@@ -215,7 +227,8 @@ struct DashboardView: View {
                 addStoryButton
             }
             .padding(.horizontal, max(24, size.width * 0.05))
-            .padding(.vertical, 32)
+            .padding(.top, 72)
+            .padding(.bottom, 32)
         }
     }
     
@@ -235,7 +248,9 @@ struct DashboardView: View {
                 
                 addStoryButton
             }
-            .padding(24)
+            .padding(.horizontal, 24)
+            .padding(.top, 72)
+            .padding(.bottom, 24)
         }
     }
     
