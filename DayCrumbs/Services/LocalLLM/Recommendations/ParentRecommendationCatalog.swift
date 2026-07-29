@@ -387,7 +387,7 @@ private extension ParentRecommendationCatalog {
                 "play", "shared play", "turn taking", "toy",
                 "bermain", "bermain bersama", "bergiliran", "mainan",
             ],
-            excludedKeywords: natureKeywords + outdoorMovementKeywords,
+            excludedKeywords: natureKeywords,
             recommendation: ParentRecommendation(
                 title: "Child-led shared play",
                 recommendedActivities: [
