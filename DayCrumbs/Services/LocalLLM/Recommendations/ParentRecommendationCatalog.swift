@@ -9,12 +9,14 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
         let keywords: [String]
         let requiredKeywordGroups: [[String]]
         let excludedKeywords: [String]
+        let triggerTitleExcludedKeywords: [String]
         let recommendation: ParentRecommendation
 
         init(
             keywords: [String],
             requiredKeywordGroups: [[String]] = [],
             excludedKeywords: [String] = [],
+            triggerTitleExcludedKeywords: [String] = [],
             recommendation: ParentRecommendation
         ) {
             self.keywords = keywords
@@ -22,6 +24,7 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
                 ? [keywords]
                 : requiredKeywordGroups
             self.excludedKeywords = excludedKeywords
+            self.triggerTitleExcludedKeywords = triggerTitleExcludedKeywords
             self.recommendation = recommendation
         }
     }
@@ -123,6 +126,13 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
             in: relatedTexts,
             keywords: entry.excludedKeywords
         ) else {
+            return 0
+        }
+        guard entry.triggerTitleExcludedKeywords.isEmpty
+                || !Self.containsKeyword(
+                    in: trigger.title,
+                    keywords: entry.triggerTitleExcludedKeywords
+                ) else {
             return 0
         }
 
@@ -388,6 +398,7 @@ private extension ParentRecommendationCatalog {
                 "bermain", "bermain bersama", "bergiliran", "mainan",
             ],
             excludedKeywords: natureKeywords,
+            triggerTitleExcludedKeywords: outdoorMovementKeywords,
             recommendation: ParentRecommendation(
                 title: "Child-led shared play",
                 recommendedActivities: [
