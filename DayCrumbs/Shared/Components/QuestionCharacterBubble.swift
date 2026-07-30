@@ -58,7 +58,7 @@ struct QuestionCharacterBubble: View {
                                 .allowsTightening(true)
                                 .minimumScaleFactor(16 / subtitleSize)
                         }
-                        .foregroundStyle(AppColour.txtCoklat)
+                        .foregroundStyle(AppColour.txtBubbleCoklat)
                         .frame(
                             width: bubbleWidth * 0.72,
                             height: bubbleHeight * 0.66
