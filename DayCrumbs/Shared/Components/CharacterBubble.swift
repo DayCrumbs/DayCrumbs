@@ -40,7 +40,7 @@ struct CharacterBubble: View {
                                 )
                                 .weight(.bold)
                             )
-                            .foregroundColor(AppColour.txtCoklat)
+                            .foregroundColor(AppColour.txtBubbleCoklat)
                             .multilineTextAlignment(.center)
                             .lineSpacing(0)
                             .lineLimit(6)
