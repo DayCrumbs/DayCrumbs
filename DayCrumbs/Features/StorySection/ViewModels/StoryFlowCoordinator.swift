@@ -186,15 +186,20 @@ final class StoryFlowCoordinator {
 
     func finishSession() {
         guard let draft = currentActivityDraft else { return }
-        let reflectionRoute = StoryFlowRoute.reflection(
-            draft.session,
-            draft.place,
-            draft.activity,
-            draft.mood
-        )
-
         guard commitCurrentActivity() else { return }
-        navigationPath.append(reflectionRoute)
+
+        if draft.session == .night {
+            navigationPath.append(
+                .reflection(
+                    draft.session,
+                    draft.place,
+                    draft.activity,
+                    draft.mood
+                )
+            )
+        } else {
+            returnToDashboard()
+        }
     }
 
     func finishReflection(_ reflection: String) {
