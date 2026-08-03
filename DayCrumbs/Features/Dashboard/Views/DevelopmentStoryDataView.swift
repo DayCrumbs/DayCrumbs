@@ -6,12 +6,23 @@ struct DevelopmentStoryDataView: View {
     @State private var viewModel: DevelopmentStoryDataViewModel
     @State private var rowPendingDeletion: DevelopmentStoryDataRow?
 
-    init(modelContext: ModelContext) {
+    @MainActor
+    init(repository: any DevelopmentStoryDataRepositoryProtocol) {
         _viewModel = State(
             initialValue: DevelopmentStoryDataViewModel(
-                repository: DevelopmentStoryDataRepository(modelContext: modelContext)
+                repository: repository
             )
         )
+    }
+
+    @MainActor
+    init() {
+        self.init(repository: ShowcaseDevelopmentStoryDataRepository())
+    }
+
+    @MainActor
+    init(modelContext: ModelContext) {
+        self.init(repository: ShowcaseDevelopmentStoryDataRepository())
     }
 
     var body: some View {

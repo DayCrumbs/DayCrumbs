@@ -5,7 +5,7 @@ import SwiftData
 
 struct DashboardView: View {
     #if DEBUG
-    private let showsDevelopmentDataButton = true
+    private let showsDevelopmentDataButton = false
     #endif
 
     @Environment(\.scenePhase) private var scenePhase
@@ -39,7 +39,7 @@ struct DashboardView: View {
         _translationTaskHost = State(initialValue: translationTaskHost)
         _viewModel = State(
             initialValue: DashboardViewModel(
-                entrySource: StoryEntrySource(modelContext: modelContext),
+                entrySource: ShowcaseStoryEntrySource(),
                 executeTranslationBatch: translationTaskHost.batchHandler
             )
         )
