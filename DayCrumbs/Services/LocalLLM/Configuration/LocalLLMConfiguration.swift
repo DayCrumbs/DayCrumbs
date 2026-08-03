@@ -40,6 +40,43 @@ nonisolated struct LocalLLMConfiguration: Codable, Equatable, Sendable {
         }
     }()
 
+    /// Gemma can be moderately varied when proposing optional activities while
+    /// remaining deterministic enough to preserve the compact JSON contract.
+    static let gemmaCreative: LocalLLMConfiguration = {
+        do {
+            return try LocalLLMConfiguration(
+                outputTokenLimit: 768,
+                samplingPolicy: .probabilityThreshold(0.9),
+                temperature: 0.65
+            )
+        } catch {
+            preconditionFailure(
+                "Creative Gemma configuration must be valid: \(error)"
+            )
+        }
+    }()
+
+    /// A deterministic, shorter fallback used only after Gemma returns output
+    /// that cannot be decoded. This makes the retry materially different even
+    /// when the selected range contains eight or fewer events.
+    static let gemmaRecovery: LocalLLMConfiguration = {
+        do {
+            return try LocalLLMConfiguration(
+                primaryEventLimit: 24,
+                retryEventLimit: 8,
+                outputTokenLimit: 512,
+                samplingPolicy: .greedy,
+                temperature: nil,
+                noteCharacterLimit: 300,
+                reflectionCharacterLimit: 600
+            )
+        } catch {
+            preconditionFailure(
+                "Recovery Gemma configuration must be valid: \(error)"
+            )
+        }
+    }()
+
     /// Maximum number of story entries included in the initial request.
     let primaryEventLimit: Int
     /// Reduced story-entry count used for a smaller-context retry.

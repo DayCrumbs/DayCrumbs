@@ -1,58 +1,165 @@
-//
-//  ModelsView.swift
-//  DayCrumbs
-//
-
+import SwiftData
 import SwiftUI
 
-struct ModelsView: View {
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var viewModel = ModelsViewModel()
+/// Friendly, one-purpose setup surfaced from Dashboard when the preferred
+/// system intelligence is unavailable. Runtime and model names remain internal.
+struct PrivateInsightsSetupView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let viewModel: ModelsViewModel
 
     var body: some View {
-        List {
-            Section("Preferred Engine") {
-                HStack(alignment: .top, spacing: 14) {
-                    Image(systemName: viewModel.isAppleFoundationModelsAvailable ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(viewModel.isAppleFoundationModelsAvailable ? .green : .orange)
-                        .accessibilityHidden(true)
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 22) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 44))
+                    .foregroundStyle(AppColour.btnKuning)
+                    .accessibilityHidden(true)
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(AppleFoundationModelsRuntime.displayName)
-                            .font(.headline)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Set Up Private Insights")
+                        .font(.title.bold())
 
-                        Text(viewModel.isAppleFoundationModelsAvailable ? "Ready" : "Not Ready")
-                            .font(.subheadline.weight(.semibold))
+                    Text(
+                        "To create insights privately on this device, DayCrumbs needs a one-time download of about 2.58 GB. The downloaded files stay on this iPhone or iPad."
+                    )
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                }
 
-                        Text(viewModel.readinessMessage)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                setupStatus
+
+                Spacer(minLength: 0)
+
+                setupActions
+            }
+            .padding(24)
+            .frame(maxWidth: 560, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(AppColour.bgPutih)
+            .toolbar {
+                if !isDownloading {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Not Now") {
+                            dismiss()
+                        }
                     }
                 }
-                .padding(.vertical, 6)
-                .accessibilityElement(children: .combine)
+            }
+        }
+        .interactiveDismissDisabled(isDownloading)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .onChange(of: viewModel.gemmaState) { _, newState in
+            if newState == .ready {
+                dismiss()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var setupStatus: some View {
+        switch viewModel.gemmaState {
+        case .checking:
+            Label {
+                Text("Checking what this device needs…")
+            } icon: {
+                ProgressView()
+            }
+            .accessibilityElement(children: .combine)
+
+        case .notInstalled:
+            Label(
+                "Ready to set up",
+                systemImage: "arrow.down.circle"
+            )
+            .foregroundStyle(.secondary)
+
+        case .downloading:
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Preparing private insights…")
+                    .font(.headline)
+
+                ProgressView(value: viewModel.downloadProgress ?? 0)
+                    .accessibilityLabel("Private insights setup progress")
+                    .accessibilityValue(
+                        viewModel.downloadProgressLabel ?? ""
+                    )
+
+                if let label = viewModel.downloadProgressLabel {
+                    Text(label)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
-            Section {
-                Text("Apple manages this model as part of iOS and iPadOS. DayCrumbs does not download it or send child data to a server.")
-                    .font(.footnote)
+        case .ready:
+            Label(
+                "Private insights are ready",
+                systemImage: "checkmark.circle.fill"
+            )
+            .foregroundStyle(.green)
+
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 8) {
+                Label(
+                    "Setup needs attention",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(.headline)
+                .foregroundStyle(.orange)
+
+                Text(message)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Models")
-        .task {
-            viewModel.refreshAvailability()
+    }
+
+    @ViewBuilder
+    private var setupActions: some View {
+        if viewModel.canRequestDownload {
+            Button {
+                viewModel.startDownload()
+            } label: {
+                Text(
+                    viewModel.gemmaState == .notInstalled
+                        ? "Set Up Now"
+                        : "Try Again"
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(AppColour.btnCoklat)
+            .controlSize(.large)
+            .accessibilityHint(
+                "Downloads the files needed to create private insights on this device."
+            )
         }
-        .onChange(of: scenePhase) { _, newPhase in
-            guard newPhase == .active else { return }
-            viewModel.refreshAvailability()
+
+        if isDownloading {
+            Button("Cancel Setup", role: .cancel) {
+                viewModel.cancelDownload()
+                dismiss()
+            }
+            .frame(maxWidth: .infinity)
+            .accessibilityHint(
+                "Stops setup. Downloaded progress can be resumed later."
+            )
         }
+    }
+
+    private var isDownloading: Bool {
+        if case .downloading = viewModel.gemmaState {
+            return true
+        }
+        return false
     }
 }
 
 #Preview {
-    NavigationStack {
-        ModelsView()
-    }
+    let container = try! DayCrumbsModelContainer.makeInMemoryContainer()
+    PrivateInsightsSetupView(
+        viewModel: ModelsViewModel(modelContext: container.mainContext)
+    )
 }

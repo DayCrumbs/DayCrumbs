@@ -54,7 +54,9 @@ struct TriggerAlertView: View {
 
                         recommendationSection
                         whatMayHelpSection
-                        sourceSection
+                        if !detail.sourceLabels.isEmpty {
+                            sourceSection
+                        }
                     }
                     .padding(24) // Padding untuk konten teks
                 }
