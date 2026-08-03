@@ -61,10 +61,14 @@ struct AnalyticsSystemPromptTests {
         #expect(prompt.contains("- \(field):"))
     }
 
-    @Test("Recommendations remain curated and output is not conversational")
-    func curatedRecommendationsAndNoChat() {
-        #expect(prompt.contains("do not create parenting recommendations"))
-        #expect(prompt.contains("curated catalog"))
+    @Test("Optional creative suggestions retain essential safety boundaries")
+    func creativeSuggestionsAndNoChat() {
+        #expect(prompt.contains("parentSuggestions".lowercased()))
+        #expect(prompt.contains("practical, playful, low-risk"))
+        #expect(prompt.contains("optional experiments"))
+        #expect(prompt.contains("do not recommend medication"))
+        #expect(prompt.contains("punishment"))
+        #expect(prompt.contains("unsafe activities"))
         #expect(prompt.contains("no greeting"))
         #expect(prompt.contains("or chat"))
     }

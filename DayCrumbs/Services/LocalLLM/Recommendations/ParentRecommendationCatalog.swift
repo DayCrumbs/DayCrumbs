@@ -1,9 +1,7 @@
 import Foundation
 
-/// Matches generated trigger text to local, reviewed parenting actions.
-///
-/// Generated text is used only for matching and evidence. Recommendation copy and
-/// source labels always come from this catalog.
+/// Uses an eligible engine-authored suggestion when present, otherwise matches
+/// generated trigger text to the local, reviewed parenting fallback catalog.
 nonisolated struct ParentRecommendationCatalog: Sendable {
     private struct Entry: Sendable {
         let keywords: [String]
@@ -38,13 +36,23 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
     }
 
     /// Builds one detail per generated trigger without invoking either LLM runtime.
-    func triggerDetails(for insight: AnalyticsInsight) -> [TriggerDetail] {
-        insight.commonTriggers.map { triggerDetail(for: $0, in: insight) }
+    func triggerDetails(
+        for insight: AnalyticsInsight,
+        responseLanguage: GemmaResponseLanguage = .english
+    ) -> [TriggerDetail] {
+        insight.commonTriggers.map {
+            triggerDetail(
+                for: $0,
+                in: insight,
+                responseLanguage: responseLanguage
+            )
+        }
     }
 
     func triggerDetail(
         for trigger: AnalyticsInsight.CommonTrigger,
-        in insight: AnalyticsInsight
+        in insight: AnalyticsInsight,
+        responseLanguage: GemmaResponseLanguage = .english
     ) -> TriggerDetail {
         let relatedPatterns = insight.observedPatterns.filter {
             guard let linkedTrigger = $0.linkedTrigger else {
@@ -53,11 +61,27 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
 
             return Self.normalized(linkedTrigger) == Self.normalized(trigger.title)
         }
-        let recommendation = recommendation(
-            for: trigger,
-            relatedPatterns: relatedPatterns,
-            summary: insight.summary
-        )
+        let generatedSuggestion = insight.parentSuggestions.first {
+            Self.normalized($0.linkedTrigger) == Self.normalized(trigger.title)
+        }
+        let resolvedRecommendation: ParentRecommendation
+        if let generatedSuggestion {
+            resolvedRecommendation = ParentRecommendation(
+                title: generatedSuggestion.title,
+                recommendedActivities:
+                    generatedSuggestion.recommendedActivities,
+                whatMayHelp: generatedSuggestion.whatMayHelp,
+                sourceLabels: []
+            )
+        } else if responseLanguage.baseIdentifier == "id" {
+            resolvedRecommendation = Self.indonesianFallbackRecommendation
+        } else {
+            resolvedRecommendation = recommendation(
+                for: trigger,
+                relatedPatterns: relatedPatterns,
+                summary: insight.summary
+            )
+        }
 
         return TriggerDetail(
             title: trigger.title,
@@ -69,11 +93,14 @@ nonisolated struct ParentRecommendationCatalog: Sendable {
                     contextTags: $0.contextTags
                 )
             },
-            recommendationTitle: recommendation.title,
-            recommendedActivities: recommendation.recommendedActivities,
-            whatMayHelp: recommendation.whatMayHelp,
-            sourceLabels: recommendation.sourceLabels,
-            sectionLabels: .english
+            recommendationTitle: resolvedRecommendation.title,
+            recommendedActivities:
+                resolvedRecommendation.recommendedActivities,
+            whatMayHelp: resolvedRecommendation.whatMayHelp,
+            sourceLabels: resolvedRecommendation.sourceLabels,
+            sectionLabels: responseLanguage.baseIdentifier == "id"
+                ? .indonesian
+                : .english
         )
     }
 
@@ -470,4 +497,18 @@ private extension ParentRecommendationCatalog {
         ],
         sourceLabels: [.cdc, .harvard]
     )
+
+    nonisolated private static let indonesianFallbackRecommendation =
+        ParentRecommendation(
+            title: "Amati dan bangun koneksi",
+            recommendedActivities: [
+                "Luangkan beberapa menit untuk mengamati atau mengikuti aktivitas yang sedang menarik perhatian anak.",
+                "Ajukan satu pertanyaan lembut tentang bagian yang terasa mudah atau sulit.",
+            ],
+            whatMayHelp: [
+                "Berikan perhatian positif yang spesifik saat Anda melihat perilaku yang membantu.",
+                "Sampaikan arahan berikutnya dengan singkat, jelas, dan sesuai usia.",
+            ],
+            sourceLabels: [.cdc, .harvard]
+        )
 }

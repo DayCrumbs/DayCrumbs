@@ -31,6 +31,80 @@ struct ParentRecommendationCatalogTests {
         #expect(detail.sourceLabels == [.aap, .cdc])
     }
 
+    @Test("A generated Gemma suggestion overrides the static fallback")
+    func usesGeneratedSuggestion() throws {
+        let triggerTitle = "Cerita seram sebelum tidur"
+        let insight = AnalyticsInsight(
+            summary: "Cerita seram muncul sebelum rasa takut.",
+            commonTriggers: [
+                AnalyticsInsight.CommonTrigger(
+                    title: triggerTitle,
+                    explanation: "Rasa takut terlihat setelah cerita seram."
+                ),
+            ],
+            observedPatterns: [
+                AnalyticsInsight.ObservedPattern(
+                    title: "Takut menjelang tidur",
+                    evidence: "Catatan menghubungkan cerita hantu dengan rasa takut.",
+                    linkedTrigger: triggerTitle,
+                    contextTags: ["tidur", "cerita"]
+                ),
+            ],
+            parentSuggestions: [
+                AnalyticsInsight.ParentSuggestion(
+                    linkedTrigger: triggerTitle,
+                    title: "Ubah akhir cerita bersama",
+                    recommendedActivities: [
+                        "Ajak anak menggambar tokoh penolong untuk cerita itu.",
+                        "Buat akhir cerita baru yang terasa lucu dan aman.",
+                    ],
+                    whatMayHelp: [
+                        "Pilih cerita tenang menjelang tidur.",
+                        "Amati tema cerita yang membuat anak nyaman.",
+                    ]
+                ),
+            ],
+            parentReflectionPrompt: "Cerita seperti apa yang terasa nyaman?",
+            ethicalNote: "Ini observasi, bukan diagnosis."
+        )
+
+        let detail = try #require(catalog.triggerDetails(for: insight).first)
+
+        #expect(detail.recommendationTitle == "Ubah akhir cerita bersama")
+        #expect(
+            detail.recommendedActivities.first
+                == "Ajak anak menggambar tokoh penolong untuk cerita itu."
+        )
+        #expect(detail.sourceLabels.isEmpty)
+    }
+
+    @Test("Indonesian Gemma fallback and section labels stay Indonesian")
+    func indonesianPresentationFallback() throws {
+        let insight = makeInsight(
+            triggerTitle: "Cerita seram sebelum tidur",
+            triggerExplanation:
+                "Rasa takut terlihat setelah cerita seram.",
+            patternTitle: "Takut menjelang tidur",
+            patternEvidence:
+                "Catatan menghubungkan cerita hantu dengan rasa takut.",
+            contextTags: ["tidur", "cerita"]
+        )
+
+        let detail = try #require(
+            catalog.triggerDetails(
+                for: insight,
+                responseLanguage: .indonesian
+            ).first
+        )
+
+        #expect(detail.sectionLabels == .indonesian)
+        #expect(detail.recommendationTitle == "Amati dan bangun koneksi")
+        #expect(
+            detail.recommendedActivities.first?.contains("mengamati")
+                == true
+        )
+    }
+
     @Test("Trigger title has priority over explanation and context tags")
     func prioritizesTriggerTitle() {
         let trigger = AnalyticsInsight.CommonTrigger(

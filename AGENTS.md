@@ -305,27 +305,18 @@ Models:
 - Must not contain UI rendering logic.
 - SwiftData models should remain simple and persistence-safe.
 
-## Required Feature Tabs
+## Required App Navigation
 
-Build exactly three main tabs:
-
-1. Story
-   - Purpose: Guide the parent through daily storytelling and structured activity logging.
-   - If no child profile exists, the first step must be creating a child profile with name, age, and gender.
-   - After profile setup, the parent chooses session, place, activity, mood, and optional after-activity notes.
-   - The parent can add another activity in the same session or move to another session.
-   - When moving on from the night session, end-of-day reflection is required.
-   - This tab can also include a data explorer/history view, but guided storytelling is the primary flow.
-
-2. Dashboard
-   - Purpose: Show analytics cards, charts, pattern summaries, and generated insight.
-
-3. Models
-   - Purpose: Show Apple Intelligence readiness and let the user download the single app-managed fallback model, `Gemma-4-E2B-it`.
-   - This is not a model picker.
-   - Apple Foundation Models is status-only and is chosen automatically when available; it cannot be downloaded or selected by the user.
-   - The only user-facing action here is downloading Gemma. Insight generation happens from Dashboard.
-   - Loading, offloading, repair, deletion, diagnostics, and prompt/configuration are internal or development-only behaviors, not production user controls.
+- Do not use a production `TabView` or expose Story, Dashboard, and Models tabs.
+- After onboarding and child-profile setup, Dashboard is the root screen.
+- Story remains the guided activity flow and starts from the Dashboard's
+  user-facing "Add story" action through `NavigationStack`.
+- There is no production Models screen or model picker.
+- When Apple Foundation Models is unavailable and the app-managed fallback is
+  not installed, Dashboard presents one friendly setup sheet.
+- Runtime names, model names, technical readiness, loading/offloading, repair,
+  deletion, diagnostics, and prompt/configuration remain internal or
+  development-only details.
 
 
 ## On-Device Intelligence Rules
@@ -357,14 +348,16 @@ Rules:
 
 - Do not add a model picker in production.
 - Do not expose E4B, Gemma-3, Qwen, MLC, Core ML model choices, or server model choices.
-- The Models tab shows Apple Intelligence readiness as a status and provides Gemma-4-E2B-it download as the only action.
 - Apple Foundation Models is not a model download and is not user-selectable. It is selected automatically only when `SystemLanguageModel.default.availability` is `.available`.
 - The only production user-facing on-device intelligence actions are:
-  - view Apple Intelligence readiness
-  - download Gemma-4-E2B-it
+  - confirm the one-time private-insights setup download from Dashboard
   - view automatically generated Dashboard insight
   - retry after generation error or retry output translation
-- The Dashboard must show a download-required alert only when Apple Foundation Models is unavailable and Gemma-4-E2B-it is not installed.
+- On first Dashboard appearance, present the private-insights setup sheet when
+  Apple Foundation Models is unavailable and Gemma-4-E2B-it is not installed.
+- This setup preflight is presentation-only and may run even for an empty
+  Dashboard range; the analytics pipeline must still stop before prompt or
+  model checks when the selected range is empty.
 - If Apple Foundation Models is available, automatic Dashboard generation must work without requiring Gemma download.
 - Do not auto-download the model without explicit user confirmation.
 - Do not bundle the 2.58 GB `.litertlm` file in the app binary.
@@ -375,21 +368,24 @@ Rules:
 - Do not send child data to external APIs.
 - Do not use Private Cloud Compute or any server-backed Foundation Models configuration.
 
-Download-required alert copy:
+Private-insights setup copy:
 
 ```text
 Title:
-Set Up On-Device Insights
+Set Up Private Insights
 
 Message:
-Apple Intelligence is not ready on this device. Download Gemma-4-E2B-it to generate private, on-device insights. The download is about 2.58 GB and stays on this iPhone or iPad.
+To create insights privately on this device, DayCrumbs needs a one-time download of about 2.58 GB. The downloaded files stay on this iPhone or iPad.
 
 Primary button:
-Download Model
+Set Up Now
 
 Secondary button:
-Cancel
+Not Now
 ```
+
+Never expose `Gemma`, `LiteRT-LM`, model, engine, fallback, filename, repository,
+checksum, or other implementation terms in this setup UI.
 
 Generate flow:
 
@@ -401,12 +397,13 @@ Dashboard starts or selected range changes
 -> Check Apple Foundation Models availability
 -> If available, select Apple Foundation Models internally
 -> Otherwise check validated Gemma-4-E2B-it installation
--> If Gemma is missing, show DownloadModelRequiredAlert and stop
+-> If Gemma is missing, show the friendly private-insights setup sheet and stop
 -> If Gemma is installed, select LiteRT-LM internally
 -> Build analytics prompt
 -> Generate a typed Apple insight or LiteRT compact JSON insight
 -> Normalize output to AnalyticsInsight; parse/repair is LiteRT-only
--> Match parent recommendations from curated catalog
+-> Use grounded Gemma parent suggestions when present; otherwise match the
+   curated recommendation catalog
 -> Save insight
 -> Release Apple session or internally offload LiteRT model from memory
 -> Publish only if the generated range is still selected
@@ -524,6 +521,22 @@ The translation coordinator prepares an in-memory context only for Apple Foundat
 - Accept view-bound batch work as an operation supplied by the `.translationTask` host; do not retain sessions in the coordinator.
 - Expose identified-text translation for reverse translation of shared `AnalyticsInsight` fields without coupling this layer to that model.
 - Gemma must receive the original context and must never call the Apple translation coordinator.
+- Resolve Gemma's response language separately from its original context by
+  running `NLLanguageRecognizer` over the combined nonempty parent-authored notes
+  and reflections. Use English only when no parent text is supplied or the
+  language cannot be determined.
+- Put the resolved language name and BCP-47 identifier in both Gemma's system and
+  user instructions. Every user-visible JSON value must use that language while
+  JSON keys and canonical structured context tags remain unchanged.
+- Validate the combined generated user-visible fields after JSON parsing. A
+  response in the wrong language may use the single existing recovery request;
+  a second mismatch is a generation failure.
+- Gemma language detection is in-memory routing only. Never call
+  `TranslationSession`, translate the original context, check language-pair
+  availability, or show a system language-asset download prompt for Gemma.
+- Gemma trigger-detail section labels and any local catalog fallback copy must
+  use the resolved output language so presentation cannot silently return to
+  English.
 
 ## Apple Insight Translation Flow Rules
 
@@ -581,7 +594,11 @@ System prompt must instruct the model to:
 - Not diagnose, label, or make medical claims.
 - Prefer concrete patterns from supplied rows.
 - Not invent research claims.
-- Not generate free-form parenting science claims.
+- Allow Gemma to propose creative, low-risk, context-aware activities as optional
+  experiments, without presenting them as science, treatment, or guaranteed
+  solutions.
+- Not recommend medication, supplements, punishment, restraint, or unsafe
+  activities.
 - Produce only the shared analytics fields and no chat response.
 
 Required output schema:
@@ -603,6 +620,14 @@ Required output schema:
       "contextTags": ["Optional short tags from rows"]
     }
   ],
+  "parentSuggestions": [
+    {
+      "linkedTrigger": "Exact title from commonTriggers.",
+      "title": "Short contextual support idea.",
+      "recommendedActivities": ["Up to two practical, playful activities."],
+      "whatMayHelp": ["Up to two gentle adjustments or things to observe."]
+    }
+  ],
   "parentReflectionPrompt": "One gentle non-diagnostic question for the parent.",
   "ethicalNote": "A short privacy and non-diagnosis reminder."
 }
@@ -612,15 +637,27 @@ Prompt budget:
 
 - Limit events per generation.
 - Prefer up to 24 events for primary prompt.
-- Retry with smaller prompt, around 10 events, if generation fails.
-- Keep output token budget modest.
+- Apple retries with at most 10 events when its typed/context policy permits.
+- After a Gemma parse/decode failure, retry once with the deterministic recovery
+  policy: at most 8 events, shorter notes/reflections, greedy sampling, a
+  512-token requested response budget, and the compact recovery prompt.
+- A Gemma retry must materially differ from the primary request even when the
+  selected range contains eight or fewer events.
+- Gemma runtime context is 4,096 total input-plus-output tokens and its requested
+  primary response budget is at most 768 tokens.
+- Gemma uses moderate nucleus sampling (`topP = 0.9`, `temperature = 0.65`) so
+  suggestions can vary while the JSON contract remains reliable.
+- Gemma's CPU runtime uses two inference workers. Do not raise this without
+  physical-device CPU, thermal, energy, and latency evidence.
 - Do not request long prose from the model.
 - LiteRT-LM must return compact JSON and use `AnalyticsInsightParser`.
 - Apple Foundation Models must use `@Generable` typed output and must not be routed through the LiteRT JSON parser.
 
 ## Parent Recommendation Rules
 
-The model must not freely invent science-based parenting recommendations.
+Gemma may create practical activity and routine ideas. It must not present those
+ideas as science-based guidance, a diagnosis, treatment, or a guaranteed result.
+Apple Foundation Models continues to use the curated catalog only.
 
 Correct design:
 
@@ -628,14 +665,22 @@ Correct design:
   - `summary`
   - `commonTriggers`
   - `observedPatterns`
+  - optional `parentSuggestions` for Gemma
   - `parentReflectionPrompt`
   - `ethicalNote`
-- App selects `ParentRecommendation` from a curated in-app catalog.
+- A Gemma suggestion is accepted only when `linkedTrigger` exactly matches a
+  trigger that survives the shared grounding service.
+- Generated suggestions use no curated source badge.
+- When an accepted Gemma suggestion is absent, the app selects
+  `ParentRecommendation` from the curated in-app catalog.
 - Recommendation matching is based primarily on common triggers, then observed patterns, then summary.
 - `ParentRecommendationCatalog` must match deterministically in this order: trigger title, trigger explanation, linked pattern context tags, linked pattern text, then summary.
-- `TriggerDetail` keeps its title, explanation, and evidence from the published `AnalyticsInsight`; recommended activities, what may help, and source labels come only from the catalog.
+- `TriggerDetail` keeps its title, explanation, and evidence from the published
+  `AnalyticsInsight`; recommended activities and what may help come from an
+  accepted Gemma suggestion or the curated fallback.
 - Opening an existing trigger detail must reuse the published insight and must never start another generation request.
-- If no catalog keyword matches, use a general curated fallback instead of model-authored advice.
+- If no generated suggestion or catalog keyword matches, use the general curated
+  fallback.
 
 Allowed source labels:
 
@@ -704,7 +749,7 @@ Analytics to implement (not concrete can and will be changed):
 - Repeated negative mood moments.
 - Common trigger candidates based on repeated session/place/activity + mood patterns.
 - Observed patterns with concrete evidence.
-- Parent recommendations selected from curated catalog.
+- Grounded Gemma parent suggestions with curated-catalog fallback.
 
 Mood scoring is not final. If implemented, it must cover only the current `Moods` cases (`angry`, `disgust`, `fear`, `happy`, `sad`, and `surprise`) unless the user explicitly approves a domain vocabulary change. Define and test the score mapping as a separate analytics policy rather than adding enum cases to fit a previous scoring example.
 

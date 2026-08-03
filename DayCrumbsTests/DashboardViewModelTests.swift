@@ -76,6 +76,39 @@ struct DashboardViewModelTests {
         #expect(generator.generatedEntries.isEmpty)
     }
 
+    @Test("Missing both on-device engines presents setup alert")
+    func missingModelPresentsSetupAlert() async {
+        let source = DashboardStoryEntrySourceFake(
+            entries: makeDashboardTestEntries(
+                dayOffsets: [0],
+                referenceDate: referenceDate,
+                calendar: calendar
+            )
+        )
+        let generator = DashboardInsightGeneratorFake(
+            behaviors: [
+                .failure(
+                    DashboardInsightGenerationError.modelDownloadRequired
+                ),
+            ]
+        )
+        let viewModel = makeDashboardTestViewModel(
+            source: source,
+            generator: generator,
+            referenceDate: referenceDate,
+            calendar: calendar
+        )
+
+        await viewModel.start()
+
+        #expect(viewModel.isShowingDownloadModelRequiredAlert)
+        #expect(
+            viewModel.state == .failed(
+                message: "Set up private insights to continue."
+            )
+        )
+    }
+
     @Test("Range changes generate automatically and the active range is ignored")
     func rangeChangesGenerateAutomatically() async {
         let entries = makeDashboardTestEntries(
@@ -515,14 +548,15 @@ final class DashboardStoryEntrySourceFake: StoryEntrySourceProtocol {
 enum DashboardInsightGeneratorBehavior {
     case immediate(AppleLocalizedAnalyticsInsight)
     case suspended
+    case failure(any Error)
 }
 
 @MainActor
-final class DashboardInsightGeneratorFake: AppleLocalizedInsightGenerating {
+final class DashboardInsightGeneratorFake: DashboardInsightGenerating {
     private let behaviors: [DashboardInsightGeneratorBehavior]
     private let retryResult: AppleLocalizedAnalyticsInsight?
     private var pendingGenerations: [
-        Int: CheckedContinuation<AppleLocalizedAnalyticsInsight, any Error>
+        Int: CheckedContinuation<DashboardGeneratedInsight, any Error>
     ] = [:]
 
     private(set) var generatedEntries: [[StoryEntry]] = []
@@ -544,7 +578,7 @@ final class DashboardInsightGeneratorFake: AppleLocalizedInsightGenerating {
         from entries: [StoryEntry],
         for range: TimeRange,
         using executeBatch: PreparedNativeTranslationBatchHandler
-    ) async throws -> AppleLocalizedAnalyticsInsight {
+    ) async throws -> DashboardGeneratedInsight {
         let callIndex = generatedEntries.count
         generatedEntries.append(entries)
         generatedRanges.append(range)
@@ -563,28 +597,31 @@ final class DashboardInsightGeneratorFake: AppleLocalizedInsightGenerating {
 
         switch behaviors[callIndex] {
         case .immediate(let result):
-            return result
+            return dashboardResult(from: result)
         case .suspended:
             return try await withCheckedThrowingContinuation { continuation in
                 pendingGenerations[callIndex] = continuation
             }
+        case .failure(let error):
+            throw error
         }
     }
 
     func retryOutputTranslation(
         _ fallback: AppleAnalyticsInsightEnglishFallback,
         using executeBatch: PreparedNativeTranslationBatchHandler
-    ) async -> AppleLocalizedAnalyticsInsight {
+    ) async -> DashboardGeneratedInsight {
         retryCallCount += 1
-        return retryResult ?? AppleLocalizedAnalyticsInsight(
+        let result = retryResult ?? AppleLocalizedAnalyticsInsight(
             insight: fallback.englishInsight,
             triggerDetails: fallback.englishTriggerDetails,
             responseLanguage: fallback.translationFallback.targetLanguage,
             englishFallback: fallback
         )
+        return dashboardResult(from: result)
     }
 
-    func releaseSession() {
+    func releaseRuntime() {
         releaseCallCount += 1
     }
 
@@ -593,7 +630,18 @@ final class DashboardInsightGeneratorFake: AppleLocalizedInsightGenerating {
         with result: AppleLocalizedAnalyticsInsight
     ) {
         pendingGenerations.removeValue(forKey: callIndex)?.resume(
-            returning: result
+            returning: dashboardResult(from: result)
+        )
+    }
+
+    private func dashboardResult(
+        from result: AppleLocalizedAnalyticsInsight
+    ) -> DashboardGeneratedInsight {
+        DashboardGeneratedInsight(
+            insight: result.insight,
+            triggerDetails: result.triggerDetails,
+            englishFallback: result.englishFallback,
+            engine: .appleFoundationModels
         )
     }
 }
@@ -601,7 +649,7 @@ final class DashboardInsightGeneratorFake: AppleLocalizedInsightGenerating {
 @MainActor
 func makeDashboardTestViewModel(
     source: any StoryEntrySourceProtocol,
-    generator: any AppleLocalizedInsightGenerating,
+    generator: any DashboardInsightGenerating,
     referenceDate: Date,
     calendar: Calendar
 ) -> DashboardViewModel {

@@ -58,9 +58,13 @@ struct AnalyticsContextBuilderTests {
         }.reversed()
         let builder = AnalyticsContextBuilder()
 
+        let all = try builder.build(from: Array(entries), eventLimit: .all)
         let primary = try builder.build(from: Array(entries), eventLimit: .primary)
         let retry = try builder.build(from: Array(entries), eventLimit: .retry)
 
+        #expect(all.events.count == 30)
+        #expect(all.events.first?.recordedAt == Date(timeIntervalSince1970: 0))
+        #expect(all.events.last?.recordedAt == Date(timeIntervalSince1970: 29))
         #expect(primary.events.count == 24)
         #expect(primary.events.first?.recordedAt == Date(timeIntervalSince1970: 6))
         #expect(primary.events.last?.recordedAt == Date(timeIntervalSince1970: 29))
