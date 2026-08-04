@@ -18,6 +18,29 @@ struct LocalLLMConfigurationTests {
         #expect(configuration.reflectionCharacterLimit == 1_000)
     }
 
+    @Test("Gemma creative preset permits moderate variation and more output")
+    func gemmaCreativeValues() {
+        let configuration = LocalLLMConfiguration.gemmaCreative
+
+        #expect(configuration.primaryEventLimit == 24)
+        #expect(configuration.retryEventLimit == 10)
+        #expect(configuration.outputTokenLimit == 768)
+        #expect(configuration.samplingPolicy == .probabilityThreshold(0.9))
+        #expect(configuration.temperature == 0.65)
+    }
+
+    @Test("Gemma recovery preset is smaller and deterministic")
+    func gemmaRecoveryValues() {
+        let configuration = LocalLLMConfiguration.gemmaRecovery
+
+        #expect(configuration.retryEventLimit == 8)
+        #expect(configuration.outputTokenLimit == 512)
+        #expect(configuration.samplingPolicy == .greedy)
+        #expect(configuration.temperature == nil)
+        #expect(configuration.noteCharacterLimit == 300)
+        #expect(configuration.reflectionCharacterLimit == 600)
+    }
+
     @Test("Configuration survives a Codable round trip")
     func codableRoundTrip() throws {
         let original = try LocalLLMConfiguration(

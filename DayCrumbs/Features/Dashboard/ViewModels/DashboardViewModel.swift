@@ -39,10 +39,12 @@ final class DashboardViewModel {
     private(set) var englishFallback: AppleAnalyticsInsightEnglishFallback?
     private(set) var selectedTriggerDetail: TriggerDetail?
     private(set) var childName = ""
+    private(set) var isShowingDownloadModelRequiredAlert = false
+    private(set) var resolvedEngine: AnalysisEngine?
     
     private let entrySource: any StoryEntrySourceProtocol
     private let entrySelectionService: DashboardEntrySelectionService
-    private let generationService: any AppleLocalizedInsightGenerating
+    private let generationService: any DashboardInsightGenerating
     private let recommendationCatalog: ParentRecommendationCatalog
     private let executeTranslationBatch: PreparedNativeTranslationBatchHandler
     private let calendar: Calendar
@@ -61,13 +63,13 @@ final class DashboardViewModel {
     /// Keeps one complete presentation result per range for this Dashboard visit.
     /// The cache is intentionally in memory so leaving Dashboard starts a fresh visit.
     @ObservationIgnored private var cachedResultsByRange: [
-        TimeRange: AppleLocalizedAnalyticsInsight
+        TimeRange: DashboardGeneratedInsight
     ] = [:]
     
     init(
         entrySource: (any StoryEntrySourceProtocol)? = nil,
         entrySelectionService: DashboardEntrySelectionService? = nil,
-        generationService: (any AppleLocalizedInsightGenerating)? = nil,
+        generationService: any DashboardInsightGenerating,
         recommendationCatalog: ParentRecommendationCatalog = ParentRecommendationCatalog(),
         executeTranslationBatch: @escaping PreparedNativeTranslationBatchHandler,
         calendar: Calendar = .current,
@@ -78,7 +80,7 @@ final class DashboardViewModel {
         // not as default argument expressions evaluated by a nonisolated caller.
         self.entrySource = entrySource ?? DummyStoryEntrySource()
         self.entrySelectionService = entrySelectionService ?? DashboardEntrySelectionService()
-        self.generationService = generationService ?? AppleLocalizedInsightGenerationService()
+        self.generationService = generationService
         self.recommendationCatalog = recommendationCatalog
         self.executeTranslationBatch = executeTranslationBatch
         self.calendar = calendar
@@ -232,6 +234,10 @@ final class DashboardViewModel {
         selectedTriggerDetail = nil
     }
 
+    func dismissDownloadModelRequiredAlert() {
+        isShowingDownloadModelRequiredAlert = false
+    }
+
     private func formattedDashboardDate(
         _ date: Date,
         includesYear: Bool
@@ -379,6 +385,14 @@ final class DashboardViewModel {
                       canPublish(requestID: requestID, range: range) else {
                     return
                 }
+                if error as? DashboardInsightGenerationError
+                    == .modelDownloadRequired {
+                    isShowingDownloadModelRequiredAlert = true
+                    state = .failed(
+                        message: "Set up private insights to continue."
+                    )
+                    return
+                }
                 Self.logger.error(
                     "Generation failed for \(range.rawValue, privacy: .public): \(String(describing: error), privacy: .public)"
                 )
@@ -402,12 +416,13 @@ final class DashboardViewModel {
     }
     
     private func publish(
-        _ result: AppleLocalizedAnalyticsInsight,
+        _ result: DashboardGeneratedInsight,
         for range: TimeRange
     ) {
         cachedResultsByRange[range] = result
         generatedInsight = result.insight
         englishFallback = result.englishFallback
+        resolvedEngine = result.engine
         // Legacy/test generators may not provide prelocalized details. Production
         // Apple generation always publishes translated catalog content here.
         publishedTriggerDetails = result.triggerDetails.isEmpty
@@ -430,7 +445,7 @@ final class DashboardViewModel {
         // new generation while the previous translation is still finishing.
         if let task, !task.isCancelled {
             task.cancel()
-            generationService.releaseSession()
+            generationService.releaseRuntime()
         }
         return task
     }
@@ -449,12 +464,35 @@ final class DashboardViewModel {
         englishFallback = nil
         publishedTriggerDetails = []
         selectedTriggerDetail = nil
+        resolvedEngine = nil
         if !keepingState {
             state = .idle
         }
     }
     
     private func userMessage(for error: any Error) -> String {
+        if let dashboardError = error as? DashboardInsightGenerationError {
+            switch dashboardError {
+            case .modelDownloadRequired:
+                return "Set up private insights to continue."
+            case .invalidGemmaInstallation:
+                return "Private insights need to be set up again before they can be used."
+            }
+        }
+        if let gemmaError = error as? GemmaAnalyticsGenerationError {
+            switch gemmaError {
+            case .emptyEntries:
+                return "There are no stories in this range yet."
+            case .invalidEntries:
+                return "The selected stories could not be prepared for insight generation."
+            case .invalidGeneratedInsight:
+                return "The private insight was incomplete. Please try again."
+            case .generationFailed:
+                return "The private insight could not be completed. Please try again."
+            case .cancelled:
+                return "Insight generation was cancelled."
+            }
+        }
         guard let generationError = error as? AppleAnalyticsGenerationError else {
             return "The on-device insight could not be generated. Please try again."
         }

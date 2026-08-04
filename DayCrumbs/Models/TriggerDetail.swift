@@ -15,6 +15,13 @@ nonisolated struct TriggerDetail: Equatable, Sendable {
             whatMayHelp: "What may help",
             curatedSources: "Curated sources"
         )
+
+        nonisolated static let indonesian = SectionLabels(
+            evidence: "Bukti",
+            recommendedActivities: "Aktivitas yang disarankan",
+            whatMayHelp: "Yang mungkin membantu",
+            curatedSources: "Sumber pilihan"
+        )
     }
 
     struct Evidence: Equatable, Sendable {

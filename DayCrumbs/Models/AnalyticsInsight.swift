@@ -14,11 +14,38 @@ nonisolated struct AnalyticsInsight: Equatable, Sendable {
         let contextTags: [String]
     }
 
+    /// Optional, low-risk ideas authored by a runtime that supports creative
+    /// suggestions. Apple Foundation Models can leave this empty and continue
+    /// using the reviewed local recommendation catalog.
+    struct ParentSuggestion: Equatable, Sendable {
+        let linkedTrigger: String
+        let title: String
+        let recommendedActivities: [String]
+        let whatMayHelp: [String]
+    }
+
     let summary: String
     let commonTriggers: [CommonTrigger]
     let observedPatterns: [ObservedPattern]
+    let parentSuggestions: [ParentSuggestion]
     let parentReflectionPrompt: String
     let ethicalNote: String
+
+    init(
+        summary: String,
+        commonTriggers: [CommonTrigger],
+        observedPatterns: [ObservedPattern],
+        parentSuggestions: [ParentSuggestion] = [],
+        parentReflectionPrompt: String,
+        ethicalNote: String
+    ) {
+        self.summary = summary
+        self.commonTriggers = commonTriggers
+        self.observedPatterns = observedPatterns
+        self.parentSuggestions = parentSuggestions
+        self.parentReflectionPrompt = parentReflectionPrompt
+        self.ethicalNote = ethicalNote
+    }
 }
 
 extension AnalyticsInsight {
@@ -28,6 +55,10 @@ extension AnalyticsInsight {
         case emptyTriggerExplanation
         case emptyPatternTitle
         case emptyPatternEvidence
+        case emptySuggestionLinkedTrigger
+        case emptySuggestionTitle
+        case emptyRecommendedActivities
+        case emptyWhatMayHelp
         case emptyParentReflectionPrompt
         case emptyEthicalNote
     }
@@ -37,6 +68,7 @@ extension AnalyticsInsight {
         validatingSummary summary: String,
         commonTriggers: [CommonTrigger],
         observedPatterns: [ObservedPattern],
+        parentSuggestions: [ParentSuggestion] = [],
         parentReflectionPrompt: String,
         ethicalNote: String
     ) throws {
@@ -84,6 +116,39 @@ extension AnalyticsInsight {
             )
         }
 
+        let parentSuggestions = try parentSuggestions.map { suggestion in
+            let linkedTrigger = Self.normalized(suggestion.linkedTrigger)
+            guard !linkedTrigger.isEmpty else {
+                throw ValidationError.emptySuggestionLinkedTrigger
+            }
+
+            let title = Self.normalized(suggestion.title)
+            guard !title.isEmpty else {
+                throw ValidationError.emptySuggestionTitle
+            }
+
+            let recommendedActivities = suggestion.recommendedActivities
+                .map(Self.normalized)
+                .filter { !$0.isEmpty }
+            guard !recommendedActivities.isEmpty else {
+                throw ValidationError.emptyRecommendedActivities
+            }
+
+            let whatMayHelp = suggestion.whatMayHelp
+                .map(Self.normalized)
+                .filter { !$0.isEmpty }
+            guard !whatMayHelp.isEmpty else {
+                throw ValidationError.emptyWhatMayHelp
+            }
+
+            return ParentSuggestion(
+                linkedTrigger: linkedTrigger,
+                title: title,
+                recommendedActivities: recommendedActivities,
+                whatMayHelp: whatMayHelp
+            )
+        }
+
         let parentReflectionPrompt = Self.normalized(parentReflectionPrompt)
         guard !parentReflectionPrompt.isEmpty else {
             throw ValidationError.emptyParentReflectionPrompt
@@ -98,6 +163,7 @@ extension AnalyticsInsight {
             summary: summary,
             commonTriggers: commonTriggers,
             observedPatterns: observedPatterns,
+            parentSuggestions: parentSuggestions,
             parentReflectionPrompt: parentReflectionPrompt,
             ethicalNote: ethicalNote
         )

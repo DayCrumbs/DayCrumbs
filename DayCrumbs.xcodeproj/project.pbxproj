@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		DC1400013000000000000001 /* DayCrumbs/Services/LocalLLM/Vendor/Frameworks/CLiteRTLM.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC1400033000000000000001 /* DayCrumbs/Services/LocalLLM/Vendor/Frameworks/CLiteRTLM.xcframework */; };
+		DC1400023000000000000001 /* DayCrumbs/Services/LocalLLM/Vendor/Frameworks/CLiteRTLM.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = DC1400033000000000000001 /* DayCrumbs/Services/LocalLLM/Vendor/Frameworks/CLiteRTLM.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		F0EC338930063466008F76AE /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -16,7 +21,22 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		DC1400043000000000000001 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				DC1400023000000000000001 /* DayCrumbs/Services/LocalLLM/Vendor/Frameworks/CLiteRTLM.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		DC1400033000000000000001 /* DayCrumbs/Services/LocalLLM/Vendor/Frameworks/CLiteRTLM.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = DayCrumbs/Services/LocalLLM/Vendor/Frameworks/CLiteRTLM.xcframework; sourceTree = SOURCE_ROOT; };
 		F0EC338530063466008F76AE /* DayCrumbsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DayCrumbsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F0FFEB7F2FFFA7BA00500BC0 /* DayCrumbs:ChildDiary.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "DayCrumbs:ChildDiary.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -43,6 +63,7 @@
 				Services/LocalLLM/Recommendations/Temp.swift,
 				Services/LocalLLM/Runtime/Temp.swift,
 				Services/LocalLLM/Storage/Temp.swift,
+				Services/LocalLLM/Vendor/Frameworks/CLiteRTLM.xcframework,
 				Services/LocalLLM/Vendor/Frameworks/Temp.swift,
 				Services/LocalLLM/Vendor/Swift/Temp.swift,
 				Services/Media/Temp.swift,
@@ -85,6 +106,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DC1400013000000000000001 /* DayCrumbs/Services/LocalLLM/Vendor/Frameworks/CLiteRTLM.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -96,6 +118,7 @@
 			children = (
 				F0FFEB812FFFA7BA00500BC0 /* DayCrumbs */,
 				F0EC338630063466008F76AE /* DayCrumbsTests */,
+				DC1400033000000000000001 /* DayCrumbs/Services/LocalLLM/Vendor/Frameworks/CLiteRTLM.xcframework */,
 				F0FFEB802FFFA7BA00500BC0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -141,6 +164,7 @@
 			buildPhases = (
 				F0FFEB7B2FFFA7BA00500BC0 /* Sources */,
 				F0FFEB7C2FFFA7BA00500BC0 /* Frameworks */,
+				DC1400043000000000000001 /* Embed Frameworks */,
 				F0FFEB7D2FFFA7BA00500BC0 /* Resources */,
 			);
 			buildRules = (
@@ -409,7 +433,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 50;
-				DEVELOPMENT_TEAM = LF442H2D9J;
+				DEVELOPMENT_TEAM = TLC6Y5XJMM;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DayCrumbs/Info.plist;
@@ -427,6 +451,10 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.1;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-all_load",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.ibnu.DayCrumbs;
 				PRODUCT_MODULE_NAME = DayCrumbs;
 				PRODUCT_NAME = "DayCrumbs:ChildDiary";
@@ -453,7 +481,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 50;
-				DEVELOPMENT_TEAM = LF442H2D9J;
+				DEVELOPMENT_TEAM = TLC6Y5XJMM;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = DayCrumbs/Info.plist;
@@ -471,6 +499,10 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.1;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-all_load",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.ibnu.DayCrumbs;
 				PRODUCT_MODULE_NAME = DayCrumbs;
 				PRODUCT_NAME = "DayCrumbs:ChildDiary";

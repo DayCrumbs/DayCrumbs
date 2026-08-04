@@ -84,6 +84,7 @@ nonisolated struct AnalyticsContext: Equatable, Sendable {
 @MainActor
 struct AnalyticsContextBuilder {
     enum EventLimit: Equatable, Sendable {
+        case all
         case primary
         case retry
     }
@@ -126,6 +127,8 @@ struct AnalyticsContextBuilder {
         }
 
         let maximumEventCount = switch eventLimit {
+        case .all:
+            entries.count
         case .primary:
             configuration.primaryEventLimit
         case .retry:

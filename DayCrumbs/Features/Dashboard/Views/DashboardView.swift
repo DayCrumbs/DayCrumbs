@@ -16,7 +16,11 @@ struct DashboardView: View {
     
     @AccessibilityFocusState private var accessibilityFocus: DashboardAccessibilityFocus?
     @State private var viewModel: DashboardViewModel
+    @State private var privateInsightsSetupViewModel: ModelsViewModel
     @State private var translationTaskHost: AppleTranslationTaskHost
+    @State private var presentedSheet: DashboardSheet?
+    @State private var retriesInsightAfterSetup = false
+    @State private var hasCheckedPrivateInsightsSetup = false
     
     /// Remembers which trigger opened the detail so modal dismissal can restore
     /// VoiceOver to the originating chip in the next presentation step.
@@ -33,6 +37,12 @@ struct DashboardView: View {
         case segment(String)
         case mood(Moods)
     }
+
+    private enum DashboardSheet: String, Identifiable {
+        case privateInsightsSetup
+
+        var id: String { rawValue }
+    }
     
     init(modelContext: ModelContext) {
         let translationTaskHost = AppleTranslationTaskHost()
@@ -40,8 +50,14 @@ struct DashboardView: View {
         _viewModel = State(
             initialValue: DashboardViewModel(
                 entrySource: StoryEntrySource(modelContext: modelContext),
+                generationService: DefaultDashboardInsightGenerationService(
+                    modelContext: modelContext
+                ),
                 executeTranslationBatch: translationTaskHost.batchHandler
             )
+        )
+        _privateInsightsSetupViewModel = State(
+            initialValue: ModelsViewModel(modelContext: modelContext)
         )
 
         let basePickerFont = UIFont.systemFont(ofSize: 17, weight: .semibold)
@@ -94,6 +110,14 @@ struct DashboardView: View {
         }
         #endif
         .appleTranslationTaskHost(translationTaskHost)
+        .sheet(item: $presentedSheet) { destination in
+            switch destination {
+            case .privateInsightsSetup:
+                PrivateInsightsSetupView(
+                    viewModel: privateInsightsSetupViewModel
+                )
+            }
+        }
         .onChange(of: viewModel.state) { _, newState in
             postAccessibilityAnnouncement(for: newState)
         }
@@ -103,7 +127,40 @@ struct DashboardView: View {
                 to: detail
             )
         }
+        .onChange(
+            of: viewModel.isShowingDownloadModelRequiredAlert
+        ) { _, isShowing in
+            guard isShowing else {
+                return
+            }
+            retriesInsightAfterSetup = true
+            presentedSheet = .privateInsightsSetup
+            viewModel.dismissDownloadModelRequiredAlert()
+        }
+        .onChange(
+            of: privateInsightsSetupViewModel.gemmaState
+        ) { _, newState in
+            guard newState == .ready else {
+                return
+            }
+            presentedSheet = nil
+            guard retriesInsightAfterSetup else {
+                return
+            }
+            retriesInsightAfterSetup = false
+            Task {
+                await viewModel.retryGeneration()
+            }
+        }
         .task {
+            if !hasCheckedPrivateInsightsSetup {
+                hasCheckedPrivateInsightsSetup = true
+                await privateInsightsSetupViewModel.refresh()
+                if privateInsightsSetupViewModel
+                    .requiresPrivateInsightsSetup {
+                    presentedSheet = .privateInsightsSetup
+                }
+            }
             await viewModel.start()
         }
         .onDisappear {
@@ -122,6 +179,14 @@ struct DashboardView: View {
             default:
                 break
             }
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: UIApplication.didReceiveMemoryWarningNotification
+            )
+        ) { _ in
+            viewModel.cancelGeneration()
+            translationTaskHost.cancelPendingBatch()
         }
         .overlay {
             if let detail = viewModel.selectedTriggerDetail {

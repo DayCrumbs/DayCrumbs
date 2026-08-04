@@ -45,15 +45,15 @@ enum AppleFoundationModelsRuntime {
         case .available:
             "Apple Intelligence is ready for private, on-device insights."
         case .deviceNotEligible:
-            "Apple Foundation Models are not supported on this device. Gemma will be available as the on-device fallback in a later phase."
+            "Apple Foundation Models are not supported on this device. Gemma can provide private on-device insights when downloaded."
         case .appleIntelligenceNotEnabled:
-            "Apple Intelligence is turned off. Enable it in Settings, or use the Gemma fallback when it becomes available."
+            "Apple Intelligence is turned off. Enable it in Settings, or download Gemma for private on-device insights."
         case .modelNotReady:
-            "Apple Intelligence is still preparing its on-device model. Check again later, or use the Gemma fallback when it becomes available."
+            "Apple Intelligence is still preparing its on-device model. Check again later, or download Gemma."
         case .unsupportedOS:
-            "Apple Foundation Models require a supported version of iOS or iPadOS. Gemma will be available as the on-device fallback in a later phase."
+            "Apple Foundation Models require a supported version of iOS or iPadOS. Gemma can provide the on-device fallback."
         case .unavailable:
-            "Apple Foundation Models are not currently available. Gemma will be available as the on-device fallback in a later phase."
+            "Apple Foundation Models are not currently available. Download Gemma for private on-device insights."
         }
     }
 }

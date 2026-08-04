@@ -1,12 +1,12 @@
 import Foundation
 
-/// Removes typed Apple trigger candidates that are not grounded in a specific
+/// Removes model trigger candidates that are not grounded in a specific
 /// supplied circumstance-response relationship.
 ///
-/// Foundation Models remains responsible for wording and synthesis. This gate
+/// The selected engine remains responsible for wording and synthesis. This gate
 /// prevents broad outcome-only summaries from being treated as causes and from
 /// contaminating curated recommendation matching.
-nonisolated struct AppleAnalyticsInsightGroundingService: Sendable {
+nonisolated struct AnalyticsInsightGroundingService: Sendable {
     func grounded(
         _ insight: AnalyticsInsight,
         in context: AnalyticsContext
@@ -31,10 +31,15 @@ nonisolated struct AppleAnalyticsInsightGroundingService: Sendable {
             return pattern
         }
 
+        let suggestions = insight.parentSuggestions.filter {
+            eligibleTitles.contains(normalizedPhrase($0.linkedTrigger))
+        }
+
         return AnalyticsInsight(
             summary: insight.summary,
             commonTriggers: eligibleTriggers,
             observedPatterns: patterns,
+            parentSuggestions: suggestions,
             parentReflectionPrompt: insight.parentReflectionPrompt,
             ethicalNote: insight.ethicalNote
         )
@@ -192,3 +197,7 @@ nonisolated struct AppleAnalyticsInsightGroundingService: Sendable {
         "happy", "sad", "angry", "fear", "surprise", "disgust",
     ]
 }
+
+/// Compatibility alias for existing Apple-focused tests and call sites.
+typealias AppleAnalyticsInsightGroundingService =
+    AnalyticsInsightGroundingService

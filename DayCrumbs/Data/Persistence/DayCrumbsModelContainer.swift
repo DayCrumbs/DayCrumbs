@@ -15,6 +15,7 @@ nonisolated enum DayCrumbsModelContainer {
         EndOfDayReflection.self,
         CustomActivity.self,
         CustomPlace.self,
+        LocalModelInstallation.self,
     ])
 
     static func makeProductionContainer() throws -> ModelContainer {
